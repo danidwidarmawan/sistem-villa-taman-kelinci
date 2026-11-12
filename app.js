@@ -500,6 +500,7 @@
     var c = state.conn;
     return '' +
       '<section class="setup card">' +
+      '<img src="villa-logo.png" alt="Logo Villa Taman Kelinci" class="setup-logo" />' +
       '<h1>Selamat datang di Sistem Villa Taman Kelinci</h1>' +
       '<p>Aplikasi ini menyimpan data operasional villa (reservasi, keuangan, leads) ' +
       'di repo GitHub privat Anda, sehingga bisa dibuka dari HP atau laptop mana saja dan ' +
@@ -740,6 +741,24 @@
       kpi('Uang keluar (terverifikasi)', L.fmtRp(d.moneyOut), d.monthLabel) +
       kpi('Arus kas bersih', L.fmtRp(d.netCash), d.monthLabel) +
       kpi('Total sisa tagihan', L.fmtRp(d.totalOutstanding), 'semua reservasi aktif') +
+      '</section>';
+
+    /* Grafik monitoring (6 bulan terakhir, berakhir di bulan yang dipilih) */
+    var cf = L.monthlyCashflow(state.data.transactions, state.dashMonth, 6);
+    var occ = L.monthlyOccupancy(state.data.reservations, state.dashMonth, 6);
+    var srcItems = d.sourcePerf.map(function (sp) {
+      return { label: sp.source, value: sp.bookingValue };
+    }).sort(function (a, b) { return b.value - a.value; });
+    html += '<section class="card chart-card"><h2>Arus kas 6 bulan terakhir</h2>' +
+      '<p class="hint">Hanya transaksi Terverifikasi. Bulan terakhir: ' + esc(d.monthLabel) + '.</p>' +
+      VTKCharts.cashflowChart(cf) + '</section>';
+    html += '<section class="two-col">' +
+      '<div class="card chart-card"><h2>Okupansi 6 bulan terakhir</h2>' +
+      VTKCharts.occupancyChart(occ) + '</div>' +
+      '<div class="card chart-card"><h2>Nilai booking per sumber</h2>' +
+      '<p class="hint">' + esc(d.monthLabel) + ' — berdasarkan tanggal booking.</p>' +
+      VTKCharts.hBarChart(srcItems, { color: 'orange', ariaLabel: 'Grafik batang nilai booking per sumber lead.',
+        emptyMsg: 'Belum ada data — grafik muncul setelah ada reservasi.' }) + '</div>' +
       '</section>';
 
     /* Biaya tetap + titik impas */
@@ -1160,6 +1179,24 @@
         '<td data-label="Status Verifikasi">' + verifyBadge(tx.verifyStatus) + '</td></tr>';
     }).join('');
 
+    /* Grafik per kategori (bulan yang difilter; hanya transaksi Terverifikasi) */
+    var catMonth = f.month || null;
+    var catLabel = catMonth ? L.monthLabel(catMonth) : 'Semua bulan';
+    var inCats = L.categoryTotals(state.data.transactions, catMonth, 'Masuk');
+    var outCats = L.categoryTotals(state.data.transactions, catMonth, 'Keluar');
+    var catCharts = '<section class="two-col">' +
+      '<div class="card chart-card"><h2>Pemasukan per kategori</h2>' +
+      '<p class="hint">' + esc(catLabel) + ' — hanya transaksi Terverifikasi.</p>' +
+      VTKCharts.hBarChart(inCats.map(function (c) { return { label: c.category, value: c.total }; }),
+        { color: 'green', ariaLabel: 'Grafik batang pemasukan per kategori.',
+          emptyMsg: 'Belum ada data — grafik muncul setelah ada pemasukan terverifikasi.' }) + '</div>' +
+      '<div class="card chart-card"><h2>Pengeluaran per kategori</h2>' +
+      '<p class="hint">' + esc(catLabel) + ' — hanya transaksi Terverifikasi.</p>' +
+      VTKCharts.hBarChart(outCats.map(function (c) { return { label: c.category, value: c.total }; }),
+        { color: 'red', ariaLabel: 'Grafik batang pengeluaran per kategori.',
+          emptyMsg: 'Belum ada data — grafik muncul setelah ada pengeluaran terverifikasi.' }) + '</div>' +
+      '</section>';
+
     return '<section class="page-head"><h1>Keuangan</h1>' +
       '<button type="button" class="btn btn-primary" onclick="VTK.openTxForm()">+ Tambah transaksi</button></section>' +
       '<section class="kpi-grid kpi-grid-3">' +
@@ -1177,6 +1214,7 @@
       '<option value="">Semua</option>' + optList(L.TX_VERIFY, f.status) + '</select></label>' +
       '<button type="button" class="btn btn-small" onclick="VTK.exportCSV(\'keuangan\')">Unduh CSV</button>' +
       '</section>' +
+      catCharts +
       '<section class="card"><div class="table-wrap"><table class="tbl"><thead><tr>' +
       '<th>ID</th><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Booking ID</th><th>Deskripsi</th><th>Metode</th><th>Jumlah</th><th>Status Verifikasi</th></tr></thead>' +
       '<tbody>' + (rows || '<tr><td colspan="9" class="empty">Belum ada transaksi.</td></tr>') + '</tbody></table></div></section>';

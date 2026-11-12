@@ -44,15 +44,17 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
 ## Fitur Tahap 1
 
 - **Dashboard:** KPI bulanan (booking check-in, malam terisi, okupansi, leads,
-  uang masuk/keluar terverifikasi, arus kas bersih, sisa tagihan), kinerja
-  sumber lead, daftar perlu tindakan, check-in berikutnya, transaksi terakhir,
-  biaya tetap & titik impas.
+  uang masuk/keluar terverifikasi, arus kas bersih, sisa tagihan), grafik
+  monitoring 6 bulan terakhir (arus kas, okupansi, nilai booking per sumber —
+  SVG murni, tanpa library), kinerja sumber lead, daftar perlu tindakan,
+  check-in berikutnya, transaksi terakhir, biaya tetap & titik impas.
 - **Reservasi:** tambah/ubah/hapus, hitung otomatis (malam, total, terbayar
   dari transaksi terverifikasi, sisa, status bayar), saran tarif
   peak/weekend/weekday, peringatan bentrok tanggal & kapasitas, info DP 50%
   dan jatuh tempo H-3.
 - **Keuangan:** transaksi masuk/keluar, kategori, status verifikasi,
-  ringkasan per bulan, ekspor CSV.
+  ringkasan per bulan, grafik pemasukan & pengeluaran per kategori,
+  ekspor CSV.
 - **Leads:** tambah/ubah/hapus, status & alasan kalah, badge follow-up
   terlewat, tombol "Jadikan reservasi".
 - **Kalender:** tampilan bulan (terisi/kosong, peak, weekend, kapasitas),
@@ -66,9 +68,11 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
 | File | Isi |
 | --- | --- |
 | `index.html` | Struktur + shell SPA (navigasi hash `#/dashboard` dst) |
-| `styles.css` | Seluruh styling (mobile-first) |
+| `styles.css` | Seluruh styling (mobile-first, palet oranye) |
 | `logic.js` | Logika hitung murni (tanpa DOM) — bisa diuji di Node |
+| `charts.js` | Grafik SVG murni (arus kas, okupansi, batang horizontal) |
 | `app.js` | UI + sinkronisasi GitHub API |
+| `villa-logo.png` | Logo resmi Villa Taman Kelinci (dari pemilik) |
 | `seed.json` | Data master (tarif, kamar, katering, template WA) — tanpa transaksi |
 | `.nojekyll` | Agar GitHub Pages menyajikan file apa adanya |
 
@@ -85,7 +89,7 @@ lalu buka http://localhost:8000/.
 Cek sintaks:
 
 ```sh
-node --check logic.js && node --check app.js
+node --check logic.js && node --check charts.js && node --check app.js
 ```
 
 ## Tahap 2 (belum dikerjakan)

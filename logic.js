@@ -125,6 +125,25 @@
     return s.replace('.', ',') + '%';
   }
 
+  /* Satu desimal, koma desimal Indonesia, tanpa ',0' di belakang. */
+  function trimDec(x) {
+    return x.toFixed(1).replace('.', ',').replace(/,0$/, '');
+  }
+
+  /* Format Rp singkat untuk label chart: 'Rp 7,5jt', 'Rp 500rb', 'Rp 1,5M'. */
+  function fmtRpShort(n) {
+    if (n === null || n === undefined || isNaN(+n)) { return 'Rp 0'; }
+    var v = Math.round(+n);
+    var neg = v < 0;
+    var a = Math.abs(v);
+    var out;
+    if (a >= 1000000000) { out = trimDec(a / 1000000000) + 'M'; }
+    else if (a >= 1000000) { out = trimDec(a / 1000000) + 'jt'; }
+    else if (a >= 1000) { out = trimDec(a / 1000) + 'rb'; }
+    else { out = fmtNum(a); }
+    return (neg ? '-Rp ' : 'Rp ') + out;
+  }
+
   /* ---------------- Tarif ---------------- */
 
   function peakForNight(iso, settings) {
@@ -477,6 +496,103 @@
     };
   }
 
+  /* ---------------- Agregasi chart ---------------- */
+
+  /* Daftar kunci bulan kronologis: `count` bulan terakhir yang berakhir
+   * di `endMonthKey` (inklusif). count dibatasi 1–24. */
+  function monthKeysEndingAt(endMonthKey, count) {
+    var n = Math.max(1, Math.min(24, count || 6));
+    var y = +String(endMonthKey).slice(0, 4);
+    var m = +String(endMonthKey).slice(5, 7) - 1;
+    if (!y || m < 0 || m > 11) { return []; }
+    var keys = [];
+    for (var i = n - 1; i >= 0; i--) {
+      var d = new Date(y, m - i, 1);
+      keys.push(d.getFullYear() + '-' + pad2(d.getMonth() + 1));
+    }
+    return keys;
+  }
+
+  /* Label pendek bulan untuk chart: 'Jun 26'. */
+  function monthShortLabel(monthKey) {
+    var y = +String(monthKey).slice(0, 4);
+    var m = +String(monthKey).slice(5, 7) - 1;
+    if (!y || m < 0 || m > 11) { return monthKey; }
+    return MONTHS_SHORT[m] + ' ' + String(y).slice(2);
+  }
+
+  /* Seri arus kas bulanan (hanya transaksi Terverifikasi).
+   * Mengembalikan [{ monthKey, label, masuk, keluar, bersih }], kronologis. */
+  function monthlyCashflow(transactions, endMonthKey, count) {
+    var keys = monthKeysEndingAt(endMonthKey, count);
+    var map = {};
+    keys.forEach(function (k) {
+      map[k] = { monthKey: k, label: monthShortLabel(k), masuk: 0, keluar: 0, bersih: 0 };
+    });
+    (transactions || []).forEach(function (tx) {
+      if (!tx || tx.verifyStatus !== 'Terverifikasi') { return; }
+      var k = monthKeyOf(tx.date);
+      if (!map[k]) { return; }
+      if (tx.type === 'Masuk') { map[k].masuk += +tx.amount || 0; }
+      else if (tx.type === 'Keluar') { map[k].keluar += +tx.amount || 0; }
+    });
+    return keys.map(function (k) {
+      var p = map[k];
+      p.bersih = p.masuk - p.keluar;
+      return p;
+    });
+  }
+
+  /* Malam terisi dari reservasi aktif yang jatuh di bulan `monthKey`.
+   * (Logika kliping yang sama dengan computeDashboard; sengaja tidak
+   * memakai ulang computeDashboard agar fungsi ini tetap ringan.) */
+  function nightsInMonth(reservations, monthKey) {
+    var y = +String(monthKey).slice(0, 4);
+    var m = +String(monthKey).slice(5, 7) - 1;
+    if (!y || m < 0 || m > 11) { return 0; }
+    var monthStart = monthKey + '-01';
+    var nextStart = toISODate(new Date(y, m + 1, 1));
+    var total = 0;
+    (reservations || []).forEach(function (r) {
+      if (!r || r.status === 'Dibatalkan') { return; }
+      if (!isISODate(r.checkin) || !isISODate(r.checkout)) { return; }
+      var s = r.checkin < monthStart ? monthStart : r.checkin;
+      var e = r.checkout > nextStart ? nextStart : r.checkout;
+      var n = diffDays(s, e);
+      if (n > 0) { total += n; }
+    });
+    return total;
+  }
+
+  /* Seri okupansi bulanan: [{ monthKey, label, malam, hari, pct }]. */
+  function monthlyOccupancy(reservations, endMonthKey, count) {
+    return monthKeysEndingAt(endMonthKey, count).map(function (k) {
+      var y = +k.slice(0, 4);
+      var m = +k.slice(5, 7) - 1;
+      var dim = daysInMonth(y, m);
+      var nights = nightsInMonth(reservations, k);
+      return { monthKey: k, label: monthShortLabel(k), malam: nights, hari: dim, pct: dim ? (nights / dim) * 100 : 0 };
+    });
+  }
+
+  /* Total per kategori untuk satu jenis transaksi ('Masuk'/'Keluar'),
+   * bulan `monthKey` (null/'' = semua bulan), hanya Terverifikasi.
+   * Mengembalikan [{ category, total }] urut terbesar dulu; kategori
+   * dengan total 0 dibuang. */
+  function categoryTotals(transactions, monthKey, type) {
+    var sums = {};
+    (transactions || []).forEach(function (tx) {
+      if (!tx || tx.verifyStatus !== 'Terverifikasi') { return; }
+      if (type && tx.type !== type) { return; }
+      if (monthKey && monthKeyOf(tx.date) !== monthKey) { return; }
+      var c = tx.category || 'Lainnya';
+      sums[c] = (sums[c] || 0) + (+tx.amount || 0);
+    });
+    return Object.keys(sums).filter(function (c) { return sums[c] > 0; })
+      .map(function (c) { return { category: c, total: sums[c] }; })
+      .sort(function (a, b) { return b.total - a.total; });
+  }
+
   /* ---------------- Validasi bentuk data (untuk impor) ---------------- */
 
   var REQUIRED_ARRAYS = ['rooms', 'cateringMenus', 'waTemplates', 'leads', 'reservations', 'transactions', 'tasks', 'maintenance', 'inventory', 'marketing', 'guests', 'cateringOrders'];
@@ -525,8 +641,15 @@
     fmtDateTime: fmtDateTime,
     fmtSyncTime: fmtSyncTime,
     fmtRp: fmtRp,
+    fmtRpShort: fmtRpShort,
     fmtNum: fmtNum,
     fmtPct: fmtPct,
+    monthKeysEndingAt: monthKeysEndingAt,
+    monthShortLabel: monthShortLabel,
+    monthlyCashflow: monthlyCashflow,
+    monthlyOccupancy: monthlyOccupancy,
+    nightsInMonth: nightsInMonth,
+    categoryTotals: categoryTotals,
     peakForNight: peakForNight,
     peakMinNightsWarning: peakMinNightsWarning,
     nightRate: nightRate,
