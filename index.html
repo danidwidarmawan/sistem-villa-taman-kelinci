@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Sistem operasional harian Villa Taman Kelinci — reservasi, keuangan, leads, kalender, dan dashboard monitoring." />
+<title>Sistem Villa Taman Kelinci</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🐰</div>
+      <div class="brand-text">
+        <strong>Villa Taman Kelinci</strong>
+        <span>Sistem Operasional</span>
+      </div>
+    </div>
+    <nav id="nav-desktop" aria-label="Navigasi utama"></nav>
+    <div class="sidebar-foot">
+      <span id="sync-pill-side" class="sync-pill offline">Memuat…</span>
+      <button type="button" class="btn btn-small btn-ghost" onclick="VTK.retrySync()">Coba sinkron lagi</button>
+    </div>
+  </aside>
+
+  <div id="main">
+    <header id="topbar">
+      <div class="brand-mini" aria-hidden="true">🐰 <strong>Villa Taman Kelinci</strong></div>
+      <span id="sync-pill" class="sync-pill offline">Memuat…</span>
+    </header>
+    <div id="banner"></div>
+    <main id="view" aria-live="polite"></main>
+    <footer id="page-foot">
+      <span>Data tersimpan di repo GitHub privat Anda. Token hanya ada di browser ini.</span>
+    </footer>
+  </div>
+</div>
+
+<nav id="nav-mobile" aria-label="Navigasi utama"></nav>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

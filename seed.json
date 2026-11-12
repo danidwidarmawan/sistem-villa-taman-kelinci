@@ -1,0 +1,389 @@
+{
+  "version": 1,
+  "meta": {
+    "createdFrom": "Workbook Sistem Villa Taman Kelinci.xlsx (21 sheet, 12 Okt 2026)",
+    "note": "Data master dimigrasikan dari Excel. Data transaksi mulai kosong (baris Excel masih contoh)."
+  },
+  "settings": {
+    "propertyName": "Villa Taman Kelinci",
+    "unitsForRent": 1,
+    "targetOccupancyPct": null,
+    "checkinTime": null,
+    "checkinTimeProposal": "14:00",
+    "checkoutTime": "12:00",
+    "picOperasional": "",
+    "waUtama": "",
+    "weekendNights": [
+      5,
+      6
+    ],
+    "weekendNote": "Usulan (belum dikonfirmasi pemilik): malam Jumat & Sabtu = weekend, Minggu-Kamis = weekday.",
+    "tariffs": {
+      "weekday2026": 5500000,
+      "weekend2026": 7500000,
+      "weekendPre2026": 10000000,
+      "extraBed": 50000,
+      "vipWithVilla": 850000,
+      "vipOnly": 1000000
+    },
+    "peak": [
+      {
+        "name": "Natal",
+        "start": "2026-12-24",
+        "end": "2026-12-27",
+        "rate": 10000000,
+        "minNights": 2
+      },
+      {
+        "name": "Tahun Baru",
+        "start": "2026-12-29",
+        "end": "2027-01-01",
+        "rate": 12000000,
+        "minNights": 2
+      }
+    ],
+    "peakNote": "Minimum 2 malam. Paket company & keluarga tidak berlaku (blackout). DP 50% berlaku; tanggal terkunci setelah DP terverifikasi.",
+    "dpPct": 0.5,
+    "paymentDeadline": "H-3",
+    "cancellationPolicy": "Jika pembatalan berasal dari tamu, DP hangus.",
+    "reschedulePolicy": "Reschedule maksimal 1x dengan pemberitahuan lebih awal (batas minimal hari belum ditetapkan).",
+    "capacity": {
+      "roomsStandard": 8,
+      "idealPax": 30,
+      "vipRooms": 4,
+      "maxPax": 80
+    },
+    "catering": [
+      {
+        "package": "Hemat 1",
+        "price1x": 32000,
+        "price2x": 60000,
+        "priceFull": 80000
+      },
+      {
+        "package": "Hemat 2",
+        "price1x": 36000,
+        "price2x": 68000,
+        "priceFull": 90000
+      },
+      {
+        "package": "Paket A",
+        "price1x": 40000,
+        "price2x": 75000,
+        "priceFull": 100000
+      },
+      {
+        "package": "Paket B",
+        "price1x": 46000,
+        "price2x": 86000,
+        "priceFull": 115000
+      },
+      {
+        "package": "Paket C",
+        "price1x": 50000,
+        "price2x": 94000,
+        "priceFull": 125000
+      }
+    ]
+  },
+  "rooms": [
+    {
+      "type": "Kamar Keluarga",
+      "count": 6,
+      "capacityPerUnit": 2,
+      "bedType": "King size",
+      "inMainPackage": "Ya",
+      "extraCost": "Tidak",
+      "note": "Kapasitas normal 2 orang per kamar."
+    },
+    {
+      "type": "Kamar Barak — 8 orang",
+      "count": 1,
+      "capacityPerUnit": 8,
+      "bedType": "Single bed",
+      "inMainPackage": "Ya",
+      "extraCost": "Tidak",
+      "note": "Satu kamar barak untuk 8 orang."
+    },
+    {
+      "type": "Kamar Barak — 10 orang",
+      "count": 1,
+      "capacityPerUnit": 10,
+      "bedType": "Single bed",
+      "inMainPackage": "Ya",
+      "extraCost": "Tidak",
+      "note": "Satu kamar barak untuk 10 orang."
+    },
+    {
+      "type": "Kamar VIP",
+      "count": 4,
+      "capacityPerUnit": null,
+      "bedType": "Belum diberikan",
+      "inMainPackage": "Tidak",
+      "extraCost": 850000,
+      "note": "Jika menyewa villa: Rp850.000/kamar VIP. VIP saja: Rp1.000.000/kamar. Durasi tarif perlu dikonfirmasi."
+    },
+    {
+      "type": "Extra bed",
+      "count": null,
+      "capacityPerUnit": null,
+      "bedType": "Extra bed",
+      "inMainPackage": "Tidak",
+      "extraCost": 50000,
+      "note": "Rp50.000 per bed; jumlah tersedia dan durasi tarif perlu dikonfirmasi."
+    }
+  ],
+  "cateringMenus": [
+    {
+      "package": "Hemat 1",
+      "category": "Hemat",
+      "breakfast": "Nasi goreng\nTelur dadar\nTimun\nSambal\nKerupuk",
+      "lunch": "Nasi putih\nTumisan\nTelur balado\nBakwan sayur\nSambal\nKerupuk",
+      "snack": "—",
+      "dinner": "Nasi putih\nPlecing kangkung\nTongkol suwir\nTempe/tahu goreng\nSambal\nKerupuk",
+      "price1x": 32000,
+      "price2x": 60000,
+      "priceFull": 80000,
+      "minPax": "Tidak ada",
+      "note": "Harga parsial sudah mengandung premium dibanding pembagian rata tiga."
+    },
+    {
+      "package": "Hemat 2",
+      "category": "Hemat",
+      "breakfast": "Nasi goreng spesial\nTelur dadar\nTimun\nSambal\nKerupuk",
+      "lunch": "Nasi putih\nTumisan\nAyam goreng\nTahu/tempe goreng\nSambal\nKerupuk",
+      "snack": "—",
+      "dinner": "Nasi putih\nTerong raos\nTongkol balado\nPerkedel jagung\nSambal\nKerupuk",
+      "price1x": 36000,
+      "price2x": 68000,
+      "priceFull": 90000,
+      "minPax": "Tidak ada",
+      "note": "Harga parsial sudah mengandung premium dibanding pembagian rata tiga."
+    },
+    {
+      "package": "Paket A",
+      "category": "Terbaru",
+      "breakfast": "Nasi goreng\nTelur mata sapi\nTimun\nSambal\nKerupuk",
+      "lunch": "Nasi putih\nTumisan/capcay\nTelur balado\nBakwan jagung\nSambal\nKerupuk\nBuah",
+      "snack": "—",
+      "dinner": "Sop bakso\nAyam: goreng/balado/bakar\nTempe goreng\nSambal\nKerupuk",
+      "price1x": 40000,
+      "price2x": 75000,
+      "priceFull": 100000,
+      "minPax": "Tidak ada",
+      "note": "Pilihan olahan ayam dikonfirmasi saat pemesanan. Harga parsial sudah mengandung premium."
+    },
+    {
+      "package": "Paket B",
+      "category": "Terbaru",
+      "breakfast": "Lontong\nOpor ayam\nSambal goreng kentang\nSambal\nKerupuk",
+      "lunch": "Nasi putih\nSayur asem\nIkan mas goreng/pesmol\nIkan asin\nTempe goreng/bacem\nLalapan\nSambal\nKerupuk\nBuah",
+      "snack": "Rebusan: pilih 2 dari jagung/singkong/pisang/kacang",
+      "dinner": "Nasi putih\nSayur lodeh\nAyam goreng\nTahu goreng/bacem\nSambal\nKerupuk",
+      "price1x": 46000,
+      "price2x": 86000,
+      "priceFull": 115000,
+      "minPax": "Tidak ada",
+      "note": "Pilihan menu dikonfirmasi saat pemesanan. Harga parsial sudah mengandung premium."
+    },
+    {
+      "package": "Paket C",
+      "category": "Terbaru",
+      "breakfast": "Nasi putih\nSoto ayam Lamongan\nSambal\nKerupuk",
+      "lunch": "Nasi putih\nRendang daging\nSayur kol\nSambal ijo\nDaun singkong rebus\nKerupuk\nBuah",
+      "snack": "Bandrek/teh manis\nRebusan: pilih 2 dari jagung/singkong/pisang/kacang",
+      "dinner": "Nasi putih\nAyam bakar/balado\nSop bakso\nPerkedel kentang\nSambal\nKerupuk",
+      "price1x": 50000,
+      "price2x": 94000,
+      "priceFull": 125000,
+      "minPax": "Tidak ada",
+      "note": "Pilihan menu dikonfirmasi saat pemesanan. Harga parsial sudah mengandung premium."
+    }
+  ],
+  "waTemplates": [
+    {
+      "id": "WA-01",
+      "title": "Balasan pertanyaan",
+      "text": "Halo Kak {Nama}, terima kasih sudah menghubungi Villa Taman Kelinci. Untuk kami cek ketersediaan, boleh informasikan tanggal check-in, tanggal check-out, jumlah tamu, dan rencana berangkat dari Jakarta jam berapa?",
+      "note": "Catat sebagai Lead baru dan isi sumber lead."
+    },
+    {
+      "id": "WA-02",
+      "title": "Penawaran + info early check-in",
+      "text": "Halo Kak {Nama}, Villa Taman Kelinci tersedia untuk {Tanggal Check-in} sampai {Tanggal Check-out}. Total untuk {Jumlah Malam} malam adalah {Total}. Rencana berangkat jam berapa dari Jakarta? Kalau mau kejar one-way dan tiba jam 6–7 pagi, bisa langsung masuk kamar gratis selama malam sebelumnya kosong. Saat ini malam sebelumnya masih kosong, jadi kemungkinan besar bisa. Konfirmasi final kami berikan H-1.",
+      "note": "Gunakan hanya setelah kalender menunjukkan malam H-1 masih kosong. Ini informasi kemungkinan, bukan konfirmasi final."
+    },
+    {
+      "id": "WA-03",
+      "title": "Jika H-1 belum pasti",
+      "text": "Halo Kak {Nama}, untuk early check-in pukul {Jam Kedatangan}, kami usahakan maksimal. Saat ini malam sebelumnya masih berpotensi terisi, jadi kami kabari kepastian paling lambat H-1. Jika malam sebelumnya kosong, early check-in kami berikan gratis.",
+      "note": "Gunakan bila malam H-1 belum aman untuk dijanjikan; jangan menjawab “tidak bisa” bila masih ada kemungkinan."
+    },
+    {
+      "id": "WA-04",
+      "title": "Instruksi DP & penguncian tanggal",
+      "text": "Halo Kak {Nama}, total booking untuk {Tanggal Check-in} sampai {Tanggal Check-out} adalah {Total Booking}. DP 50% sebesar {Nominal DP}. Tanggal baru kami kunci setelah DP masuk dan terverifikasi. Sisa pelunasan {Sisa Tagihan} wajib lunas maksimal H-3, yaitu {Tanggal Jatuh Tempo}.",
+      "note": "Hitung DP tepat 50% dari total booking; jangan menahan tanggal sebelum pembayaran terverifikasi."
+    },
+    {
+      "id": "WA-05",
+      "title": "Konfirmasi DP & tanggal terkunci",
+      "text": "Halo Kak {Nama}, DP sebesar {Nominal DP} untuk Booking ID {Booking ID} sudah kami terima dan verifikasi. Tanggal {Tanggal Check-in} sampai {Tanggal Check-out} sekarang terkunci. Sisa tagihan {Sisa Tagihan} wajib lunas paling lambat H-3, yaitu {Tanggal Jatuh Tempo}. Terima kasih.",
+      "note": "Kirim hanya setelah transaksi DP berstatus Terverifikasi."
+    },
+    {
+      "id": "WA-06",
+      "title": "Pengingat pelunasan H-3",
+      "text": "Halo Kak {Nama}, pengingat untuk Booking ID {Booking ID}: sisa tagihan {Sisa Tagihan} wajib dilunasi maksimal H-3 sebelum check-in, yaitu {Tanggal Jatuh Tempo}. Mohon kirim bukti pembayaran setelah transfer. Terima kasih.",
+      "note": "Kirim menjelang atau pada tanggal jatuh tempo H-3."
+    },
+    {
+      "id": "WA-07",
+      "title": "Pembatalan & reschedule",
+      "text": "Kebijakan booking Villa Taman Kelinci: jika pembatalan berasal dari tamu, DP dinyatakan hangus. Reschedule diperbolehkan maksimal 1 kali dengan pemberitahuan lebih awal.",
+      "note": "Batas minimal hari untuk “pemberitahuan lebih awal” belum ditetapkan; jangan menambahkan angka H- tertentu tanpa keputusan pemilik."
+    },
+    {
+      "id": "WA-08",
+      "title": "Pengingat sebelum datang",
+      "text": "Halo Kak {Nama}, kami menantikan kedatangan Kakak di Villa Taman Kelinci pada {Tanggal Check-in}. Waktu check-in {Jam Check-in}. Mohon informasikan perkiraan waktu tiba dan baca petunjuk akses yang kami kirimkan.",
+      "note": "Isi jam dan petunjuk akses resmi."
+    },
+    {
+      "id": "WA-09",
+      "title": "Konfirmasi promo early check-in",
+      "text": "Halo Kak {Nama}, karena Villa Taman Kelinci terverifikasi kosong pada malam sebelumnya, early check-in pukul {Jam Kedatangan} dapat kami berikan gratis untuk booking {Booking ID}. Promo ini sudah dikonfirmasi final.",
+      "note": "Kirim H-1 hanya setelah status H-1 Kosong Terverifikasi di Reservasi."
+    },
+    {
+      "id": "WA-10",
+      "title": "Permintaan ulasan",
+      "text": "Terima kasih sudah menginap di Villa Taman Kelinci, Kak {Nama}. Kami senang menerima masukan tentang pengalaman Kakak. Jika berkenan, mohon tinggalkan ulasan melalui {Tautan Ulasan}.",
+      "note": "Catat status permintaan ulasan di Tamu & Ulasan."
+    },
+    {
+      "id": "WA-11",
+      "title": "Ajakan kunjungan ulang",
+      "text": "Halo Kak {Nama}, terima kasih pernah menginap di Villa Taman Kelinci. Kami sedang memiliki {Penawaran}. Jika Kakak bersedia menerima info ini dan ingin cek tanggal, balas pesan ini ya.",
+      "note": "Kirim hanya bila Izin Promo WA = Ya."
+    },
+    {
+      "id": "WA-12",
+      "title": "Informasi harga",
+      "text": "Tarif Villa Taman Kelinci mulai 2026 adalah Rp5.500.000 untuk weekday dan Rp7.500.000 untuk weekend. Tarif peak Natal 24–27 Desember 2026 Rp10.000.000/malam dan Tahun Baru 29 Desember 2026–1 Januari 2027 Rp12.000.000/malam, minimum 2 malam. Extra bed Rp50.000/bed. Kamar VIP Rp850.000/kamar bila sekaligus menyewa villa, atau Rp1.000.000/kamar untuk sewa VIP saja. DP 50% untuk semua booking; tanggal terkunci setelah DP terverifikasi dan sisa pembayaran lunas maksimal H-3.",
+      "note": "Pada periode peak, paket company/keluarga tidak berlaku. Jika tamu membatalkan, DP hangus; reschedule maksimal 1x dengan pemberitahuan lebih awal."
+    },
+    {
+      "id": "WA-13",
+      "title": "Penawaran katering",
+      "text": "Halo Kak {Nama}, kami menyediakan katering tanpa minimum pax. Harga per orang untuk 1x / 2x / paket lengkap: Hemat 1 Rp32.000 / Rp60.000 / Rp80.000; Hemat 2 Rp36.000 / Rp68.000 / Rp90.000; Paket A Rp40.000 / Rp75.000 / Rp100.000; Paket B Rp46.000 / Rp86.000 / Rp115.000; Paket C Rp50.000 / Rp94.000 / Rp125.000. Boleh informasikan jumlah peserta, paket, pilihan 1x/2x/lengkap, waktu makan yang dipilih, serta alergi atau kebutuhan diet khusus?",
+      "note": "Tidak ada minimum pax. Untuk pesanan parsial, pastikan waktu makan dan menu dipilih jelas; harga 1x/2x sudah mengandung premium dibanding paket lengkap."
+    },
+    {
+      "id": "WA-14",
+      "title": "Penawaran paket company",
+      "text": "Halo Kak {Nama}, untuk gathering {Jumlah Pax} orang tersedia paket 2D1N mulai dari {Harga per Pax}/pax, sudah termasuk villa utuh, {Jenis Makan} Paket {Menu}, Smart TV, Wi-Fi, Netflix, karaoke, billiard, kolam renang, dapur, BBQ/grill tanpa arang, dan parkir luas. Early check-in gratis dapat diberikan bila malam H-1 kosong.",
+      "note": "Gunakan harga dari kalkulator Paket Segmen. Minimum rekomendasi company 25 pax; di atas 30 pax tambahkan extra bed/VIP melalui quotation khusus."
+    },
+    {
+      "id": "WA-15",
+      "title": "Penawaran paket keluarga",
+      "text": "Halo Kak {Nama}, untuk acara keluarga {Jumlah Pax} orang tersedia paket 2D1N total {Total Paket}, sudah termasuk villa utuh, {Jenis Makan} Paket {Menu}, Smart TV, Wi-Fi, Netflix, karaoke, billiard, kolam renang, dapur, BBQ/grill tanpa arang, dan parkir luas. Early check-in gratis dapat diberikan bila malam H-1 kosong.",
+      "note": "Gunakan total dari kalkulator Paket Segmen. Untuk lebih dari 30 pax, tambahkan extra bed/VIP melalui quotation khusus."
+    }
+  ],
+  "operationalCosts": {
+    "salaries": [
+      {
+        "name": "Tarman",
+        "amount": 6000000
+      },
+      {
+        "name": "Salam",
+        "amount": 3500000
+      },
+      {
+        "name": "Ujang",
+        "amount": 2500000
+      },
+      {
+        "name": "Kamal",
+        "amount": 3000000
+      },
+      {
+        "name": "Eddy",
+        "amount": 2400000
+      }
+    ],
+    "utilities": [
+      {
+        "name": "Tagihan PLN 1",
+        "amount": 1000000
+      },
+      {
+        "name": "Tagihan PLN 2",
+        "amount": 1500000
+      },
+      {
+        "name": "Tagihan PLN 3",
+        "amount": 2500000
+      },
+      {
+        "name": "Tagihan PLN 4",
+        "amount": 500000
+      }
+    ],
+    "fixedOther": [
+      {
+        "name": "Internet & subscription",
+        "amount": 2000000
+      },
+      {
+        "name": "Keamanan",
+        "amount": 300000
+      },
+      {
+        "name": "Gaji owner",
+        "amount": 10000000
+      }
+    ],
+    "maintenanceEstimates": [
+      {
+        "name": "Kolam renang",
+        "amount": 1500000
+      },
+      {
+        "name": "Taman / kebun",
+        "amount": 1000000
+      },
+      {
+        "name": "Bangunan & peralatan",
+        "amount": 1500000
+      },
+      {
+        "name": "Dana cadangan kerusakan",
+        "amount": 1000000
+      }
+    ],
+    "cateringLaborPerEvent": [
+      {
+        "name": "Irma",
+        "amount": 400000
+      },
+      {
+        "name": "Nyai",
+        "amount": 350000
+      }
+    ],
+    "note": "Total biaya tetap ~Rp40,2jt/bln (termasuk gaji owner). Titik impas kasar: ~8 malam weekday atau ~6 malam weekend per bulan (pendapatan kotor, belum biaya variabel)."
+  },
+  "leads": [],
+  "reservations": [],
+  "transactions": [],
+  "tasks": [],
+  "maintenance": [],
+  "inventory": [],
+  "marketing": [],
+  "guests": [],
+  "cateringOrders": []
+}
