@@ -173,16 +173,27 @@
     var plotW = W - mL - mR;
     var plotH = H - mT - mB;
     var n = list.length;
+    /* Sumbu-Y dinamis (nice steps) agar area terisi tetap terlihat jelas
+     * saat okupansi kecil — sumbu 0–100% membuat area 6,7% hampir tak terlihat. */
+    var maxPct = 0;
+    list.forEach(function (p) { maxPct = Math.max(maxPct, +p.pct || 0); });
+    var step = maxPct <= 10 ? 2.5 : maxPct <= 20 ? 5 : maxPct <= 40 ? 10 : 25;
+    var axisMax = step * 4;
+    var fmtAxis = function (v) {
+      var r = Math.round(v * 10) / 10;
+      return (r % 1 === 0 ? String(r) : String(r).replace('.', ','));
+    };
     var xAt = function (i) { return mL + plotW * (i + 0.5) / n; };
-    var yAt = function (pct) { return mT + plotH * (1 - Math.min(100, Math.max(0, pct)) / 100); };
+    var yAt = function (pct) { return mT + plotH * (1 - Math.min(axisMax, Math.max(0, pct)) / axisMax); };
 
     var s = svgOpen(H, 'Grafik garis okupansi per bulan dalam persen.');
-    [0, 25, 50, 75, 100].forEach(function (t) {
+    [0, 1, 2, 3, 4].forEach(function (k) {
+      var t = step * k;
       var yy = yAt(t);
       s += '<line x1="' + mL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + yy.toFixed(1) +
         '" stroke="' + C.grid + '" stroke-width="' + (t === 0 ? 1.5 : 1) + '" />';
       s += '<text x="' + (mL - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + C.muted + '">' +
-        t + '%</text>';
+        fmtAxis(t) + '%</text>';
     });
     /* Area gradasi oranye di bawah garis navy. */
     s += '<defs><linearGradient id="vtg-occ-grad" x1="0" y1="0" x2="0" y2="1">' +

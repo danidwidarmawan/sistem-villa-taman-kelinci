@@ -870,7 +870,7 @@
     }).join('') : '<li class="muted">Belum ada check-in mendatang.</li>';
     var txRows = d.recentTx.length ? d.recentTx.map(function (tx) {
       return '<li>' + L.fmtDate(tx.date) + ' — ' + esc(tx.description || tx.category) +
-        ' <strong>' + (tx.type === 'Masuk' ? '+' : '−') + L.fmtRp(tx.amount) + '</strong> ' + verifyBadge(tx.verifyStatus) + '</li>';
+        ' <strong class="nowrap">' + (tx.type === 'Masuk' ? '+' : '−') + L.fmtRp(tx.amount) + '</strong> ' + verifyBadge(tx.verifyStatus) + '</li>';
     }).join('') : '<li class="muted">Belum ada transaksi.</li>';
     html += '<section class="two-col">' +
       '<div class="card"><h2>Check-in berikutnya</h2><ul class="simple-list">' + nextRows + '</ul></div>' +

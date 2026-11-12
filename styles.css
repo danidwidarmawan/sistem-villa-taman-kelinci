@@ -297,10 +297,12 @@ input, select, textarea { color: var(--ink); }
 .kpi-strip .kpi-value { font-size: 1.05rem; }
 .kpi-strip .kpi-sub { font-size: 0.78rem; }
 
-/* Baris grid dashboard: kartu lebar + kartu sempit (desktop 2:1, HP menumpuk) */
-.dash-row { display: grid; grid-template-columns: 1fr; gap: 0; }
+/* Baris grid dashboard: kartu lebar + kartu sempit (desktop 2:1, HP menumpuk).
+ * align-items: start — kartu setinggi kontennya, tidak diregangkan setinggi tetangga. */
+.dash-row { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
 
-.two-col { display: grid; grid-template-columns: 1fr; gap: 0; }
+.two-col { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
+.nowrap { white-space: nowrap; }
 .simple-list, .action-list { list-style: none; margin: 0; padding: 0; }
 .simple-list li, .action-list li { padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
 .simple-list li:last-child, .action-list li:last-child { border-bottom: none; }
@@ -545,7 +547,7 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
     font-weight: 800; font-size: 0.95rem;
   }
   .profile-text { display: flex; flex-direction: column; min-width: 0; }
-  .profile-text strong { font-size: 0.9rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .profile-text strong { font-size: 0.9rem; line-height: 1.25; overflow-wrap: break-word; }
   .profile-text span { font-size: 0.8rem; color: #fdba74; }
   #nav-desktop { display: flex; flex-direction: column; gap: 0.25rem; }
   #nav-desktop .nav-item {
