@@ -26,7 +26,7 @@ privat terpisah dan disinkronkan lewat GitHub REST API dari browser:
 
 ## Cara membuat token (sekali saja)
 
-1. Buka https://github.com/settings/personal-access-tokens/fine-grained
+1. Buka https://github.com/settings/personal-access-tokens
    lalu klik **Generate new token**.
 2. Pada **Repository access**, pilih **Only select repositories** lalu pilih
    repo `sistem-villa-taman-kelinci-data` saja.

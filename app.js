@@ -505,7 +505,7 @@
       'di repo GitHub privat Anda, sehingga bisa dibuka dari HP atau laptop mana saja dan ' +
       'tetap tersimpan aman. Pertama, buat token akses GitHub (sekali saja):</p>' +
       '<ol class="steps">' +
-      '<li>Buka <a href="https://github.com/settings/personal-access-tokens/fine-grained" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/fine-grained</a> lalu klik <strong>Generate new token</strong>.</li>' +
+      '<li>Buka <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a> lalu klik <strong>Generate new token</strong>.</li>' +
       '<li>Pada <strong>Repository access</strong>, pilih <strong>Only select repositories</strong> lalu pilih repo <code>' + esc(c.repo) + '</code> saja.</li>' +
       '<li>Pada <strong>Permissions → Repository permissions → Contents</strong>, pilih <strong>Read and write</strong>, lalu generate dan salin tokennya.</li>' +
       '<li>Tempel token di bawah ini, lalu klik <strong>Simpan &amp; mulai</strong>.</li>' +
@@ -1705,7 +1705,7 @@
       '</div>' +
       '<label class="field"><span>Token GitHub (fine-grained, Contents: Read and write untuk repo data)</span>' +
       '<input type="password" name="token" autocomplete="off" placeholder="' + (hasToken ? '•••••••• (tersimpan)' : 'github_pat_...') + '" /></label>' +
-      '<p class="hint">Buat token di <a href="https://github.com/settings/personal-access-tokens/fine-grained" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/fine-grained</a> — pilih repo data saja. Token tidak pernah ditulis ke file atau repo.</p>' +
+      '<p class="hint">Buat token di <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a> — pilih repo data saja. Token tidak pernah ditulis ke file atau repo.</p>' +
       '<div class="form-actions">' +
       '<button type="submit" class="btn btn-primary">Simpan koneksi</button>' +
       '<button type="button" class="btn" onclick="VTK.testConn()">Tes koneksi</button>' +
