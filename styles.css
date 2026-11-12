@@ -1,6 +1,7 @@
 /* styles.css — Sistem Villa Taman Kelinci
- * Mobile-first, tanpa dependensi eksternal. Nuansa villa:
- * oranye dominan (selaras logo kelinci oranye) + krem hangat.
+ * Mobile-first, tanpa dependensi eksternal. Identitas navy + oranye
+ * (sidebar navy gelap seperti referensi dashboard, aksen oranye selaras
+ * logo kelinci oranye) + krem hangat.
  * Hijau dipakai hemat hanya untuk makna positif (uang masuk, sukses);
  * merah untuk negatif/peringatan. */
 
@@ -11,6 +12,11 @@
   --brand-200: #fed7aa;
   --brand-100: #ffedd5;
   --brand-50: #fff7ed;
+  --navy-900: #0f2a43;
+  --navy-800: #16324f;
+  --navy-700: #1d4568;
+  --navy-100: #d9e2ec;
+  --navy-50: #f0f4f8;
   --cream: #faf7f0;
   --paper: #fffdf8;
   --ink: #292524;
@@ -77,7 +83,7 @@ input, select, textarea { color: var(--ink); }
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.65rem 1rem;
-  background: var(--brand-900);
+  background: var(--navy-900);
   color: #fff;
   box-shadow: var(--shadow);
 }
@@ -124,6 +130,13 @@ input, select, textarea { color: var(--ink); }
 }
 
 .nav-item.active { color: var(--brand-700); border-top-color: var(--brand-700); background: var(--brand-50); }
+
+/* Ikon navigasi (SVG inline) */
+.nav-ico { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.nav-ico svg { width: 20px; height: 20px; display: block; }
+#nav-mobile .nav-item { flex-direction: column; gap: 1px; }
+#nav-mobile .nav-item .nav-label { font-size: 0.68rem; line-height: 1.1; }
+#nav-desktop .nav-item .nav-ico { margin-right: 0.6rem; }
 
 /* ---------- Komponen umum ---------- */
 
@@ -258,6 +271,35 @@ input, select, textarea { color: var(--ink); }
 .kpi-value { font-size: 1.35rem; font-weight: 800; color: var(--brand-900); margin-top: 0.15rem; }
 .kpi-sub { font-size: 0.85rem; color: var(--muted); }
 
+/* Kartu KPI hero (baris atas dashboard, gaya referensi: ikon kecil + angka besar) */
+.kpi-hero { position: relative; overflow: hidden; }
+.kpi-hero .kpi-ico {
+  position: absolute; top: 0.8rem; right: 0.8rem;
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--brand-50); color: var(--brand-700);
+}
+.kpi-hero .kpi-ico svg { width: 20px; height: 20px; display: block; }
+.kpi-hero .kpi-ico.green { background: var(--positive-soft); color: var(--positive-dark); }
+.kpi-hero .kpi-ico.blue { background: var(--blue-soft); color: var(--blue); }
+.kpi-hero .kpi-ico.amber { background: var(--amber-soft); color: var(--amber); }
+.kpi-hero .kpi-value { padding-right: 2.6rem; word-break: break-word; }
+/* Kartu hero pertama navy, seperti kartu "Earning" di referensi */
+.kpi-hero-navy { background: var(--navy-800); border-color: var(--navy-800); }
+.kpi-hero-navy .kpi-label { color: #fdba74; }
+.kpi-hero-navy .kpi-value { color: #fff; }
+.kpi-hero-navy .kpi-sub { color: var(--navy-100); }
+.kpi-hero-navy .kpi-ico { background: rgba(255, 255, 255, 0.14); color: #fdba74; }
+
+/* Strip KPI ringkas (4 KPI pendukung, tetap terlihat semua) */
+.kpi-strip .kpi { padding: 0.6rem 0.8rem; }
+.kpi-strip .kpi-label { font-size: 0.72rem; }
+.kpi-strip .kpi-value { font-size: 1.05rem; }
+.kpi-strip .kpi-sub { font-size: 0.78rem; }
+
+/* Baris grid dashboard: kartu lebar + kartu sempit (desktop 2:1, HP menumpuk) */
+.dash-row { display: grid; grid-template-columns: 1fr; gap: 0; }
+
 .two-col { display: grid; grid-template-columns: 1fr; gap: 0; }
 .simple-list, .action-list { list-style: none; margin: 0; padding: 0; }
 .simple-list li, .action-list li { padding: 0.45rem 0; border-bottom: 1px solid var(--border); }
@@ -275,6 +317,36 @@ input, select, textarea { color: var(--ink); }
 .chart-legend .lg i { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 3px; }
 .chart-empty { border: 1px dashed var(--border); border-radius: 8px; padding: 1.6rem 1rem; text-align: center; color: var(--muted); font-size: 0.95rem; background: var(--cream); margin-top: 0.75rem; }
 .chart-empty p { margin: 0; }
+
+/* Donut: SVG tengah + daftar legenda */
+.donut-wrap { text-align: center; }
+.donut-svg { display: block; width: 100%; max-width: 220px; height: auto; margin: 0.4rem auto 0; }
+.donut-legend { list-style: none; margin: 0.75rem 0 0; padding: 0; text-align: left; }
+.donut-legend li { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.donut-legend li:last-child { border-bottom: none; }
+.donut-legend .dl-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.donut-legend .dl-pct { color: var(--muted); font-size: 0.8rem; margin-left: auto; flex-shrink: 0; }
+.donut-legend .dl-val { font-weight: 700; flex-shrink: 0; }
+
+/* Kalender mini dashboard */
+.mini-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 0.6rem; }
+.mini-cal-dow { text-align: center; font-size: 0.7rem; font-weight: 700; color: var(--muted); padding: 0.2rem 0; }
+.mini-cal-cell {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 6px;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--ink);
+  min-height: 32px;
+}
+.mini-cal-cell:hover { border-color: var(--brand-500); }
+.mini-cal-cell.other { opacity: 0.35; }
+.mini-cal-cell.today { border: 2px solid var(--brand-700); font-weight: 800; }
+.mini-cal-cell.occupied { background: var(--orange); color: #fff; font-weight: 700; }
+.mini-cal-cell.occupied.today { box-shadow: 0 0 0 2px var(--brand-700); }
+.card-foot { margin-top: 0.9rem; }
 
 /* ---------- Tabel ---------- */
 
@@ -449,20 +521,36 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
     position: sticky;
     top: 0;
     height: 100vh;
-    background: var(--brand-900);
+    background: var(--navy-900);
     color: #fff;
     padding: 1.25rem 1rem;
   }
-  .brand { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.6rem; margin-bottom: 1.5rem; }
+  .brand { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.6rem; margin-bottom: 1rem; }
   .brand-logo-wrap { background: var(--paper); border-radius: 10px; padding: 0.55rem 0.7rem; }
   .brand-logo { display: block; width: 148px; height: auto; }
   .brand-text { display: flex; flex-direction: column; }
   .brand-text strong { font-size: 1.05rem; line-height: 1.25; }
   .brand-text span { font-size: 0.85rem; color: #fdba74; }
+  /* Blok profil pemilik (seperti referensi: avatar lingkaran + nama + peran) */
+  .profile {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.6rem; margin-bottom: 1.25rem;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+  }
+  .profile-avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+    background: var(--orange); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.95rem;
+  }
+  .profile-text { display: flex; flex-direction: column; min-width: 0; }
+  .profile-text strong { font-size: 0.9rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .profile-text span { font-size: 0.8rem; color: #fdba74; }
   #nav-desktop { display: flex; flex-direction: column; gap: 0.25rem; }
   #nav-desktop .nav-item {
     justify-content: flex-start;
-    color: #ffedd5;
+    color: var(--navy-100);
     border-top: none;
     border-left: 3px solid transparent;
     border-radius: 8px;
@@ -472,7 +560,7 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   #nav-desktop .nav-item:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
   #nav-desktop .nav-item.active { background: rgba(255, 255, 255, 0.14); color: #fff; border-left-color: var(--orange); }
   .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start; }
-  .sidebar-foot .btn-ghost { color: #ffedd5; padding-left: 0; }
+  .sidebar-foot .btn-ghost { color: var(--navy-100); padding-left: 0; }
 
   #topbar { background: var(--paper); color: var(--ink); border-bottom: 1px solid var(--border); justify-content: flex-end; }
   #topbar .sync-pill { background: var(--brand-50); color: var(--brand-900); }
@@ -480,6 +568,8 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   #view { padding: 1.5rem; }
   .kpi-grid { grid-template-columns: repeat(4, 1fr); }
   .kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .dash-row { grid-template-columns: 2fr 1fr; gap: 1rem; }
+  .dash-row .card { margin-bottom: 1rem; }
   .two-col { grid-template-columns: 1fr 1fr; gap: 1rem; }
   .two-col .card { margin-bottom: 1rem; }
   .cal-cell { min-height: 92px; padding: 0.5rem; }

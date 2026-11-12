@@ -593,6 +593,15 @@
       .sort(function (a, b) { return b.total - a.total; });
   }
 
+  /* Komposisi pemasukan satu bulan untuk donut dashboard:
+   * { monthKey, items: [{ category, total }] (urut terbesar dulu), total }.
+   * Hanya transaksi Masuk + Terverifikasi (memakai categoryTotals). */
+  function incomeComposition(transactions, monthKey) {
+    var items = categoryTotals(transactions, monthKey, 'Masuk');
+    var total = items.reduce(function (s, it) { return s + (+it.total || 0); }, 0);
+    return { monthKey: monthKey, items: items, total: total };
+  }
+
   /* ---------------- Validasi bentuk data (untuk impor) ---------------- */
 
   var REQUIRED_ARRAYS = ['rooms', 'cateringMenus', 'waTemplates', 'leads', 'reservations', 'transactions', 'tasks', 'maintenance', 'inventory', 'marketing', 'guests', 'cateringOrders'];
@@ -650,6 +659,7 @@
     monthlyOccupancy: monthlyOccupancy,
     nightsInMonth: nightsInMonth,
     categoryTotals: categoryTotals,
+    incomeComposition: incomeComposition,
     peakForNight: peakForNight,
     peakMinNightsWarning: peakMinNightsWarning,
     nightRate: nightRate,

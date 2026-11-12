@@ -34,13 +34,33 @@
   };
 
   var NAV = [
-    { route: 'dashboard', label: 'Dashboard' },
-    { route: 'reservasi', label: 'Reservasi' },
-    { route: 'keuangan', label: 'Keuangan' },
-    { route: 'leads', label: 'Leads' },
-    { route: 'kalender', label: 'Kalender' },
-    { route: 'pengaturan', label: 'Pengaturan' }
+    { route: 'dashboard', label: 'Dashboard', icon: 'grid' },
+    { route: 'reservasi', label: 'Reservasi', icon: 'key' },
+    { route: 'keuangan', label: 'Keuangan', icon: 'banknote' },
+    { route: 'leads', label: 'Leads', icon: 'users' },
+    { route: 'kalender', label: 'Kalender', icon: 'calendar' },
+    { route: 'pengaturan', label: 'Pengaturan', icon: 'sliders' }
   ];
+
+  /* Ikon SVG inline (stroke, currentColor) — tanpa emoji, tanpa file gambar. */
+  var ICONS = {
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 4l2 2"/><path d="M14 7l2 2"/>',
+    banknote: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.9"/><path d="M17.5 14.2a6.5 6.5 0 0 1 4 5.8"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/>',
+    sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/>',
+    percent: '<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6"/><path d="M9 9.5h.01M15 14.5h.01"/>',
+    calendarCheck: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/>',
+    receipt: '<path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6"/>'
+  };
+
+  /* '<svg …>' lengkap untuk ikon bernama; '' bila tidak dikenal. */
+  function icon(name) {
+    if (!ICONS[name]) { return ''; }
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+  }
 
   /* ---------------- State ---------------- */
 
@@ -424,7 +444,9 @@
   function renderNav() {
     var html = NAV.map(function (n) {
       var active = state.route === n.route ? ' active' : '';
-      return '<a href="#/' + n.route + '" class="nav-item' + active + '" data-route="' + n.route + '">' + n.label + '</a>';
+      return '<a href="#/' + n.route + '" class="nav-item' + active + '" data-route="' + n.route + '">' +
+        '<span class="nav-ico" aria-hidden="true">' + icon(n.icon) + '</span>' +
+        '<span class="nav-label">' + n.label + '</span></a>';
     }).join('');
     var d = $('nav-desktop');
     var m = $('nav-mobile');
@@ -726,53 +748,66 @@
         '<div class="kpi-value">' + value + '</div>' +
         (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>';
     };
+    /* Kartu KPI hero gaya referensi: ikon kecil + label + angka besar.
+     * extraCls: mis. 'kpi-hero-navy' untuk kartu pertama. */
+    var hero = function (label, value, sub, icoName, icoCls, extraCls) {
+      return '<div class="kpi card kpi-hero' + (extraCls ? ' ' + extraCls : '') + '">' +
+        '<span class="kpi-ico' + (icoCls ? ' ' + icoCls : '') + '" aria-hidden="true">' + icon(icoName) + '</span>' +
+        '<div class="kpi-label">' + label + '</div>' +
+        '<div class="kpi-value">' + value + '</div>' +
+        (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>';
+    };
     var html = '<section class="page-head">' +
       '<h1>Dashboard</h1>' +
       '<label class="month-picker"><span>Bulan</span>' +
       '<input type="month" value="' + esc(state.dashMonth) + '" onchange="VTK.setDashMonth(this.value)" /></label>' +
       '</section>';
 
-    html += '<section class="kpi-grid">' +
-      kpi('Booking check-in', L.fmtNum(d.bookingsCheckin), d.monthLabel) +
+    /* 4 kartu KPI hero */
+    html += '<section class="kpi-grid kpi-hero-grid">' +
+      hero('Uang masuk', L.fmtRp(d.moneyIn), d.monthLabel + ' • terverifikasi', 'banknote', '', 'kpi-hero-navy') +
+      hero('Okupansi', L.fmtPct(d.occupancyPct), d.monthLabel, 'percent', 'green') +
+      hero('Booking check-in', L.fmtNum(d.bookingsCheckin), d.monthLabel, 'calendarCheck', 'blue') +
+      hero('Sisa tagihan', L.fmtRp(d.totalOutstanding), 'semua reservasi aktif', 'receipt', 'amber') +
+      '</section>';
+
+    /* 4 KPI pendukung sebagai strip ringkas (tidak ada data yang dihilangkan) */
+    html += '<section class="kpi-grid kpi-strip">' +
       kpi('Malam terisi', L.fmtNum(d.nightsOccupied) + ' malam', 'dari ' + d.daysInMonth + ' hari') +
-      kpi('Okupansi', L.fmtPct(d.occupancyPct), d.monthLabel) +
       kpi('Leads masuk', L.fmtNum(d.leadsThisMonth), d.monthLabel) +
-      kpi('Uang masuk (terverifikasi)', L.fmtRp(d.moneyIn), d.monthLabel) +
       kpi('Uang keluar (terverifikasi)', L.fmtRp(d.moneyOut), d.monthLabel) +
       kpi('Arus kas bersih', L.fmtRp(d.netCash), d.monthLabel) +
-      kpi('Total sisa tagihan', L.fmtRp(d.totalOutstanding), 'semua reservasi aktif') +
       '</section>';
 
-    /* Grafik monitoring (6 bulan terakhir, berakhir di bulan yang dipilih) */
+    /* Baris 1: arus kas (lebar) + donut komposisi pemasukan (sempit).
+     * Grafik memakai 6 bulan terakhir, berakhir di bulan yang dipilih. */
     var cf = L.monthlyCashflow(state.data.transactions, state.dashMonth, 6);
-    var occ = L.monthlyOccupancy(state.data.reservations, state.dashMonth, 6);
-    var srcItems = d.sourcePerf.map(function (sp) {
-      return { label: sp.source, value: sp.bookingValue };
-    }).sort(function (a, b) { return b.value - a.value; });
-    html += '<section class="card chart-card"><h2>Arus kas 6 bulan terakhir</h2>' +
+    var comp = L.incomeComposition(state.data.transactions, state.dashMonth);
+    var donutItems = comp.items.map(function (c) { return { label: c.category, value: c.total }; });
+    html += '<section class="dash-row">' +
+      '<div class="card chart-card"><h2>Arus kas 6 bulan terakhir</h2>' +
       '<p class="hint">Hanya transaksi Terverifikasi. Bulan terakhir: ' + esc(d.monthLabel) + '.</p>' +
-      VTKCharts.cashflowChart(cf) + '</section>';
-    html += '<section class="two-col">' +
-      '<div class="card chart-card"><h2>Okupansi 6 bulan terakhir</h2>' +
+      VTKCharts.cashflowChart(cf) + '</div>' +
+      '<div class="card chart-card donut-card"><h2>Komposisi pemasukan</h2>' +
+      '<p class="hint">' + esc(d.monthLabel) + ' — hanya transaksi Terverifikasi.</p>' +
+      VTKCharts.donutChart(donutItems, { total: comp.total, totalLabel: 'Pemasukan',
+        ariaLabel: 'Grafik donut komposisi pemasukan per kategori.',
+        emptyMsg: 'Belum ada pemasukan terverifikasi di bulan ini.' }) +
+      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'keuangan\')">Lihat Keuangan</button></div>' +
+      '</div></section>';
+
+    /* Baris 2: tren okupansi (lebar) + kalender mini (sempit) */
+    var occ = L.monthlyOccupancy(state.data.reservations, state.dashMonth, 6);
+    html += '<section class="dash-row">' +
+      '<div class="card chart-card"><h2>Tren okupansi</h2>' +
+      '<p class="hint">6 bulan terakhir, berakhir ' + esc(d.monthLabel) + '.</p>' +
       VTKCharts.occupancyChart(occ) + '</div>' +
-      '<div class="card chart-card"><h2>Nilai booking per sumber</h2>' +
-      '<p class="hint">' + esc(d.monthLabel) + ' — berdasarkan tanggal booking.</p>' +
-      VTKCharts.hBarChart(srcItems, { color: 'orange', ariaLabel: 'Grafik batang nilai booking per sumber lead.',
-        emptyMsg: 'Belum ada data — grafik muncul setelah ada reservasi.' }) + '</div>' +
-      '</section>';
+      '<div class="card mini-cal-card"><h2>Kalender — ' + esc(d.monthLabel) + '</h2>' +
+      miniCalHTML(state.dashMonth) +
+      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
+      '</div></section>';
 
-    /* Biaya tetap + titik impas */
-    var be = d.breakeven;
-    var beText = (be.weekday !== null && be.weekend !== null)
-      ? '≈ ' + be.weekday + ' malam weekday / ' + be.weekend + ' malam weekend per bulan'
-      : '—';
-    html += '<section class="card"><h2>Biaya tetap &amp; titik impas</h2>' +
-      '<p>Total biaya tetap <strong>' + L.fmtRp(d.fixedCost.total) + '/bulan</strong> ' +
-      '(gaji, listrik &amp; air, internet, keamanan, gaji owner, estimasi maintenance). ' +
-      'Titik impas kasar: <strong>' + esc(beText) + '</strong> ' +
-      '(pendapatan kotor, belum biaya variabel).</p></section>';
-
-    /* Perlu tindakan */
+    /* Perlu tindakan + kinerja sumber lead, berdampingan di desktop */
     var a = d.actions;
     var actionItems = [];
     a.unverified.forEach(function (tx) {
@@ -802,12 +837,13 @@
       actionItems.push('<li><span class="bad-text">' + L.fmtDate(x.date) + ': ' + L.fmtNum(x.pax) +
         ' tamu — melebihi kapasitas maksimum (' + L.fmtNum(s.capacity.maxPax) + ')</span></li>');
     });
-    html += '<section class="card"><h2>Perlu tindakan ' +
+    html += '<section class="two-col">' +
+      '<div class="card"><h2>Perlu tindakan ' +
       (actionItems.length ? '<span class="count-badge">' + actionItems.length + '</span>' : '') + '</h2>' +
       (actionItems.length ? '<ul class="action-list">' + actionItems.join('') + '</ul>' : emptyState('Tidak ada yang perlu tindakan.')) +
-      '</section>';
+      '</div>';
 
-    /* Kinerja sumber lead */
+    /* Kinerja sumber lead + grafik batang nilai booking per sumber */
     var srcRows = d.sourcePerf.map(function (sp) {
       return '<tr><td data-label="Sumber">' + esc(sp.source) + '</td>' +
         '<td data-label="Leads">' + L.fmtNum(sp.leads) + '</td>' +
@@ -815,9 +851,16 @@
         '<td data-label="Konversi">' + L.fmtPct(sp.conversion) + '</td>' +
         '<td data-label="Nilai booking">' + L.fmtRp(sp.bookingValue) + '</td></tr>';
     }).join('');
-    html += '<section class="card"><h2>Kinerja sumber lead — ' + esc(d.monthLabel) + '</h2>' +
+    var srcItems = d.sourcePerf.map(function (sp) {
+      return { label: sp.source, value: sp.bookingValue };
+    }).sort(function (a, b) { return b.value - a.value; });
+    html += '<div class="card chart-card"><h2>Kinerja sumber lead — ' + esc(d.monthLabel) + '</h2>' +
+      '<h3>Nilai booking per sumber</h3>' +
+      '<p class="hint">Berdasarkan tanggal booking.</p>' +
+      VTKCharts.hBarChart(srcItems, { color: 'orange', ariaLabel: 'Grafik batang nilai booking per sumber lead.',
+        emptyMsg: 'Belum ada data — grafik muncul setelah ada reservasi.' }) +
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Sumber</th><th>Leads</th><th>Menang</th><th>Konversi</th><th>Nilai booking</th></tr></thead>' +
-      '<tbody>' + srcRows + '</tbody></table></div></section>';
+      '<tbody>' + srcRows + '</tbody></table></div></div></section>';
 
     /* Check-in berikutnya + transaksi terakhir */
     var nextRows = d.nextCheckins.length ? d.nextCheckins.map(function (r) {
@@ -834,7 +877,48 @@
       '<div class="card"><h2>Transaksi terakhir</h2><ul class="simple-list">' + txRows + '</ul></div>' +
       '</section>';
 
+    /* Biaya tetap + titik impas */
+    var be = d.breakeven;
+    var beText = (be.weekday !== null && be.weekend !== null)
+      ? '≈ ' + be.weekday + ' malam weekday / ' + be.weekend + ' malam weekend per bulan'
+      : '—';
+    html += '<section class="card"><h2>Biaya tetap &amp; titik impas</h2>' +
+      '<p>Total biaya tetap <strong>' + L.fmtRp(d.fixedCost.total) + '/bulan</strong> ' +
+      '(gaji, listrik &amp; air, internet, keamanan, gaji owner, estimasi maintenance). ' +
+      'Titik impas kasar: <strong>' + esc(beText) + '</strong> ' +
+      '(pendapatan kotor, belum biaya variabel).</p></section>';
+
     return html;
+  }
+
+  /* Kalender mini dashboard: grid ringkas bulan yang dipilih (Senin dulu).
+   * Hari terisi ditandai oranye, hari ini dilingkari; klik hari membuka
+   * halaman Kalender pada bulan & hari tersebut. */
+  function miniCalHTML(monthKey) {
+    var y = +String(monthKey).slice(0, 4);
+    var m0 = +String(monthKey).slice(5, 7) - 1;
+    var cells = L.calendarCells(state.data, y, m0, L.todayISO());
+    var dows = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
+    var occupied = 0;
+    var h = '<div class="mini-cal" role="grid" aria-label="Kalender mini ' + esc(L.monthLabel(monthKey)) + '">';
+    dows.forEach(function (dow) { h += '<div class="mini-cal-dow">' + dow + '</div>'; });
+    cells.forEach(function (c) {
+      var cls = 'mini-cal-cell';
+      if (!c.inMonth) { cls += ' other'; }
+      if (c.isToday) { cls += ' today'; }
+      if (c.reservations.length) {
+        cls += ' occupied';
+        if (c.inMonth) { occupied++; }
+      }
+      var label = L.fmtDate(c.dateISO) + (c.reservations.length ? ' — terisi (' + c.reservations.length + ' reservasi)' : ' — kosong');
+      h += '<button type="button" class="' + cls + '" title="' + esc(label) + '" aria-label="' + esc(label) +
+        '" onclick="VTK.miniCalGo(\'' + c.dateISO + '\')">' + c.day + '</button>';
+    });
+    h += '</div>';
+    h += occupied
+      ? '<p class="hint">Hari oranye = terisi.</p>'
+      : '<p class="hint">Belum ada reservasi di bulan ini.</p>';
+    return h;
   }
 
   /* ---------------- 2. Reservasi ---------------- */
@@ -2148,6 +2232,16 @@
       renderView();
     },
     calDayClick: function (iso) { state.calSelected = iso; renderView(); },
+    /* Dari kalender mini dashboard: buka Kalender pada bulan & hari itu. */
+    miniCalGo: function (iso) {
+      var d = L.parseISO(iso);
+      if (d) {
+        state.calYear = d.getFullYear();
+        state.calMonth = d.getMonth();
+        state.calSelected = iso;
+      }
+      go('kalender');
+    },
     addResForDay: function (iso) {
       state.pendingForm = {
         module: 'res',

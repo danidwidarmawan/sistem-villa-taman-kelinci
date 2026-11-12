@@ -5,8 +5,9 @@
  * sehingga bisa diuji di Node. Di browser, API tersedia sebagai objek
  * global `VTKCharts`; format angka memakai VTKLogic bila tersedia.
  *
- * Palet selaras dengan styles.css: oranye primer #e8590c; hijau hanya
- * untuk makna positif (uang masuk), merah untuk negatif (uang keluar).
+ * Palet selaras dengan styles.css: oranye primer #e8590c dan navy #16324f
+ * (identitas navy + oranye seperti referensi dashboard); hijau hanya
+ * untuk makna positif di luar chart arus kas, merah untuk negatif.
  * Semua chart responsif: SVG memakai viewBox dan melebar mengikuti kartu.
  */
 (function (root, factory) {
@@ -20,13 +21,21 @@
     orange: '#e8590c',
     orangeDark: '#c2410c',
     orangeArea: '#ffedd5',
+    navy: '#16324f',
+    navyLight: '#1d4568',
     green: '#2f9e44',
     red: '#e03131',
+    gold: '#e9a13b',
+    blue: '#1c5d99',
+    teal: '#0f766e',
     ink: '#292524',
     muted: '#78716c',
     grid: '#e7e0d3',
     track: '#f5efe4'
   };
+
+  /* Warna segmen donut (dipakai berurutan, terbesar dulu). */
+  var DONUT_COLORS = [C.orange, C.navy, C.green, C.gold, C.blue, C.teal];
 
   var W = 560; /* lebar viewBox untuk chart vertikal */
 
@@ -126,8 +135,8 @@
       var masuk = +p.masuk || 0;
       var keluar = +p.keluar || 0;
       var bars = [
-        { v: masuk, x: x0, color: C.green, name: 'Masuk' },
-        { v: keluar, x: x0 + barW + gap, color: C.red, name: 'Keluar' }
+        { v: masuk, x: x0, color: C.orange, name: 'Masuk' },
+        { v: keluar, x: x0 + barW + gap, color: C.navy, name: 'Keluar' }
       ];
       bars.forEach(function (b) {
         if (b.v <= 0) { return; }
@@ -145,7 +154,7 @@
     });
     s += '</svg>';
     return '<div class="chart-wrap">' +
-      legendHTML([{ color: C.green, label: 'Uang masuk' }, { color: C.red, label: 'Uang keluar' }]) +
+      legendHTML([{ color: C.orange, label: 'Uang masuk' }, { color: C.navy, label: 'Uang keluar' }]) +
       s + '</div>';
   }
 
@@ -175,17 +184,21 @@
       s += '<text x="' + (mL - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + C.muted + '">' +
         t + '%</text>';
     });
-    /* Area di bawah garis */
+    /* Area gradasi oranye di bawah garis navy. */
+    s += '<defs><linearGradient id="vtg-occ-grad" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="' + C.orange + '" stop-opacity="0.35" />' +
+      '<stop offset="100%" stop-color="' + C.orange + '" stop-opacity="0.03" />' +
+      '</linearGradient></defs>';
     var area = 'M ' + xAt(0).toFixed(1) + ',' + yAt(0).toFixed(1);
     list.forEach(function (p, i) { area += ' L ' + xAt(i).toFixed(1) + ',' + yAt(p.pct).toFixed(1); });
     area += ' L ' + xAt(n - 1).toFixed(1) + ',' + yAt(0).toFixed(1) + ' Z';
-    s += '<path d="' + area + '" fill="' + C.orange + '" opacity="0.12" />';
-    /* Garis */
+    s += '<path d="' + area + '" fill="url(#vtg-occ-grad)" />';
+    /* Garis navy */
     var line = '';
     list.forEach(function (p, i) {
       line += (i === 0 ? 'M ' : ' L ') + xAt(i).toFixed(1) + ',' + yAt(p.pct).toFixed(1);
     });
-    s += '<path d="' + line + '" fill="none" stroke="' + C.orange + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />';
+    s += '<path d="' + line + '" fill="none" stroke="' + C.navy + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />';
     /* Titik + label nilai + label bulan */
     list.forEach(function (p, i) {
       var cx = xAt(i);
@@ -194,7 +207,7 @@
       var L = logic();
       var exact = L && L.fmtPct ? L.fmtPct(p.pct) : pctLabel;
       s += '<g><title>' + esc(p.label) + ' — okupansi ' + esc(exact) + ' (' + esc(p.malam) + ' dari ' + esc(p.hari) + ' malam)</title>' +
-        '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="4.5" fill="#fff" stroke="' + C.orange + '" stroke-width="2.5" /></g>';
+        '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="4.5" fill="#fff" stroke="' + C.navy + '" stroke-width="2.5" /></g>';
       s += '<text x="' + cx.toFixed(1) + '" y="' + (cy - 10).toFixed(1) +
         '" text-anchor="middle" font-size="11" font-weight="600" fill="' + C.ink + '">' + pctLabel + '</text>';
       s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="12" fill="' + C.muted + '">' +
@@ -243,10 +256,68 @@
     return '<div class="chart-wrap">' + s + '</div>';
   }
 
+  /* ---------------- Donut: komposisi ----------------
+   * items: [{ label, value }] (urut terbesar dulu).
+   * opts: { total, totalLabel, emptyMsg, ariaLabel }
+   * Mengembalikan SVG donut + daftar legenda (swatch + label + nilai + %). */
+
+  function donutChart(items, opts) {
+    opts = opts || {};
+    var list = (items || []).filter(function (it) { return (+it.value || 0) > 0; });
+    var total = (typeof opts.total === 'number') ? opts.total :
+      list.reduce(function (s, it) { return s + (+it.value || 0); }, 0);
+    if (!list.length || total <= 0) {
+      return emptyHTML(opts.emptyMsg || 'Belum ada data.');
+    }
+    var size = 220;
+    var cx = size / 2;
+    var cy = size / 2;
+    var r = 78;
+    var circ = 2 * Math.PI * r;
+    var gap = list.length > 1 ? 2 : 0; /* celah kecil antar segmen */
+    var offset = 0;
+
+    var s = '<svg class="chart-svg donut-svg" viewBox="0 0 ' + size + ' ' + size +
+      '" role="img" aria-label="' + esc(opts.ariaLabel || 'Grafik donut komposisi.') + '">';
+    /* Latar cincin penuh */
+    s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + C.track + '" stroke-width="34" />';
+    list.forEach(function (it, i) {
+      var frac = (+it.value || 0) / total;
+      var len = Math.max(0, frac * circ - gap);
+      var color = DONUT_COLORS[i % DONUT_COLORS.length];
+      var pctLabel = Math.round(frac * 100) + '%';
+      s += '<g><title>' + esc(it.label) + ' — ' + esc(fmtShort(it.value)) + ' (' + pctLabel + ')</title>' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color +
+        '" stroke-width="34" stroke-dasharray="' + len.toFixed(1) + ' ' + (circ - len).toFixed(1) +
+        '" stroke-dashoffset="' + (-offset).toFixed(1) +
+        '" transform="rotate(-90 ' + cx + ' ' + cy + ')" /></g>';
+      offset += frac * circ;
+    });
+    /* Teks tengah: total + label */
+    s += '<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" font-size="19" font-weight="800" fill="' + C.ink + '">' +
+      esc(fmtShort(total)) + '</text>';
+    s += '<text x="' + cx + '" y="' + (cy + 18) + '" text-anchor="middle" font-size="11" fill="' + C.muted + '">' +
+      esc(opts.totalLabel || 'Total') + '</text>';
+    s += '</svg>';
+
+    var legend = '<ul class="donut-legend">' + list.map(function (it, i) {
+      var frac = (+it.value || 0) / total;
+      var color = DONUT_COLORS[i % DONUT_COLORS.length];
+      return '<li><i class="sw" style="background:' + color + '"></i>' +
+        '<span class="dl-label">' + esc(it.label) + '</span>' +
+        '<span class="dl-pct">' + Math.round(frac * 100) + '%</span>' +
+        '<span class="dl-val">' + esc(fmtShort(it.value)) + '</span></li>';
+    }).join('') + '</ul>';
+
+    return '<div class="chart-wrap donut-wrap">' + s + legend + '</div>';
+  }
+
   return {
     COLORS: C,
+    DONUT_COLORS: DONUT_COLORS,
     cashflowChart: cashflowChart,
     occupancyChart: occupancyChart,
-    hBarChart: hBarChart
+    hBarChart: hBarChart,
+    donutChart: donutChart
   };
 });
