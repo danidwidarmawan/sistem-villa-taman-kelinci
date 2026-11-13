@@ -21,7 +21,7 @@
   var MONTHS_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   var DAYS_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-  var LEAD_SOURCES = ['WhatsApp langsung', 'Instagram', 'Facebook', 'Google/Maps', 'Referral', 'OTA/Lainnya'];
+  var LEAD_SOURCES = ['WhatsApp', 'Instagram', 'Facebook', 'TikTok', 'Google/Maps', 'Referral', 'OTA/Lainnya'];
   var LEAD_STATUSES = ['Baru', 'Follow-up', 'Menunggu DP', 'Menang', 'Kalah'];
   var LOST_REASONS = ['Tanggal tidak tersedia', 'Harga', 'Kapasitas', 'Tidak merespons', 'Butuh early check-in tidak tersedia', 'Bentrok komitmen early check-in', 'Lainnya'];
   var RES_STATUSES = ['Permintaan', 'Menunggu DP', 'Terkonfirmasi', 'Check-in', 'Selesai', 'Dibatalkan'];

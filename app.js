@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.3.4-dp-menginap';
+  var APP_VERSION = '1.3.5-sumber-booking';
 
   var LS = {
     data: 'vtk_data',
@@ -1147,7 +1147,7 @@
     var v = r || {
       bookingDate: L.todayISO(), checkin: p.checkin || '', checkout: p.checkout || '',
       guestName: p.guestName || '', wa: p.wa || '', pax: p.pax || '',
-      vipRooms: 0, extraBeds: 0, source: p.source || 'WhatsApp langsung',
+      vipRooms: 0, extraBeds: 0, source: p.source || 'WhatsApp',
       status: p.status || 'Permintaan', ratePerNight: '', extraCost: 0, discount: 0,
       leadId: p.leadId || '', specialRequest: '', internalNote: '',
       promoEarlyCheckin: 'Tidak', agreedCheckinTime: '', h1Confirmation: '',
@@ -1838,7 +1838,7 @@
     var l = f.id ? leadById(f.id) : null;
     var v = l || {
       dateIn: L.todayISO(), name: '', wa: '', planCheckin: '', planCheckout: '',
-      pax: '', source: 'WhatsApp langsung', status: 'Baru', offerValue: '',
+      pax: '', source: 'WhatsApp', status: 'Baru', offerValue: '',
       nextFollowup: '', lostReason: '', bookingId: '', pic: '', note: ''
     };
     var canConvert = l && (l.status === 'Menang' || l.status === 'Menunggu DP');
