@@ -634,7 +634,6 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   #app { display: flex; }
   #main { flex: 1; min-width: 0; padding-bottom: 1rem; }
   #nav-mobile { display: none; }
-  .brand-mini { display: none; }
 
   #sidebar {
     display: flex;
@@ -649,12 +648,6 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
     color: #fff;
     padding: 1.25rem 1rem;
   }
-  .brand { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.6rem; margin-bottom: 1rem; }
-  .brand-logo-wrap { background: var(--paper); border-radius: 10px; padding: 0.55rem 0.7rem; }
-  .brand-logo { display: block; width: 148px; height: auto; }
-  .brand-text { display: flex; flex-direction: column; }
-  .brand-text strong { font-size: 1.05rem; line-height: 1.25; }
-  .brand-text span { font-size: 0.85rem; color: #fdba74; }
   /* Blok profil pemilik (seperti referensi: avatar lingkaran + nama + peran) */
   .profile {
     display: flex; align-items: center; gap: 0.6rem;
@@ -771,7 +764,6 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   }
   #nav-desktop .nav-item { transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
   #nav-desktop .nav-item.active { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
-  .brand { padding-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 }
 /* Kartu: bayangan lebih lembut + sudut sedikit lebih besar. */
 .card { border-radius: 14px; box-shadow: 0 1px 2px rgba(124, 45, 18, 0.05), 0 6px 18px rgba(124, 45, 18, 0.06); }
@@ -878,6 +870,29 @@ input[type="password"], select, textarea {
     border-left: 1px solid rgba(255, 255, 255, 0.14);
   }
   #nav-desktop .nav-item.nav-sub { padding-left: 0.6rem; }
-  .brand-text strong { letter-spacing: 0.01em; }
   .profile { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.06); }
+}
+
+/* ================= v1.7.0 — logo di header + sidebar bisa diminimize ================= */
+/* Kelompok kiri header: tombol minimize + logo/nama villa. */
+.topbar-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+/* Tombol minimize hanya di desktop (di HP tidak ada sidebar). */
+.nav-collapse-btn { display: none; }
+.nav-collapse-btn svg { width: 18px; height: 18px; transition: transform 0.2s ease; }
+
+@media (min-width: 900px) {
+  .nav-collapse-btn { display: inline-flex; align-items: center; justify-content: center; }
+  /* Ikon chevron berputar saat sidebar diminimize (menunjuk ke kanan). */
+  body.nav-collapsed .nav-collapse-btn svg { transform: rotate(180deg); }
+  #sidebar { transition: width 0.2s ease, padding 0.2s ease; }
+  /* Sidebar diminimize: strip ikon 72px — label, chevron, submenu,
+   * teks profil, dan kaki sidebar disembunyikan; ikon rata tengah. */
+  body.nav-collapsed #sidebar { width: 72px; padding: 1.4rem 0.5rem; }
+  body.nav-collapsed .nav-label, body.nav-collapsed .nav-chev,
+  body.nav-collapsed .profile-text,
+  body.nav-collapsed .sidebar-foot { display: none; }
+  /* Spesifisitas harus mengalahkan .nav-group.open .nav-sublist (0,3,0). */
+  body.nav-collapsed .nav-group.open .nav-sublist { display: none; }
+  body.nav-collapsed #nav-desktop .nav-item, body.nav-collapsed .nav-group-head { justify-content: center; padding: 0.65rem 0; }
+  body.nav-collapsed .profile { justify-content: center; padding: 0.5rem; }
 }

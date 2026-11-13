@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.6.0-redesain';
+  var APP_VERSION = '1.7.0-logo-minimize';
 
   var LS = {
     data: 'vtk_data',
@@ -30,7 +30,8 @@
     pending: 'vtk_pending',
     pat: 'vtk_pat',
     conn: 'vtk_conn',
-    backup: 'vtk_conflict_backup'
+    backup: 'vtk_conflict_backup',
+    navCollapsed: 'vtk_nav_collapsed'
   };
 
   var NAV = [
@@ -588,9 +589,25 @@
   }
 
   function renderShell() {
+    applyNavCollapsed();
     renderNav();
     renderBanner();
     updateSyncUI();
+  }
+
+  /* Sidebar minimize: ciutkan ke strip ikon (72px). Pilihan disimpan di
+   * localStorage agar bertahan saat halaman dibuka lagi. */
+  function setNavCollapsed(collapsed) {
+    document.body.classList.toggle('nav-collapsed', collapsed);
+    lsSet(LS.navCollapsed, collapsed ? '1' : '0');
+    var btn = document.querySelector('.nav-collapse-btn');
+    if (btn) { btn.setAttribute('aria-label', collapsed ? 'Bentangkan sidebar' : 'Ciutkan sidebar'); }
+  }
+
+  function applyNavCollapsed() {
+    var collapsed = false;
+    try { collapsed = window.localStorage.getItem(LS.navCollapsed) === '1'; } catch (e) { collapsed = false; }
+    document.body.classList.toggle('nav-collapsed', collapsed);
   }
 
   /* ---------------- Router ---------------- */
@@ -3432,8 +3449,20 @@
       var g = null;
       for (var i = 0; i < NAV_GROUPS.length; i++) { if (NAV_GROUPS[i].label === label) { g = NAV_GROUPS[i]; break; } }
       if (!g) { return; }
+      /* Sidebar sedang diminimize: klik kepala grup membentangkan
+       * sidebar dan membuka grup itu (bukan menutupnya). */
+      if (document.body.classList.contains('nav-collapsed')) {
+        setNavCollapsed(false);
+        state.navOpen[label] = true;
+        renderNav();
+        return;
+      }
       state.navOpen[label] = !navGroupOpen(g);
       renderNav();
+    },
+    /* Tombol minimize di header: ciutkan/bentangkan sidebar kiri. */
+    toggleNavCollapse: function () {
+      setNavCollapsed(!document.body.classList.contains('nav-collapsed'));
     },
     /* Dari submenu sidebar: buka halaman Operasional pada sub-tab itu. */
     goOpsTab: function (tab) {

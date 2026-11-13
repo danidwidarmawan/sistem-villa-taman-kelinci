@@ -5,18 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="Sistem operasional harian Villa Taman Kelinci — reservasi, keuangan, leads, kalender, dan dashboard monitoring." />
 <title>Sistem Villa Taman Kelinci</title>
-<link rel="stylesheet" href="styles.css?v=1.6.0" />
+<link rel="stylesheet" href="styles.css?v=1.7.0" />
 </head>
 <body>
 <div id="app">
   <aside id="sidebar">
-    <div class="brand">
-      <div class="brand-logo-wrap"><img src="villa-logo.png" alt="Logo Villa Taman Kelinci" class="brand-logo" /></div>
-      <div class="brand-text">
-        <strong>Villa Taman Kelinci</strong>
-        <span>Sistem Operasional</span>
-      </div>
-    </div>
     <div class="profile">
       <span class="profile-avatar" aria-hidden="true">DD</span>
       <div class="profile-text">
@@ -33,7 +26,10 @@
 
   <div id="main">
     <header id="topbar">
-      <div class="brand-mini" aria-hidden="true"><span class="brand-mini-logo-wrap"><img src="villa-logo.png" alt="" class="brand-mini-logo" /></span> <strong>Villa Taman Kelinci</strong></div>
+      <div class="topbar-left">
+        <button type="button" class="btn btn-ghost btn-small nav-collapse-btn" onclick="VTK.toggleNavCollapse()" aria-label="Ciutkan sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="brand-mini"><span class="brand-mini-logo-wrap"><img src="villa-logo.png" alt="" class="brand-mini-logo" /></span> <strong>Villa Taman Kelinci</strong></div>
+      </div>
       <span id="sync-pill" class="sync-pill offline">Memuat…</span>
     </header>
     <div id="banner"></div>
@@ -47,8 +43,8 @@
 <nav id="nav-mobile" aria-label="Navigasi utama"></nav>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script src="logic.js?v=1.6.0"></script>
-<script src="charts.js?v=1.6.0"></script>
-<script src="app.js?v=1.6.0"></script>
+<script src="logic.js?v=1.7.0"></script>
+<script src="charts.js?v=1.7.0"></script>
+<script src="app.js?v=1.7.0"></script>
 </body>
 </html>
