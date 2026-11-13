@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.13.0-tanpa-gap';
+  var APP_VERSION = '1.14.0-penting-saja';
 
   var LS = {
     data: 'vtk_data',
@@ -982,25 +982,36 @@
       '<p class="hint">Hanya transaksi Terverifikasi. Bulan terakhir: ' + esc(d.monthLabel) + '.</p>' +
       VTKCharts.cashflowChart(cf) + '</section>';
 
-    /* Donut komposisi pemasukan + tren okupansi, berdampingan. */
-    var comp = L.incomeComposition(state.data.transactions, state.dashMonth);
-    var donutItems = comp.items.map(function (c) { return { label: c.category, value: c.total }; });
-    var occ = L.monthlyOccupancy(state.data.reservations, state.dashMonth, 6);
-    html += '<section class="two-col">' +
-      '<div class="card chart-card donut-card"><h2>Komposisi pemasukan</h2>' +
-      '<p class="hint">' + esc(d.monthLabel) + ' — hanya transaksi Terverifikasi.</p>' +
-      VTKCharts.donutChart(donutItems, { total: comp.total, totalLabel: 'Pemasukan',
-        ariaLabel: 'Grafik donut komposisi pemasukan per kategori.',
-        emptyMsg: 'Belum ada pemasukan terverifikasi di bulan ini.' }) +
-      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'keuangan\')">Lihat Keuangan</button></div>' +
-      '</div>' +
-      '<div class="card chart-card"><h2>Tren okupansi</h2>' +
-      '<p class="hint">6 bulan terakhir, berakhir ' + esc(d.monthLabel) + '.</p>' +
-      VTKCharts.occupancyChart(occ) + '</div></section>';
+    /* v1.14.0: donut Komposisi pemasukan + Tren okupansi DIHAPUS (analitik,
+     * nilai rendah — donut hampir selalu 1 kategori) dan diganti dua kartu
+     * operasional: Target bulan ini (pindah dari rel kanan) + Booking
+     * bulan ini (baru). */
+    html += targetCardHTML(d);
 
-    /* Target bulan ini PINDAH ke rel kanan (v1.11.0) — lihat rakitan rel. */
+    /* Booking bulan ini — reservasi aktif yang check-in di bulan terpilih,
+     * lengkap dengan status pembayaran (hanya pembayaran Terverifikasi
+     * yang dihitung sebagai Dibayar). */
+    var monthRes = state.data.reservations.filter(function (r) {
+      return r.status !== 'Dibatalkan' && (r.checkin || '').slice(0, 7) === state.dashMonth;
+    }).sort(function (x, y) { return x.checkin < y.checkin ? -1 : (x.checkin > y.checkin ? 1 : 0); });
+    var monthRows = monthRes.map(function (r) {
+      var c = L.reservationCalc(r, state.data.transactions, s);
+      return '<tr><td data-label="Tamu"><a href="#/reservasi">' + esc(r.guestName) + '</a></td>' +
+        '<td data-label="Check-in">' + L.fmtDate(r.checkin) + '</td>' +
+        '<td data-label="Malam">' + L.fmtNum(c.nights) + '</td>' +
+        '<td data-label="Status">' + resStatusBadge(r.status) + '</td>' +
+        '<td data-label="Dibayar">' + L.fmtRp(c.paid) + '</td>' +
+        '<td data-label="Sisa">' + L.fmtRp(c.remaining) + '</td></tr>';
+    }).join('');
+    html += '<div class="card"><h2>Booking bulan ini — ' + esc(d.monthLabel) + '</h2>' +
+      (monthRes.length
+        ? '<div class="table-wrap"><table class="tbl"><thead><tr><th>Tamu</th><th>Check-in</th><th>Malam</th><th>Status</th><th>Dibayar</th><th>Sisa</th></tr></thead>' +
+          '<tbody>' + monthRows + '</tbody></table></div>'
+        : '<p class="empty">Belum ada booking bulan ini.</p>' +
+          '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.openResForm()">Tambah reservasi</button></div>') +
+      '</div>';
 
-    /* Perlu tindakan (rel kanan) + kinerja sumber lead (kolom utama). */
+    /* Perlu tindakan (rel kanan). */
     var a = d.actions;
     var actionItems = [];
     a.unverified.forEach(function (tx) {
@@ -1035,25 +1046,16 @@
       (actionItems.length ? '<ul class="action-list">' + actionItems.join('') + '</ul>' : emptyState('Tidak ada yang perlu tindakan.')) +
       '</div>';
 
-    /* Kartu rel kanan v1.11.0 (pindah agar rel seimbang dengan kolom utama —
-     * sebelumnya rel hanya ~38% tinggi kolom utama): Check-in berikutnya +
-     * Biaya tetap & titik impas. Target dirakit targetCardHTML(d) saat rel
-     * disusun. */
+    /* Kartu rel kanan v1.11.0–v1.13.0 (pindah agar rel seimbang dengan kolom
+     * utama): Check-in berikutnya. Target pindah ke kolom utama v1.14.0;
+     * Biaya tetap & titik impas pindah ke Pengaturan (Target & Rekening)
+     * v1.14.0 — info referensi, bukan operasional harian. */
     var nextRows = d.nextCheckins.length ? d.nextCheckins.map(function (r) {
       var c = L.reservationCalc(r, state.data.transactions, s);
       return '<li><a href="#/reservasi">' + esc(r.guestName) + '</a> — ' + L.fmtDate(r.checkin) +
         ' (' + c.nights + ' malam, ' + L.fmtNum(r.pax) + ' tamu) ' + resStatusBadge(r.status) + '</li>';
     }).join('') : '<li class="muted">Belum ada check-in mendatang.</li>';
     var nextCheckinsCardHTML = '<div class="card"><h2>Check-in berikutnya</h2><ul class="simple-list">' + nextRows + '</ul></div>';
-    var be = d.breakeven;
-    var beText = (be.weekday !== null && be.weekend !== null)
-      ? '≈ ' + be.weekday + ' malam weekday / ' + be.weekend + ' malam weekend per bulan'
-      : '—';
-    var breakevenCardHTML = '<div class="card"><h2>Biaya tetap &amp; titik impas</h2>' +
-      '<p>Total biaya tetap <strong>' + L.fmtRp(d.fixedCost.total) + '/bulan</strong> ' +
-      '(gaji, listrik &amp; air, internet, keamanan, gaji owner, estimasi maintenance). ' +
-      'Titik impas kasar: <strong>' + esc(beText) + '</strong> ' +
-      '(pendapatan kotor, belum biaya variabel).</p></div>';
     /* Transaksi terakhir PINDAH ke rel kanan v1.13.0 (sebelumnya selebar
      * penuh di bawah layout): rel jadi hampir setinggi kolom utama dan
      * halaman berakhir rapi di ujung layout. */
@@ -1063,29 +1065,16 @@
     }).join('') : '<li class="muted">Belum ada transaksi.</li>';
     var txCardHTML = '<div class="card"><h2>Transaksi terakhir</h2><ul class="simple-list">' + txRows + '</ul></div>';
 
-    /* Kinerja sumber lead + grafik batang nilai booking per sumber */
-    var srcRows = d.sourcePerf.map(function (sp) {
-      return '<tr><td data-label="Sumber">' + esc(sp.source) + '</td>' +
-        '<td data-label="Leads">' + L.fmtNum(sp.leads) + '</td>' +
-        '<td data-label="Menang">' + L.fmtNum(sp.won) + '</td>' +
-        '<td data-label="Konversi">' + L.fmtPct(sp.conversion) + '</td>' +
-        '<td data-label="Nilai booking">' + L.fmtRp(sp.bookingValue) + '</td></tr>';
-    }).join('');
-    /* Grafik batang nilai booking DIHAPUS v1.12.0: angkanya sudah ada di
-     * kolom "Nilai booking" tabel di bawah — grafik hanya menduplikasi. */
-    html += '<div class="card"><h2>Kinerja sumber lead — ' + esc(d.monthLabel) + '</h2>' +
-      '<p class="hint">Berdasarkan tanggal booking.</p>' +
-      '<div class="table-wrap"><table class="tbl"><thead><tr><th>Sumber</th><th>Leads</th><th>Menang</th><th>Konversi</th><th>Nilai booking</th></tr></thead>' +
-      '<tbody>' + srcRows + '</tbody></table></div></div>';
+    /* Kinerja sumber lead DIHAPUS dari dashboard v1.14.0 (analitik, bukan
+     * operasional harian): datanya tetap terlihat di halaman Leads
+     * (daftar lead per sumber) dan Reservasi (sumber tiap booking). */
 
     html += '</div>'; /* Tutup .dash-main */
 
-    /* Rel kanan v1.11.0–v1.13.0: kalender mini -> Perlu tindakan ->
-     * Target bulan ini -> Biaya tetap & titik impas -> Check-in
-     * berikutnya -> Transaksi terakhir. Kartu-kartu ini pindah ke sini
-     * agar rel seimbang dengan kolom utama (v1.10.0: rel hanya ~38%
-     * tinggi kolom utama, gap kosong ±1.100px). Kartu outlook 30 hari
-     * dihapus v1.10.0 (isinya duplikat kalender). */
+    /* Rel kanan v1.14.0: kalender mini -> Perlu tindakan -> Check-in
+     * berikutnya -> Transaksi terakhir. Target pindah ke kolom utama;
+     * Biaya tetap pindah ke Pengaturan; kartu outlook 30 hari dihapus
+     * v1.10.0 (isinya duplikat kalender). */
     html += '<aside class="dash-rail">' +
       '<div class="card mini-cal-card"><div class="mini-cal-head">' +
       '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan sebelumnya" onclick="VTK.miniCalNav(-1)">‹</button>' +
@@ -1096,8 +1085,6 @@
       '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
       '</div>' +
       actionsCardHTML +
-      targetCardHTML(d) +
-      breakevenCardHTML +
       nextCheckinsCardHTML +
       txCardHTML +
       '</aside></div>'; /* Tutup .dash-rail + .dash-layout */
@@ -3000,6 +2987,10 @@
     var hasToken = !!getToken();
     var c = state.conn;
     var fixedTotal = L.fixedMonthlyCost(state.data.operationalCosts).total;
+    var beSet = L.breakevenNights(fixedTotal, s);
+    var beSetText = (beSet.weekday !== null && beSet.weekend !== null)
+      ? '≈ ' + beSet.weekday + ' malam weekday / ' + beSet.weekend + ' malam weekend per bulan'
+      : '—';
     var labels = L.accountLabels(s);
 
     return '<section class="page-head"><h1>Pengaturan</h1></section>' +
@@ -3054,6 +3045,7 @@
       '<label class="field"><span>Target okupansi bulanan (%)</span><input type="number" name="targetOccupancyPct" min="0" max="100" step="1" value="' + esc(s.targetOccupancyPct || '') + '" />' +
       '<span class="hint">Mis. 33 = 10 malam dari 30 hari. Kosongkan bila tidak memakai target okupansi.</span></label>' +
       '</div>' +
+      '<p class="hint">Titik impas kasar: <strong>' + esc(beSetText) + '</strong> (total biaya tetap ' + L.fmtRp(fixedTotal) + '/bulan; pendapatan kotor, belum biaya variabel).</p>' +
       '<div class="form-row">' +
       '<label class="field"><span>Label rekening villa</span><input type="text" name="accountLabelVilla" value="' + esc(labels.villa) + '" /></label>' +
       '<label class="field"><span>Label rekening katering &amp; extra bed</span><input type="text" name="accountLabelKatering" value="' + esc(labels.katering) + '" /></label>' +
