@@ -295,6 +295,12 @@
       "title": "Penawaran paket keluarga",
       "text": "Halo Kak {Nama}, untuk acara keluarga {Jumlah Pax} orang tersedia paket 2D1N total {Total Paket}, sudah termasuk villa utuh, {Jenis Makan} Paket {Menu}, Smart TV, Wi-Fi, Netflix, karaoke, billiard, kolam renang, dapur, BBQ/grill tanpa arang, dan parkir luas. Early check-in gratis dapat diberikan bila malam H-1 kosong.",
       "note": "Gunakan total dari kalkulator Paket Segmen. Untuk lebih dari 30 pax, tambahkan extra bed/VIP melalui quotation khusus."
+    },
+    {
+      "id": "WA-16",
+      "title": "Jumat tidak tersedia (Sabtu early check-in)",
+      "text": "Halo Kak {Nama}, mohon maaf, Villa Taman Kelinci tidak tersedia untuk check-in {Tanggal Jumat}. Malam Sabtu ({Tanggal Sabtu}) sudah terisi dan tamu tersebut early check-in pukul 07.00 pagi, jadi villa harus sudah kosong sejak Jumat malam. Sebagai alternatif, kami bisa tawarkan {Tanggal Alternatif} atau weekday lainnya. Boleh kami bantu cekkan tanggal lain?",
+      "note": "Gunakan bila tamu minta Jumat padahal Sabtu sudah terisi dengan early check-in. Tawarkan weekend lain atau weekday sebagai alternatif."
     }
   ],
   "operationalCosts": {

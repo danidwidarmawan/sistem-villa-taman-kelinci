@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.1.0-fase2';
+  var APP_VERSION = '1.2.0-turnover';
 
   var LS = {
     data: 'vtk_data',
@@ -380,6 +380,7 @@
       /* Jangan me-render ulang saat form sedang diisi — input pengguna
        * akan hilang. Data baru tetap dipakai saat render berikutnya. */
       if (!state.form) { renderView(); }
+      mergeDefaultTemplates();
       return true;
     });
   }
@@ -574,6 +575,28 @@
     });
   }
 
+  /* Tambahkan template WA baru dari seed ke data yang sedang dimuat (mis.
+   * WA-16 untuk Jumat terblokir) — hanya MENAMBAH yang ID-nya belum ada,
+   * tidak pernah menimpa template yang sudah ada (lihat
+   * L.mergeWaTemplates). Data live lama otomatis mendapat template baru
+   * tanpa edit manual. Hasil merge disimpan ke cache lokal dan ikut
+   * ter-push saat commit berikutnya; tidak ada push otomatis di sini.
+   * Gagal memuat seed (offline) diabaikan diam-diam. Mengembalikan
+   * Promise jumlah template yang ditambahkan. */
+  function mergeDefaultTemplates() {
+    if (!state.data || state.mode === 'demo') { return Promise.resolve(0); }
+    return fetchSeed().then(function (seed) {
+      var m = L.mergeWaTemplates(state.data.waTemplates, seed.waTemplates);
+      if (m.added > 0) {
+        state.data.waTemplates = m.list;
+        saveCache();
+        /* Jangan me-render ulang saat form sedang diisi. */
+        if (!state.form) { renderView(); }
+      }
+      return m.added;
+    }).catch(function () { return 0; });
+  }
+
   function showLoading(msg) {
     var v = $('view');
     if (v) { v.innerHTML = '<div class="loading card"><p>' + esc(msg || 'Memuat…') + '</p></div>'; }
@@ -602,6 +625,7 @@
       state.data = cached;
       state.sha = cachedSha;
       route();
+      mergeDefaultTemplates();
       syncFromRemote({ silent: true });
       return;
     }
@@ -619,6 +643,7 @@
         state.pending = 0;
         saveCache();
         route();
+        mergeDefaultTemplates();
         return;
       }
       if (res.status === 404) {
@@ -1004,6 +1029,13 @@
           return '<li>' + esc(w.label) + ' — <span class="muted">belum terisi</span></li>';
         }).join('')
       : '<li class="muted">Semua malam weekend dalam 30 hari ke depan sudah terisi.</li>';
+    /* Malam weekend terblokir (besoknya ada booking early check-in) tampil
+     * terpisah dari "belum terisi" — tidak bisa dijual, beserta alasannya. */
+    var blockedItems = o.blockedWeekendNights.length
+      ? o.blockedWeekendNights.map(function (w) {
+          return '<li>' + esc(w.label) + ' — <span class="muted">terblokir: ' + esc(w.reason) + '</span></li>';
+        }).join('')
+      : '';
     var bookingItems = o.bookings.length
       ? o.bookings.map(function (b) {
           return '<li><a href="#/reservasi">' + esc(b.guestName) + '</a> — ' + L.fmtDate(b.checkin) +
@@ -1013,8 +1045,11 @@
       : '<li class="muted">Belum ada reservasi dalam 30 hari ke depan.</li>';
     return '<section class="card"><h2>30 hari ke depan</h2>' +
       '<p><strong>' + o.nightsOccupied + ' dari ' + o.days + ' malam terisi</strong> (' + L.fmtPct(o.occupancyPct) + ') • ' +
+      '<strong>' + o.nightsBlocked + ' malam terblokir</strong> • ' +
       '<strong>' + o.nightsEmpty + ' malam kosong</strong> • ' + L.fmtDate(o.start) + ' s.d. ' + L.fmtDate(L.addDaysISO(o.end, -1)) + '</p>' +
-      '<div class="two-col"><div><h3>Weekend belum terisi</h3><ul class="simple-list">' + weekendItems + '</ul></div>' +
+      '<div class="two-col"><div><h3>Weekend belum terisi</h3><ul class="simple-list">' + weekendItems + '</ul>' +
+      (blockedItems ? '<h3>Weekend terblokir</h3><ul class="simple-list">' + blockedItems + '</ul>' +
+        '<p class="hint">Malam terblokir tidak bisa dijual: tamu keesokan paginya early check-in.</p>' : '') + '</div>' +
       '<div><h3>Booking dalam 30 hari</h3><ul class="simple-list">' + bookingItems + '</ul></div></div>' +
       '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div></section>';
   }
@@ -1028,6 +1063,7 @@
     var cells = L.calendarCells(state.data, y, m0, L.todayISO());
     var dows = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
     var occupied = 0;
+    var blocked = 0;
     var h = '<div class="mini-cal" role="grid" aria-label="Kalender mini ' + esc(L.monthLabel(monthKey)) + '">';
     dows.forEach(function (dow) { h += '<div class="mini-cal-dow">' + dow + '</div>'; });
     cells.forEach(function (c) {
@@ -1037,14 +1073,18 @@
       if (c.reservations.length) {
         cls += ' occupied';
         if (c.inMonth) { occupied++; }
+      } else if (c.blocked) {
+        cls += ' blocked';
+        if (c.inMonth) { blocked++; }
       }
-      var label = L.fmtDate(c.dateISO) + (c.reservations.length ? ' — terisi (' + c.reservations.length + ' reservasi)' : ' — kosong');
+      var label = L.fmtDate(c.dateISO) + (c.reservations.length ? ' — terisi (' + c.reservations.length + ' reservasi)'
+        : c.blocked ? ' — terblokir (' + c.blocked.reason + ')' : ' — kosong');
       h += '<button type="button" class="' + cls + '" title="' + esc(label) + '" aria-label="' + esc(label) +
         '" onclick="VTK.miniCalGo(\'' + c.dateISO + '\')">' + c.day + '</button>';
     });
     h += '</div>';
-    h += occupied
-      ? '<p class="hint">Hari oranye = terisi.</p>'
+    h += occupied || blocked
+      ? '<p class="hint">Hari oranye = terisi.' + (blocked ? ' Hari abu-abu = terblokir (besoknya early check-in).</p>' : '</p>')
       : '<p class="hint">Belum ada reservasi di bulan ini.</p>';
     return h;
   }
@@ -1188,6 +1228,7 @@
         (existingBd && existingBd.extraBedCost > 0 ? ' Porsi extra bed <strong>' + L.fmtRp(existingBd.extraBedCost) +
           '</strong> dibayar ke ' + esc(accountLabel('katering')) + ' — catat sebagai transaksi "Pendapatan Extra Bed" terpisah.' : '') + '</p>' : '') +
       '<div id="res-overlap-confirm"></div>' +
+      '<div id="res-turnover-confirm"></div>' +
       saveStatusHTML() +
       '<div class="form-actions">' +
       '<button type="submit" class="btn btn-primary">Simpan reservasi</button>' +
@@ -1238,6 +1279,7 @@
     var warnEl = $('res-warnings');
     var hintEl = $('rf-rate-hint');
     var overlapEl = $('res-overlap-confirm');
+    var turnoverEl = $('res-turnover-confirm');
 
     /* Saran tarif */
     var suggestion = L.suggestedRate(v.checkin, v.checkout, s);
@@ -1290,6 +1332,27 @@
         'Rentang ini tumpang tindih dengan ' + esc(overlap.id) + ' — ' + esc(overlap.guestName) +
         ' (' + L.fmtDate(overlap.checkin) + ' s.d. ' + L.fmtDate(overlap.checkout) + ').</div>');
     }
+    /* Bentrok turnover: check-in = hari check-out booking lain (atau sebaliknya).
+     * KERAS bila pihak yang datang minta early check-in (tamu lama baru keluar
+     * 12.00, tamu baru mau masuk 07.00); RINGAN bila tidak — housekeeping hanya
+     * punya 12.00–14.00. Pola konfirmasi sama seperti bentrok tanggal. */
+    var tc = L.turnoverConflict(state.data.reservations, v.checkin, v.checkout, v.id || null, L.wantsEarlyCheckin(v, s), s);
+    if (tc.hard) {
+      var hr = tc.hard.reservation;
+      warnings.push('<div class="alert bad"><strong>Bentrok turnover!</strong> ' +
+        (tc.hard.direction === 'checkin'
+          ? 'Anda minta early check-in pada ' + L.fmtDate(v.checkin) + ', tetapi ' + esc(hr.guestName) + ' (' + esc(hr.id) + ') baru check-out siang hari itu (12.00) — villa belum bisa dimasuki pagi hari.'
+          : esc(hr.guestName) + ' (' + esc(hr.id) + ') early check-in pada ' + L.fmtDate(v.checkout) + ', tetapi reservasi ini baru check-out siang hari itu (12.00).') +
+        '</div>');
+    }
+    if (tc.soft) {
+      var sr = tc.soft.reservation;
+      warnings.push('<div class="alert warn"><strong>Turnover hari yang sama.</strong> ' +
+        (tc.soft.direction === 'checkin'
+          ? 'Check-in ' + L.fmtDate(v.checkin) + ' bertepatan dengan check-out ' + esc(sr.guestName) + ' (' + esc(sr.id) + ').'
+          : 'Check-out ' + L.fmtDate(v.checkout) + ' bertepatan dengan check-in ' + esc(sr.guestName) + ' (' + esc(sr.id) + ').') +
+        ' Housekeeping hanya punya waktu 12.00–14.00 untuk menyiapkan villa.</div>');
+    }
     var cap = L.capacityLevel(v.pax || 0, s);
     if (cap === 'max') {
       warnings.push('<div class="alert bad"><strong>Melebihi kapasitas maksimum</strong> (' + L.fmtNum(s.capacity.maxPax) + ' tamu).</div>');
@@ -1306,6 +1369,12 @@
       overlapEl.innerHTML = overlap
         ? '<label class="field checkbox"><input type="checkbox" id="rf-overlap-ok" /> ' +
           '<span>Saya yakin, simpan meski bentrok dengan ' + esc(overlap.id) + '</span></label>'
+        : '';
+    }
+    if (turnoverEl) {
+      turnoverEl.innerHTML = tc.hard
+        ? '<label class="field checkbox"><input type="checkbox" id="rf-turnover-ok" /> ' +
+          '<span>Saya yakin, simpan meski bentrok turnover dengan ' + esc(tc.hard.reservation.id) + '</span></label>'
         : '';
     }
 
@@ -1341,6 +1410,13 @@
       var okBox = $('rf-overlap-ok');
       if (!okBox || !okBox.checked) {
         errors.push('Tanggal bentrok dengan ' + overlap.id + '. Centang konfirmasi bila tetap ingin menyimpan.');
+      }
+    }
+    var tcSave = L.turnoverConflict(state.data.reservations, v.checkin, v.checkout, v.id || null, L.wantsEarlyCheckin(v, state.data.settings), state.data.settings);
+    if (tcSave.hard) {
+      var tcBox = $('rf-turnover-ok');
+      if (!tcBox || !tcBox.checked) {
+        errors.push('Bentrok turnover dengan ' + tcSave.hard.reservation.id + '. Centang konfirmasi bila tetap ingin menyimpan.');
       }
     }
     if (errors.length) { setSaveStatus(errors.join(' '), 'error'); return false; }
@@ -1853,11 +1929,13 @@
       if (c.isWeekend) { cls += ' weekend'; }
       if (c.peak) { cls += ' peak'; }
       if (c.reservations.length) { cls += ' occupied'; }
+      if (c.blocked) { cls += ' blocked'; }
       if (c.capacity === 'ideal') { cls += ' over-ideal'; }
       if (c.capacity === 'max') { cls += ' over-max'; }
       if (state.calSelected === c.dateISO) { cls += ' selected'; }
       var body = '<span class="cal-day">' + c.day + '</span>';
       if (c.peak) { body += '<span class="cal-tag peak-tag">' + esc(c.peak.name) + '</span>'; }
+      if (c.blocked) { body += '<span class="cal-tag blocked-tag">Terblokir</span>'; }
       if (c.reservations.length === 1) {
         var r = c.reservations[0];
         body += '<span class="cal-guest">' + esc(r.guestName) + '</span><span class="cal-pax">' + L.fmtNum(c.pax) + ' tamu</span>';
@@ -1867,7 +1945,8 @@
       if (c.capacity !== 'ok' && c.reservations.length) {
         body += '<span class="cal-tag cap-tag">' + (c.capacity === 'max' ? 'Melebihi maks' : 'Di atas ideal') + '</span>';
       }
-      return '<button type="button" class="' + cls + '" onclick="VTK.calDayClick(\'' + c.dateISO + '\')">' + body + '</button>';
+      var title = c.blocked ? ' title="Terblokir: ' + esc(c.blocked.reason) + '"' : '';
+      return '<button type="button" class="' + cls + '"' + title + ' onclick="VTK.calDayClick(\'' + c.dateISO + '\')">' + body + '</button>';
     }).join('');
 
     /* Detail hari terpilih */
@@ -1881,7 +1960,9 @@
         return '<li><a href="javascript:void(0)" onclick="VTK.openResForm(\'' + esc(r.id) + '\')">' + esc(r.guestName) + '</a> — ' +
           L.fmtDate(r.checkin) + ' s.d. ' + L.fmtDate(r.checkout) + ' (' + c.nights + ' malam, ' + L.fmtNum(r.pax) + ' tamu) ' +
           resStatusBadge(r.status) + '</li>';
-      }).join('') : '<li class="muted">Villa kosong pada hari ini.</li>';
+      }).join('') : (sel && sel.blocked
+        ? '<li><strong>Malam terblokir (tidak bisa dijual):</strong> ' + esc(sel.blocked.reason) + '.</li>'
+        : '<li class="muted">Villa kosong pada hari ini.</li>');
       detail = '<section class="card"><h2>' + L.fmtDate(state.calSelected) + '</h2><ul class="simple-list">' + items + '</ul>' +
         '<button type="button" class="btn btn-primary" onclick="VTK.addResForDay(\'' + state.calSelected + '\')">+ Tambah reservasi (check-in hari ini)</button></section>';
     }
@@ -1905,7 +1986,7 @@
       '<button type="button" class="btn" onclick="VTK.calToday()">Hari ini</button>' +
       '</div></section>' +
       '<section class="card"><div class="cal-grid">' + grid + '</div>' +
-      '<p class="hint legend"><span class="sw occupied"></span> Terisi &nbsp; <span class="sw peak"></span> Peak &nbsp; ' +
+      '<p class="hint legend"><span class="sw occupied"></span> Terisi &nbsp; <span class="sw blocked"></span> Terblokir &nbsp; <span class="sw peak"></span> Peak &nbsp; ' +
       '<span class="sw weekend"></span> Weekend &nbsp; <span class="sw today"></span> Hari ini &nbsp; ' +
       '<span class="sw over-ideal"></span> Di atas kapasitas ideal &nbsp; <span class="sw over-max"></span> Melebihi maksimum</p></section>' +
       detail +
@@ -2828,9 +2909,12 @@
       state.data = parsed;
       state.conflict = null;
       renderView();
-      commit().then(function (res) {
-        if (res.ok || res.demo) { toast('Impor berhasil.'); }
-        else { toast('Impor tersimpan lokal, belum tersinkron: ' + res.error, 'warn'); }
+      /* Merge template baru dulu, agar ikut tersimpan dalam commit impor. */
+      mergeDefaultTemplates().then(function () {
+        commit().then(function (res) {
+          if (res.ok || res.demo) { toast('Impor berhasil.'); }
+          else { toast('Impor tersimpan lokal, belum tersinkron: ' + res.error, 'warn'); }
+        });
       });
     };
     reader.readAsText(file);
@@ -2946,6 +3030,7 @@
     window.location.hash = '#/dashboard';
     renderShell();
     renderView();
+    mergeDefaultTemplates();
   }
 
   /* ---------------- Resolusi konflik ---------------- */
@@ -2973,6 +3058,7 @@
       saveCache();
       renderShell();
       renderView();
+      mergeDefaultTemplates();
       toast('Data terbaru dimuat. Edit lokal Anda dicadangkan di perangkat ini (bisa dipulihkan lewat impor bila perlu).', 'warn');
       return;
     }

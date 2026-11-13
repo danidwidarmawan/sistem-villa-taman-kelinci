@@ -309,6 +309,100 @@
     return null;
   }
 
+  /* ---------------- Early check-in & turnover ----------------
+   * Fakta lapangan pemilik (13 Nov 2026): tamu weekend umumnya Sabtu ke
+   * Minggu; karena sistem one way Puncak, tamu Sabtu sering early check-in
+   * jam 7 pagi — jadi Jumat malam tidak bisa dijual bila Sabtu sudah
+   * terbooking dengan early check-in (tamu Jumat baru check-out jam 12).
+   * Aturan di bawah ini UMUM (bukan khusus Jumat): berlaku untuk pasangan
+   * malam berurutan mana pun. Definisi HARGA weekend tidak berubah. */
+
+  /* 'HH:MM' -> 'HH.MM' untuk tampilan; '' bila tidak valid/kosong. */
+  function fmtTimeHM(t) {
+    if (typeof t !== 'string' || !/^\d{2}:\d{2}$/.test(t)) { return ''; }
+    return t.replace(':', '.');
+  }
+
+  /* Jam check-in standar: pengaturan bila ada, else usulan 14:00. */
+  function standardCheckinTime(settings) {
+    var s = settings || {};
+    var t = s.checkinTime || s.checkinTimeProposal || '14:00';
+    return /^\d{2}:\d{2}$/.test(t) ? t : '14:00';
+  }
+
+  /* Apakah reservasi ini minta early check-in? Ya bila flag promo 'Ya',
+   * atau jam check-in yang disepakati lebih awal dari jam standar.
+   * Data lama tanpa kedua field dianggap TANPA early check-in. */
+  function wantsEarlyCheckin(res, settings) {
+    var r = res || {};
+    if (r.promoEarlyCheckin === 'Ya') { return true; }
+    var t = typeof r.agreedCheckinTime === 'string' ? r.agreedCheckinTime.trim() : '';
+    if (!/^\d{2}:\d{2}$/.test(t)) { return false; }
+    return t < standardCheckinTime(settings);
+  }
+
+  /* Bentrok turnover untuk booking (checkin, checkout) yang sedang diisi:
+   * - KERAS (hard), arah 'checkin': check-in saya = hari check-out booking
+   *   aktif lain DAN saya minta early check-in (mereka baru keluar 12.00,
+   *   saya mau masuk 07.00).
+   * - KERAS (hard), arah 'checkout': check-out saya = hari check-in booking
+   *   aktif lain DAN booking itu minta early check-in.
+   * - RINGAN (soft): turnover hari yang sama tanpa early check-in di pihak
+   *   yang datang — housekeeping hanya punya 12.00-14.00.
+   * Mengembalikan { hard: {reservation, direction} | null,
+   *                 soft: {reservation, direction} | null }. */
+  function turnoverConflict(reservations, checkin, checkout, excludeId, wantsEarly, settings) {
+    var out = { hard: null, soft: null };
+    if (!isISODate(checkin) || !isISODate(checkout) || checkout <= checkin) { return out; }
+    var list = reservations || [];
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (!r || r.id === excludeId || r.status === 'Dibatalkan') { continue; }
+      if (!isISODate(r.checkin) || !isISODate(r.checkout)) { continue; }
+      if (r.checkout === checkin) {
+        /* Saya tiba di hari mereka pulang. */
+        if (wantsEarly) { if (!out.hard) { out.hard = { reservation: r, direction: 'checkin' }; } }
+        else if (!out.soft) { out.soft = { reservation: r, direction: 'checkin' }; }
+      }
+      if (r.checkin === checkout) {
+        /* Saya pulang di hari mereka tiba. */
+        if (wantsEarlyCheckin(r, settings)) { if (!out.hard) { out.hard = { reservation: r, direction: 'checkout' }; } }
+        else if (!out.soft) { out.soft = { reservation: r, direction: 'checkout' }; }
+      }
+    }
+    return out;
+  }
+
+  /* Info bila malam `dateISO` TERBLOKIR: ada booking aktif yang check-in
+   * keesokan harinya dengan early check-in (tamu datang pagi, jadi malam
+   * sebelumnya tidak bisa dijual). Mengembalikan
+   * { reservation, checkinTime } atau null bila tidak terblokir. */
+  function blockedNightInfo(reservations, dateISO, settings) {
+    if (!isISODate(dateISO)) { return null; }
+    var next = addDaysISO(dateISO, 1);
+    var list = reservations || [];
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (!r || r.status === 'Dibatalkan') { continue; }
+      if (r.checkin === next && wantsEarlyCheckin(r, settings)) {
+        return { reservation: r, checkinTime: typeof r.agreedCheckinTime === 'string' ? r.agreedCheckinTime : '' };
+      }
+    }
+    return null;
+  }
+
+  /* Alasan manusiawi untuk malam terblokir, mis.
+   * "Sabtu, 15 Nov 2026 — Tamu B early check-in 07.00". */
+  function blockedNightReason(info) {
+    if (!info || !info.reservation) { return ''; }
+    var r = info.reservation;
+    var d = parseISO(r.checkin);
+    var day = d ? DAYS_ID[d.getDay()] + ', ' : '';
+    var time = fmtTimeHM(info.checkinTime);
+    return day + fmtDate(r.checkin) + ' — ' + (r.guestName || r.id || 'Tamu') +
+      ' early check-in' + (time ? ' ' + time : '');
+  }
+
   /* 'ok' | 'ideal' (di atas kapasitas ideal) | 'max' (melebihi maksimum). */
   function capacityLevel(pax, settings) {
     var cap = (settings && settings.capacity) || {};
@@ -383,6 +477,8 @@
         return isISODate(r.checkin) && isISODate(r.checkout) && iso >= r.checkin && iso < r.checkout;
       });
       var pax = res.reduce(function (s, r) { return s + (+r.pax || 0); }, 0);
+      /* Malam kosong yang terblokir: besok ada booking early check-in. */
+      var blocked = res.length ? null : blockedNightInfo(data.reservations, iso, data.settings);
       cells.push({
         dateISO: iso,
         day: d.getDate(),
@@ -392,7 +488,8 @@
         peak: peakForNight(iso, data.settings),
         reservations: res,
         pax: pax,
-        capacity: capacityLevel(pax, data.settings)
+        capacity: capacityLevel(pax, data.settings),
+        blocked: blocked ? { reservation: blocked.reservation, checkinTime: blocked.checkinTime, reason: blockedNightReason(blocked) } : null
       });
     }
     return cells;
@@ -762,12 +859,31 @@
       for (var i = 0; i < nights; i++) { occupied[addDaysISO(d, i)] = r; }
     });
     var nightsOccupied = 0;
+    var nightsBlocked = 0;
     var emptyWeekendNights = [];
+    var blockedNights = [];
+    var blockedWeekendNights = [];
     for (var j = 0; j < n; j++) {
       var iso = addDaysISO(today, j);
       if (occupied[iso]) { nightsOccupied++; continue; }
       var d = parseISO(iso);
-      if (d && weekend.indexOf(d.getDay()) !== -1) {
+      var isWk = d && weekend.indexOf(d.getDay()) !== -1;
+      /* Malam terblokir (besok ada booking early check-in) bukan malam kosong. */
+      var blk = blockedNightInfo(reservations, iso, settings);
+      if (blk) {
+        nightsBlocked++;
+        var entry = {
+          dateISO: iso,
+          label: fmtDate(iso) + (d ? ' (' + DAYS_ID[d.getDay()] + ')' : ''),
+          reason: blockedNightReason(blk),
+          bookingId: blk.reservation.id,
+          guestName: blk.reservation.guestName
+        };
+        blockedNights.push(entry);
+        if (isWk) { blockedWeekendNights.push(entry); }
+        continue;
+      }
+      if (isWk) {
         emptyWeekendNights.push({ dateISO: iso, label: fmtDate(iso) + ' (' + DAYS_ID[d.getDay()] + ')' });
       }
     }
@@ -782,9 +898,12 @@
       end: end,
       days: n,
       nightsOccupied: nightsOccupied,
-      nightsEmpty: n - nightsOccupied,
+      nightsBlocked: nightsBlocked,
+      nightsEmpty: n - nightsOccupied - nightsBlocked,
       occupancyPct: n ? (nightsOccupied / n) * 100 : 0,
       emptyWeekendNights: emptyWeekendNights,
+      blockedNights: blockedNights,
+      blockedWeekendNights: blockedWeekendNights,
       bookings: bookings
     };
   }
@@ -838,11 +957,14 @@
       if (!isISODate(r.checkin) || !isISODate(r.checkout)) { return; }
       var prepKey = 'prep:' + r.id;
       var cleanKey = 'clean:' + r.id;
+      /* Jam check-in yang disepakati ditampilkan bila ada, agar jelas villa
+       * harus sudah beres sebelum pagi (mis. early check-in 07.00). */
+      var agreed = fmtTimeHM(r.agreedCheckinTime);
       tasks.push({
         key: prepKey, kind: 'prep', bookingId: r.id, guestName: r.guestName,
         date: addDaysISO(r.checkin, -1),
         title: 'Siapkan villa — ' + r.guestName,
-        detail: 'Check-in ' + fmtDate(r.checkin),
+        detail: 'Check-in ' + fmtDate(r.checkin) + (agreed ? ' ' + agreed : ''),
         done: !!done[prepKey]
       });
       tasks.push({
@@ -875,6 +997,29 @@
       if (!Array.isArray(d[k])) { errors.push('Field "' + k + '" harus berupa daftar.'); }
     });
     return errors;
+  }
+
+  /* ---------------- Merge template WA default (V4) ---------------- */
+
+  /* Gabung template WA default (dari seed) ke daftar saat ini: hanya
+   * MENAMBAH template yang ID-nya belum ada; tidak pernah menimpa atau
+   * menghapus template yang sudah ada. Mengembalikan
+   * { list, added } — list adalah daftar baru (bila ada penambahan) atau
+   * daftar asli bila tidak ada perubahan. Dipakai saat data dimuat, agar
+   * data lama tetap mendapat template baru (mis. WA-16) tanpa edit manual. */
+  function mergeWaTemplates(current, defaults) {
+    var list = Array.isArray(current) ? current.slice() : [];
+    var ids = {};
+    list.forEach(function (t) { if (t && t.id) { ids[t.id] = true; } });
+    var added = 0;
+    (defaults || []).forEach(function (t) {
+      if (t && t.id && !ids[t.id]) {
+        ids[t.id] = true;
+        list.push(t);
+        added++;
+      }
+    });
+    return { list: list, added: added };
   }
 
   function deepClone(obj) {
@@ -914,6 +1059,7 @@
     fmtDate: fmtDate,
     fmtDateTime: fmtDateTime,
     fmtSyncTime: fmtSyncTime,
+    fmtTimeHM: fmtTimeHM,
     fmtRp: fmtRp,
     fmtRpShort: fmtRpShort,
     fmtNum: fmtNum,
@@ -947,6 +1093,11 @@
     reservationCalc: reservationCalc,
     extraCostBreakdown: extraCostBreakdown,
     findOverlap: findOverlap,
+    wantsEarlyCheckin: wantsEarlyCheckin,
+    turnoverConflict: turnoverConflict,
+    blockedNightInfo: blockedNightInfo,
+    blockedNightReason: blockedNightReason,
+    mergeWaTemplates: mergeWaTemplates,
     capacityLevel: capacityLevel,
     nextId: nextId,
     fixedMonthlyCost: fixedMonthlyCost,

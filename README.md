@@ -58,16 +58,25 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
   otomatis ke kolom biaya tambahan saat reservasi baru dibuat, tetap bisa
   diubah manual. Porsi extra bed tampil di daftar & form agar mudah dicatat
   sebagai transaksi "Pendapatan Extra Bed" terpisah (Rekening Katering).
+  Form juga memperingatkan **bentrok turnover**: check-in di hari check-out
+  booking lain (atau sebaliknya) dengan early check-in di pihak yang datang
+  = bentrok keras (butuh centang konfirmasi "Saya yakin…" untuk menyimpan,
+  seperti bentrok tanggal); tanpa early check-in = peringatan ringan
+  (housekeeping hanya punya 12.00–14.00).
 - **Keuangan:** transaksi masuk/keluar, kategori, status verifikasi,
   ringkasan per bulan, grafik pemasukan & pengeluaran per kategori,
   ekspor CSV.
 - **Leads:** tambah/ubah/hapus, status & alasan kalah, badge follow-up
   terlewat, tombol "Jadikan reservasi".
 - **Kalender:** tampilan bulan (terisi/kosong, peak, weekend, kapasitas),
-  detail per hari, daftar reservasi bulan ini.
+  detail per hari, daftar reservasi bulan ini. Malam yang **terblokir**
+  (besoknya ada booking dengan early check-in — tidak bisa dijual) tampil
+  arsir abu-abu dengan label "Terblokir" dan alasannya di legenda/detail.
 - **Pengaturan:** tarif, periode peak, harga katering, kebijakan DP,
   definisi weekend, koneksi GitHub, ekspor/impor JSON, reset ke data master,
   kamar & menu katering (baca-saja), template WhatsApp (salin teks).
+  Template WA baru dari `seed.json` (mis. WA-16) otomatis ditambahkan ke
+  data lama saat dimuat — hanya menambah, tidak menimpa template yang ada.
 
 ## Fitur Fase 2
 
@@ -80,14 +89,24 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
   Masak** (Irma/Nyai, dari Rekening Villa) dan **Belanja Bahan Katering**
   (dari Rekening Katering & Extra Bed).
 - **Pandangan 30 hari ke depan (Dashboard):** malam terisi vs kosong,
-  daftar weekend yang belum terisi, dan booking yang sudah masuk.
+  daftar weekend yang belum terisi, dan booking yang sudah masuk. Malam
+  **terblokir** dipisahkan dari malam kosong di ringkasan ("X terisi •
+  Y terblokir • Z kosong") dan di daftar weekend — malam terblokir adalah
+  malam yang tidak bisa dijual karena keesokan harinya ada booking dengan
+  early check-in (kasus umum: Jumat terblokir bila Sabtu terbooking early
+  check-in 07.00, karena tamu Jumat baru check-out 12.00). Malam terblokir
+  BUKAN malam terisi: tidak masuk hitungan okupansi, pendapatan, atau
+  target. Definisi HARGA weekend (Jumat & Sabtu) tidak berubah — yang
+  berubah hanya ketersediaan.
 - **Target bulanan vs realisasi (Dashboard + Pengaturan):** target
   pemasukan bulanan (default Rp60.000.000) dan target okupansi (default
   33% ≈ 10 malam/bulan), masing-masing dengan progress bar dan selisih.
   Kosongkan target pemasukan untuk memakai total biaya tetap (= titik
   impas) sebagai pembanding.
 - **Operasional:** Housekeeping (tugas "Siapkan villa" H-1 & "Bersihkan
-  villa" saat check-out dibuat otomatis dari reservasi + tugas manual),
+  villa" saat check-out dibuat otomatis dari reservasi + tugas manual;
+  tugas "Siapkan villa" menampilkan jam check-in yang disepakati bila ada,
+  mis. "Check-in 21 Nov 07.00"),
   Perawatan (log + tombol "Catat sebagai pengeluaran"), Inventaris,
   Pesanan Katering (per booking, harga parsial 1x/2x/lengkap otomatis,
   info honor juru masak per event).
