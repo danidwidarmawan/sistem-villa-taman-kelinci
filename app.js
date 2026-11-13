@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.4.0-form-customer';
+  var APP_VERSION = '1.5.0-nav-kalender-tampilan';
 
   var LS = {
     data: 'vtk_data',
@@ -44,6 +44,31 @@
     { route: 'pengaturan', label: 'Pengaturan', icon: 'sliders' }
   ];
 
+  /* Kelompok navigasi sidebar desktop (v1.5.0): menu dikelompokkan agar
+   * sidebar ringkas tanpa scroll. Entri tanpa `children` tampil langsung;
+   * entri dengan `children` jadi grup lipat. Anak Operasional memakai
+   * `tab` — klik langsung membuka sub-tab itu di halaman Operasional.
+   * Navigasi mobile (bilah bawah) tetap memakai NAV yang datar. */
+  var NAV_GROUPS = [
+    { label: 'Dashboard', icon: 'grid', route: 'dashboard' },
+    { label: 'Booking', icon: 'key', children: [
+      { route: 'reservasi', label: 'Reservasi', icon: 'key' },
+      { route: 'kalender', label: 'Kalender', icon: 'calendar' }
+    ]},
+    { label: 'Keuangan', icon: 'banknote', children: [
+      { route: 'keuangan', label: 'Keuangan', icon: 'banknote' },
+      { route: 'rekening', label: 'Rekening', icon: 'bank' }
+    ]},
+    { label: 'Leads', icon: 'users', route: 'leads' },
+    { label: 'Operasional', icon: 'clipboard', children: [
+      { route: 'operasional', label: 'Housekeeping', tab: 'housekeeping', icon: 'sparkles' },
+      { route: 'operasional', label: 'Perawatan', tab: 'maintenance', icon: 'wrench' },
+      { route: 'operasional', label: 'Inventaris', tab: 'inventory', icon: 'box' },
+      { route: 'operasional', label: 'Pesanan Katering', tab: 'catering', icon: 'utensils' }
+    ]},
+    { label: 'Pengaturan', icon: 'sliders', route: 'pengaturan' }
+  ];
+
   /* Ikon SVG inline (stroke, currentColor) — tanpa emoji, tanpa file gambar. */
   var ICONS = {
     grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
@@ -57,7 +82,12 @@
     calendarCheck: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/>',
     receipt: '<path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6"/>',
     clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a2 2 0 0 1 6 0"/><path d="M9 12l2 2 4-4"/>',
-    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>'
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    sparkles: '<path d="M12 3l1.7 4.8 4.8 1.7-4.8 1.7L12 16l-1.7-4.8L5.5 9.5l4.8-1.7z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+    wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+    box: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5"/><path d="M12 13v8"/>',
+    utensils: '<path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3z"/><path d="M21 15v7"/>',
+    chevron: '<path d="M6 9l6 6 6-6"/>'
   };
 
   /* '<svg …>' lengkap untuk ikon bernama; '' bila tidak dikenal. */
@@ -91,6 +121,9 @@
     },
     /* Sub-tab halaman Operasional: housekeeping | maintenance | inventory | catering */
     opsTab: 'housekeeping',
+    /* Grup sidebar yang dibuka/tutup manual: { label: true/false }.
+     * Tanpa pilihan manual, grup yang memuat rute aktif terbuka otomatis. */
+    navOpen: {},
     /* form aktif: { module: 'res'|'tx'|'lead'|'hk'|'mnt'|'inv'|'ck', id: string|null, prefill: object|null } */
     form: null,
     /* form yang dijadwalkan lintas-hash (mis. Leads -> Jadikan reservasi) */
@@ -451,17 +484,58 @@
 
   /* ---------------- Shell: navigasi, banner ---------------- */
 
+  /* Apakah grup sidebar terbuka: pilihan manual menang; tanpa pilihan,
+   * grup yang memuat rute (dan sub-tab) aktif terbuka otomatis. */
+  function navGroupOpen(g) {
+    if (state.navOpen[g.label] === true) { return true; }
+    if (state.navOpen[g.label] === false) { return false; }
+    var opsTab = state.opsTab || 'housekeeping';
+    return (g.children || []).some(function (c) {
+      return state.route === c.route && (!c.tab || opsTab === c.tab);
+    });
+  }
+
   function renderNav() {
-    var html = NAV.map(function (n) {
+    /* Mobile (bilah bawah): tetap datar, 8 item. */
+    var flat = NAV.map(function (n) {
       var active = state.route === n.route ? ' active' : '';
       return '<a href="#/' + n.route + '" class="nav-item' + active + '" data-route="' + n.route + '">' +
         '<span class="nav-ico" aria-hidden="true">' + icon(n.icon) + '</span>' +
         '<span class="nav-label">' + n.label + '</span></a>';
     }).join('');
-    var d = $('nav-desktop');
     var m = $('nav-mobile');
-    if (d) { d.innerHTML = html; }
-    if (m) { m.innerHTML = html; }
+    if (m) { m.innerHTML = flat; }
+
+    /* Desktop (sidebar kiri): kelompok lipat agar ringkas. */
+    var d = $('nav-desktop');
+    if (!d) { return; }
+    var opsTab = state.opsTab || 'housekeeping';
+    d.innerHTML = NAV_GROUPS.map(function (g) {
+      if (!g.children) {
+        var active = state.route === g.route ? ' active' : '';
+        return '<a href="#/' + g.route + '" class="nav-item' + active + '" data-route="' + g.route + '">' +
+          '<span class="nav-ico" aria-hidden="true">' + icon(g.icon) + '</span>' +
+          '<span class="nav-label">' + g.label + '</span></a>';
+      }
+      var hasActive = g.children.some(function (c) {
+        return state.route === c.route && (!c.tab || opsTab === c.tab);
+      });
+      var open = navGroupOpen(g);
+      var items = g.children.map(function (c) {
+        var cActive = (state.route === c.route && (!c.tab || opsTab === c.tab)) ? ' active' : '';
+        var click = c.tab ? ' onclick="VTK.goOpsTab(\'' + c.tab + '\'); return false;"' : '';
+        return '<a href="#/' + c.route + '" class="nav-item nav-sub' + cActive + '" data-route="' + c.route + '"' +
+          (c.tab ? ' data-opstab="' + c.tab + '"' : '') + click + '>' +
+          '<span class="nav-ico" aria-hidden="true">' + icon(c.icon) + '</span>' +
+          '<span class="nav-label">' + c.label + '</span></a>';
+      }).join('');
+      return '<div class="nav-group' + (open ? ' open' : '') + (hasActive ? ' has-active' : '') + '">' +
+        '<button type="button" class="nav-group-head" aria-expanded="' + open + '" data-group="' + esc(g.label) + '" onclick="VTK.toggleNavGroup(\'' + g.label + '\')">' +
+        '<span class="nav-ico" aria-hidden="true">' + icon(g.icon) + '</span>' +
+        '<span class="nav-label">' + g.label + '</span>' +
+        '<span class="nav-chev" aria-hidden="true">' + icon('chevron') + '</span></button>' +
+        '<div class="nav-sublist">' + items + '</div></div>';
+    }).join('');
   }
 
   function renderBanner() {
@@ -508,6 +582,18 @@
 
   function route() {
     state.route = parseHash();
+
+    /* Navigasi ke rute di dalam grup membuka grup itu (menghapus pilihan
+     * tutup manual untuk grup tersebut) — item aktif tidak boleh
+     * tersembunyi di dalam grup yang tertutup. */
+    NAV_GROUPS.forEach(function (g) {
+      if (!g.children) { return; }
+      var opsTab = state.opsTab || 'housekeeping';
+      var contains = g.children.some(function (c) {
+        return state.route === c.route && (!c.tab || opsTab === c.tab);
+      });
+      if (contains) { delete state.navOpen[g.label]; }
+    });
     /* Hormati form yang dijadwalkan lintas-hash (mis. Leads -> Jadikan
      * reservasi, Kalender -> tambah reservasi); selain itu tutup form. */
     state.form = state.pendingForm || null;
@@ -933,7 +1019,11 @@
 
     /* Rel kanan: kalender mini -> Perlu tindakan -> outlook 30 hari. */
     html += '<aside class="dash-rail">' +
-      '<div class="card mini-cal-card"><h2>Kalender — ' + esc(d.monthLabel) + '</h2>' +
+      '<div class="card mini-cal-card"><div class="mini-cal-head">' +
+      '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan sebelumnya" onclick="VTK.miniCalNav(-1)">‹</button>' +
+      '<h2>Kalender — ' + esc(d.monthLabel) + '</h2>' +
+      '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan berikutnya" onclick="VTK.miniCalNav(1)">›</button>' +
+      '</div>' +
       miniCalHTML(state.dashMonth) +
       '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
       '</div>' +
@@ -3296,6 +3386,26 @@
       go('keuangan');
     },
     setDashMonth: function (v) { if (v) { state.dashMonth = v; renderView(); } },
+    /* Panah bulan di kalender mini dashboard: geser bulan dashboard. */
+    miniCalNav: function (dir) {
+      var parts = (state.dashMonth || L.currentMonthKey()).split('-');
+      var d = new Date(+parts[0], +parts[1] - 1 + dir, 1);
+      state.dashMonth = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+      renderView();
+    },
+    /* Buka/tutup grup di sidebar desktop. */
+    toggleNavGroup: function (label) {
+      var g = null;
+      for (var i = 0; i < NAV_GROUPS.length; i++) { if (NAV_GROUPS[i].label === label) { g = NAV_GROUPS[i]; break; } }
+      if (!g) { return; }
+      state.navOpen[label] = !navGroupOpen(g);
+      renderNav();
+    },
+    /* Dari submenu sidebar: buka halaman Operasional pada sub-tab itu. */
+    goOpsTab: function (tab) {
+      state.opsTab = tab;
+      go('operasional');
+    },
     setFilter: function (module, field, value) {
       state.filters[module][field] = value;
       renderView();

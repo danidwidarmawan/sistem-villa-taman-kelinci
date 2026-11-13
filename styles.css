@@ -727,3 +727,73 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   .cal-guest { -webkit-line-clamp: 1; }
   .kpi-value { font-size: 1.15rem; }
 }
+
+/* ================= v1.5.0 — submenu sidebar, kalender mini, poles tampilan ================= */
+
+/* --- Grup navigasi sidebar desktop --- */
+.nav-group-head {
+  display: flex; align-items: center; width: 100%;
+  font: inherit; font-weight: 600; font-size: 0.95rem; text-align: left;
+  color: var(--navy-100); background: none; border: none; border-left: 3px solid transparent;
+  border-radius: 8px; padding: 0.6rem 0.8rem; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-group-head .nav-ico { margin-right: 0.6rem; }
+.nav-group-head:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.nav-group.has-active > .nav-group-head { color: #fff; }
+.nav-chev { margin-left: auto; display: inline-flex; transition: transform 0.2s ease; opacity: 0.75; }
+.nav-chev svg { width: 16px; height: 16px; }
+.nav-group.open .nav-chev { transform: rotate(180deg); }
+.nav-sublist { display: none; flex-direction: column; gap: 0.15rem; padding: 0.15rem 0 0.35rem; }
+.nav-group.open .nav-sublist { display: flex; }
+#nav-desktop .nav-item.nav-sub {
+  font-size: 0.88rem; font-weight: 500; padding: 0.45rem 0.8rem 0.45rem 2.35rem;
+}
+#nav-desktop .nav-item.nav-sub .nav-ico svg { width: 17px; height: 17px; }
+#nav-desktop .nav-item.nav-sub .nav-ico { margin-right: 0.5rem; }
+
+/* --- Kepala kalender mini (panah bulan) --- */
+.mini-cal-head { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.6rem; }
+.mini-cal-head h2 { margin: 0; flex: 1; text-align: center; }
+.mini-cal-nav {
+  min-width: 36px; min-height: 36px; padding: 0.1rem 0.5rem;
+  font-size: 1.4rem; line-height: 1; font-weight: 400; color: var(--brand-700);
+  border-radius: 50%;
+}
+.mini-cal-nav:hover { background: var(--brand-50); }
+
+/* --- Poles tampilan --- */
+/* Sidebar: gradasi navy + scroll bila layar pendek. */
+@media (min-width: 900px) {
+  #sidebar {
+    background: linear-gradient(180deg, var(--navy-900) 0%, #0b1f33 100%);
+    overflow-y: auto;
+  }
+  #nav-desktop .nav-item { transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+  #nav-desktop .nav-item.active { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+  .brand { padding-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+}
+/* Kartu: bayangan lebih lembut + sudut sedikit lebih besar. */
+.card { border-radius: 14px; box-shadow: 0 1px 2px rgba(124, 45, 18, 0.05), 0 6px 18px rgba(124, 45, 18, 0.06); }
+/* Tombol: transisi halus + angkat sedikit saat hover; tombol utama bergradasi. */
+.btn { transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(124, 45, 18, 0.12); }
+.btn-primary { background: linear-gradient(180deg, #e8590c, #c2410c); box-shadow: 0 4px 12px rgba(194, 65, 12, 0.3); }
+.btn-primary:hover { background: linear-gradient(180deg, #f76707, #c2410c); }
+.btn-ghost:hover { box-shadow: none; transform: none; }
+/* KPI hero: angkat halus saat hover. */
+.kpi-hero { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.kpi-hero:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(124, 45, 18, 0.1); }
+/* Tabel: baris hover untuk semua baris, bukan hanya yang bisa diklik. */
+.tbl tbody tr:hover { background: var(--brand-50); }
+/* Sel kalender mini: sudut membulat + hover lebih jelas. */
+.mini-cal-cell { border-radius: 8px; transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease; }
+.mini-cal-cell:hover { transform: scale(1.08); }
+/* Input: cincin fokus tosca yang lembut. */
+.field input:focus, .field select:focus, .field textarea:focus,
+.filters input:focus, .filters select:focus {
+  outline: none; border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18);
+}
+/* Judul halaman: sedikit lebih tegas. */
+.page-head h1 { letter-spacing: -0.01em; }
