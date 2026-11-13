@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.11.0-tanggal-merah';
+  var APP_VERSION = '1.12.0-ramping-dashboard';
 
   var LS = {
     data: 'vtk_data',
@@ -941,11 +941,6 @@
   function dashboardViewHTML() {
     var d = L.computeDashboard(state.data, state.dashMonth, L.todayISO());
     var s = state.data.settings;
-    var kpi = function (label, value, sub) {
-      return '<div class="kpi card"><div class="kpi-label">' + label + '</div>' +
-        '<div class="kpi-value">' + value + '</div>' +
-        (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>';
-    };
     /* Kartu KPI hero: ikon kecil + label + angka besar. extraCls memberi
      * aksen warna per kartu ('kpi-accent-teal' dst: chip ikon bertinta
      * lembut + nilai berwarna; kartu tetap putih). */
@@ -975,13 +970,10 @@
       hero('Sisa tagihan', L.fmtRp(d.totalOutstanding), 'semua reservasi aktif', 'receipt', '', 'kpi-accent-amber') +
       '</section>';
 
-    /* 4 KPI pendukung sebagai strip ringkas (tidak ada data yang dihilangkan) */
-    html += '<section class="kpi-grid kpi-strip">' +
-      kpi('Malam terisi', L.fmtNum(d.nightsOccupied) + ' malam', 'dari ' + d.daysInMonth + ' hari') +
-      kpi('Leads masuk', L.fmtNum(d.leadsThisMonth), d.monthLabel) +
-      kpi('Uang keluar (terverifikasi)', L.fmtRp(d.moneyOut), d.monthLabel) +
-      kpi('Arus kas bersih', L.fmtRp(d.netCash), d.monthLabel) +
-      '</section>';
+    /* Strip 4 KPI pendukung DIHAPUS v1.12.0 (permintaan pemilik: hilangkan
+     * yang redundan) — "Malam terisi" = KPI Okupansi dalam bentuk lain,
+     * "Leads masuk" terangkum di tabel Kinerja sumber lead, "Uang keluar"
+     * & "Arus kas bersih" terlihat di grafik Arus kas + halaman Keuangan. */
 
     /* Arus kas — kartu besar selebar kolom utama. Grafik memakai 6 bulan
      * terakhir, berakhir di bulan yang dipilih. */
@@ -1015,10 +1007,10 @@
       actionItems.push('<li><a href="#/keuangan">' + L.fmtRp(tx.amount) + ' — ' + esc(tx.description || tx.category) +
         ' (' + L.fmtDate(tx.date) + ')</a> <span class="muted">menunggu verifikasi</span></li>');
     });
-    a.upcomingCheckins.forEach(function (r) {
-      actionItems.push('<li><a href="#/reservasi">Check-in ' + esc(r.guestName) + '</a> — ' +
-        L.fmtDate(r.checkin) + ' (' + L.fmtNum(r.pax) + ' tamu)</li>');
-    });
+    /* Check-in mendatang TIDAK lagi di sini (v1.12.0): sudah ada di kartu
+     * "Check-in berikutnya" di rel kanan — "Perlu tindakan" kini murni
+     * hal yang butuh tindakan (verifikasi, follow-up terlewat, DP
+     * terlambat, kapasitas). */
     a.overdueFollowups.forEach(function (l) {
       actionItems.push('<li><a href="#/leads">Follow-up ' + esc(l.name) + '</a> <span class="muted">terlewat sejak ' +
         L.fmtDate(l.nextFollowup) + '</span></li>');
@@ -1071,14 +1063,10 @@
         '<td data-label="Konversi">' + L.fmtPct(sp.conversion) + '</td>' +
         '<td data-label="Nilai booking">' + L.fmtRp(sp.bookingValue) + '</td></tr>';
     }).join('');
-    var srcItems = d.sourcePerf.map(function (sp) {
-      return { label: sp.source, value: sp.bookingValue };
-    }).sort(function (a, b) { return b.value - a.value; });
-    html += '<div class="card chart-card"><h2>Kinerja sumber lead — ' + esc(d.monthLabel) + '</h2>' +
-      '<h3>Nilai booking per sumber</h3>' +
+    /* Grafik batang nilai booking DIHAPUS v1.12.0: angkanya sudah ada di
+     * kolom "Nilai booking" tabel di bawah — grafik hanya menduplikasi. */
+    html += '<div class="card"><h2>Kinerja sumber lead — ' + esc(d.monthLabel) + '</h2>' +
       '<p class="hint">Berdasarkan tanggal booking.</p>' +
-      VTKCharts.hBarChart(srcItems, { color: 'multi', ariaLabel: 'Grafik batang nilai booking per sumber lead.',
-        emptyMsg: 'Belum ada data — grafik muncul setelah ada reservasi.' }) +
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Sumber</th><th>Leads</th><th>Menang</th><th>Konversi</th><th>Nilai booking</th></tr></thead>' +
       '<tbody>' + srcRows + '</tbody></table></div></div>';
 

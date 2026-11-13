@@ -311,17 +311,7 @@ a.brand-mini:hover { opacity: 0.85; }
 .kpi-hero.kpi-accent-amber .kpi-ico { background: var(--amber-chip); color: var(--amber-700); }
 .kpi-hero.kpi-accent-amber .kpi-value { color: var(--amber-600); }
 
-/* Strip KPI ringkas (4 KPI pendukung, tetap terlihat semua) */
-.kpi-strip .kpi { padding: 0.6rem 0.8rem; }
-.kpi-strip .kpi-label { font-size: 0.72rem; }
-.kpi-strip .kpi-value { font-size: 1.05rem; }
-.kpi-strip .kpi-sub { font-size: 0.78rem; }
-/* Garis aksen tipis di atas tiap kartu strip (bergilir tosca, biru, ungu,
- * amber) — sentuhan ringan yang koheren dengan kartu hero. */
-.kpi-strip .kpi:nth-child(1) { border-top: 3px solid var(--teal); }
-.kpi-strip .kpi:nth-child(2) { border-top: 3px solid var(--blue-strong); }
-.kpi-strip .kpi:nth-child(3) { border-top: 3px solid var(--violet); }
-.kpi-strip .kpi:nth-child(4) { border-top: 3px solid var(--amber-600); }
+/* Strip KPI pendukung DIHAPUS v1.12.0 (redundan dengan KPI hero + grafik). */
 
 /* Layout dashboard: kolom utama + rel kanan (desktop 2:1, HP menumpuk —
  * isi rel turun ke bawah isi kolom utama).
