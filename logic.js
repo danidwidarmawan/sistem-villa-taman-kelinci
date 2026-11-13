@@ -187,7 +187,10 @@
     return +t.weekday2026 || 0;
   }
 
-  /* Saran tarif/malam = rata-rata tarif seluruh malam, dibulatkan ke rupiah. */
+  /* Saran tarif/malam = rata-rata tarif seluruh malam, dibulatkan ke ribuan
+   * terdekat — input tarif di form memakai step 1000, jadi saran pecahan
+   * (mis. 6.833.333 untuk campuran weekend/weekday) ditolak browser dan
+   * menghambat penyimpanan. Selisih pembulatan maks Rp500/malam. */
   function suggestedRate(checkin, checkout, settings) {
     var n = nightsBetween(checkin, checkout);
     if (!n || n <= 0) { return null; }
@@ -195,7 +198,7 @@
     for (var i = 0; i < n; i++) {
       sum += nightRate(addDaysISO(checkin, i), settings);
     }
-    return Math.round(sum / n);
+    return Math.round(sum / n / 1000) * 1000;
   }
 
   function nightsBetween(checkin, checkout) {
