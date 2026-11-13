@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.5.2-lompat-legenda';
+  var APP_VERSION = '1.5.3-kpi-lebar';
 
   var LS = {
     data: 'vtk_data',
