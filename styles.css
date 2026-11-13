@@ -899,7 +899,14 @@ input[type="password"], select, textarea {
   body.nav-collapsed .profile { justify-content: center; padding: 0.5rem; }
 }
 
-/* ================= v1.8.0 — desain terbaik: tipografi + poles menyeluruh ================= */
+/* ================= v1.8.1 — sembunyikan "Tersinkron" di kanan atas ================= */
+/* Pill status di header disembunyikan HANYA saat statusnya Tersinkron
+ * (semua sudah tersimpan, tidak ada yang perlu dilihat). Status lain —
+ * Belum tersinkron, Gagal sinkron, Konflik, Offline, Mode Demo,
+ * Menyinkronkan — tetap tampil karena perlu perhatian. Pill di kaki
+ * sidebar selalu menampilkan status apa pun keadaannya. */
+#sync-pill.ok { display: none; }
+
 /* Font Plus Jakarta Sans dimuat dari Google Fonts (index.html); bila
  * gagal dimuat, fallback ke system-ui — aplikasi tetap berfungsi penuh. */
 ::selection { background: #fed7aa; color: #7c2d12; }
