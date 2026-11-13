@@ -1166,6 +1166,9 @@
     };
     state.rateTouched = !!r; /* saat edit, saran tidak menimpa tarif tersimpan */
     state.extraCostTouched = !!r; /* saat edit, isi otomatis tidak menimpa biaya tersimpan */
+    /* Form dirender ulang (DOM baru) — kunci konfirmasi bentrok direset agar
+     * checkbox konfirmasi dirender lagi saat bentrok muncul. */
+    state._overlapConfirmKey = state._turnoverConfirmKey = null;
     var title = isNew ? 'Reservasi baru' : 'Ubah reservasi ' + esc(r.id);
     var existingCalc = r ? L.reservationCalc(r, state.data.transactions, state.data.settings) : null;
     var existingBd = r ? L.extraCostBreakdown(r, state.data.settings) : null;
@@ -1365,17 +1368,31 @@
         'menginap ' + peakWarn.nights + ' malam, minimum ' + peakWarn.minNights + ' malam untuk periode peak ini.</div>');
     }
     if (warnEl) { warnEl.innerHTML = warnings.join(''); }
+    /* Checkbox konfirmasi hanya dirender ulang bila bentroknya BERUBAH.
+     * Alasan: form memakai oninput="resFormRecalc()" dan checkbox juga
+     * memicu event input — tanpa penjaga ini, mengklik checkbox akan
+     * membangun ulang container-nya dan centang langsung hilang (checkbox
+     * jadi tidak pernah bisa dicentang). Bila bentrok berubah ke reservasi
+     * lain, kunci berubah sehingga checkbox dirender ulang tanpa centang. */
     if (overlapEl) {
-      overlapEl.innerHTML = overlap
-        ? '<label class="field checkbox"><input type="checkbox" id="rf-overlap-ok" /> ' +
-          '<span>Saya yakin, simpan meski bentrok dengan ' + esc(overlap.id) + '</span></label>'
-        : '';
+      var okKey = overlap ? overlap.id : '';
+      if (state._overlapConfirmKey !== okKey) {
+        state._overlapConfirmKey = okKey;
+        overlapEl.innerHTML = overlap
+          ? '<label class="field checkbox"><input type="checkbox" id="rf-overlap-ok" /> ' +
+            '<span>Saya yakin, simpan meski bentrok dengan ' + esc(overlap.id) + '</span></label>'
+          : '';
+      }
     }
     if (turnoverEl) {
-      turnoverEl.innerHTML = tc.hard
-        ? '<label class="field checkbox"><input type="checkbox" id="rf-turnover-ok" /> ' +
-          '<span>Saya yakin, simpan meski bentrok turnover dengan ' + esc(tc.hard.reservation.id) + '</span></label>'
-        : '';
+      var tcKey = tc.hard ? tc.hard.reservation.id : '';
+      if (state._turnoverConfirmKey !== tcKey) {
+        state._turnoverConfirmKey = tcKey;
+        turnoverEl.innerHTML = tc.hard
+          ? '<label class="field checkbox"><input type="checkbox" id="rf-turnover-ok" /> ' +
+            '<span>Saya yakin, simpan meski bentrok turnover dengan ' + esc(tc.hard.reservation.id) + '</span></label>'
+          : '';
+      }
     }
 
     /* Ringkasan hitung */
