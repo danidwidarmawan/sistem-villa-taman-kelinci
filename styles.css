@@ -291,7 +291,12 @@ input, select, textarea { color: var(--ink); }
   background: var(--brand-50); color: var(--brand-700);
 }
 .kpi-hero .kpi-ico svg { width: 20px; height: 20px; display: block; }
-.kpi-hero .kpi-value { padding-right: 2.6rem; word-break: break-word; }
+/* Nominal JANGAN memakai word-break: break-word — angka seperti
+ * "Rp 15.000.000" akan pecah di tengah digit ("Rp / 15.000.00 / 0", temuan
+ * verifikasi live 13 Nov 2026). Tanpa word-break, pemisah hanya terjadi di
+ * spasi ("Rp" / "15.000.000") sehingga angka selalu utuh; di lebar desktop
+ * normal, kartu 2×2 cukup lebar sehingga nominal muat satu baris. */
+.kpi-hero .kpi-value { padding-right: 2.6rem; }
 /* Aksen per kartu KPI hero (masing-masing warna sendiri, bukan semua
  * oranye): chip ikon bertinta lembut + nilai berwarna. Kartu tetap putih.
  * Warna teks dipilih agar kontrasnya cukup di atas kertas/tinta lembut. */
@@ -681,6 +686,12 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   #view { padding: 1.5rem; }
   .kpi-grid { grid-template-columns: repeat(4, 1fr); }
   .kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  /* KPI hero di kolom utama dashboard yang lebih sempit: 2×2, bukan 4
+   * sejajar — 4 sejajar membuat kartu ~150px sehingga nominal seperti
+   * "Rp 15.000.000" tidak muat dan label "BOOKING CHECK-IN" terlipat
+   * (temuan verifikasi live 13 Nov 2026). Strip pendukung tetap 4 sejajar
+   * (nilainya lebih kecil dan muat). */
+  .dash-main .kpi-hero-grid { grid-template-columns: repeat(2, 1fr); }
   .dash-layout { grid-template-columns: 2fr 1fr; gap: 1rem; }
   /* Dua kolom di dalam rel yang sempit ditumpuk saja (mis. isi kartu outlook). */
   .dash-rail .two-col { grid-template-columns: 1fr; }
@@ -688,6 +699,12 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   .two-col .card { margin-bottom: 1rem; }
   .cal-cell { min-height: 92px; padding: 0.5rem; }
   .toast { bottom: 1.5rem; }
+}
+
+/* Jendela desktop sempit (900–1150px): kartu hero 2×2 menyempit, jadi nilai
+ * diperkecil sedikit agar nominal seperti "Rp 15.000.000" tetap satu baris. */
+@media (min-width: 900px) and (max-width: 1150px) {
+  .kpi-hero .kpi-value { font-size: 1.15rem; }
 }
 
 /* Tabel jadi kartu di layar sangat kecil */
