@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.3.1-impor-gcal';
+  var APP_VERSION = '1.3.2-total-tambahan';
 
   var LS = {
     data: 'vtk_data',
@@ -1304,7 +1304,8 @@
         bdParts.push('VIP ' + L.fmtNum(v.vipRooms) + ' kamar × ' + bd.nights + ' malam × ' + L.fmtRp(+t.vipWithVilla || 0) + ' = ' + L.fmtRp(bd.vipCost));
       }
       extraHintEl.textContent = bdParts.length
-        ? bdParts.join(' + ') + ' — diisi otomatis di bawah ini; bisa diubah bila ada biaya tambahan lain.' +
+        ? bdParts.join(' + ') + '. Total biaya tambahan: ' + L.fmtRp(bd.total) +
+          ' — diisi otomatis di bawah ini; bisa diubah bila ada biaya tambahan lain.' +
           (bd.extraBedCost > 0 ? ' Porsi extra bed dicatat terpisah sebagai Pendapatan Extra Bed (' + accountLabel('katering') + ').' : '')
         : 'Tidak ada extra bed / kamar VIP. Isi bila ada biaya tambahan lain.';
     }
