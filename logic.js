@@ -26,7 +26,7 @@
   var LOST_REASONS = ['Tanggal tidak tersedia', 'Harga', 'Kapasitas', 'Tidak merespons', 'Butuh early check-in tidak tersedia', 'Bentrok komitmen early check-in', 'Lainnya'];
   var RES_STATUSES = ['Permintaan', 'Menunggu DP', 'Terkonfirmasi', 'Check-in', 'Selesai', 'Dibatalkan'];
   var TX_TYPES = ['Masuk', 'Keluar'];
-  var TX_CATEGORIES = ['Pembayaran Tamu', 'Pembayaran Extra Bed', 'Pendapatan Katering', 'Refund Tamu', 'Biaya Katering', 'Operasional', 'Housekeeping', 'Maintenance', 'Utilitas', 'Gaji / Jasa', 'Pemasaran', 'Perlengkapan', 'Lainnya'];
+  var TX_CATEGORIES = ['Pembayaran Tamu', 'Pembayaran Extra Bed', 'Pendapatan Katering', 'Refund Tamu', 'Honor Juru Masak', 'Belanja Bahan Katering', 'Operasional', 'Housekeeping', 'Maintenance', 'Utilitas', 'Gaji / Jasa', 'Pemasaran', 'Perlengkapan', 'Lainnya'];
   var TX_METHODS = ['Transfer Bank', 'Tunai', 'QRIS', 'E-wallet', 'Lainnya'];
   var TX_VERIFY = ['Belum Dicek', 'Terverifikasi', 'Ditolak'];
 
@@ -35,8 +35,10 @@
    * bisa diedit di settings.accountLabels. */
   var ACCOUNT_KEYS = ['villa', 'katering'];
   var DEFAULT_ACCOUNT_LABELS = { villa: 'Rekening Villa', katering: 'Rekening Katering & Extra Bed' };
-  /* Kategori yang rekeningnya otomatis 'katering'. */
-  var CATERING_ACCOUNT_CATEGORIES = ['Pendapatan Katering', 'Pembayaran Extra Bed', 'Biaya Katering'];
+  /* Kategori yang rekeningnya otomatis 'katering'. Honor juru masak TIDAK
+   * di sini: keputusan pemilik (2026-11-13) honor Irma/Nyai dibayar dari
+   * Rekening Villa, sedangkan belanja bahan dari Rekening Katering. */
+  var CATERING_ACCOUNT_CATEGORIES = ['Pendapatan Katering', 'Pembayaran Extra Bed', 'Belanja Bahan Katering'];
 
   var CATERING_MEALS = ['1x', '2x', 'Full'];
   var MNT_STATUSES = ['Dilaporkan', 'Dikerjakan', 'Selesai'];
@@ -264,6 +266,33 @@
     };
   }
 
+  /* Rincian biaya tambahan reservasi: { extraBedCost, vipCost, total, nights }.
+   *
+   * KEPUTUSAN PEMILIK (2026-11-13, mengunci rumus): extra bed Rp50.000 per bed
+   * PER MENGINAP — sekali bayar, BUKAN per malam. Jadi extraBedCost TIDAK
+   * dikalikan jumlah malam. Kamar VIP tetap PER MALAM (tarif vipWithVilla,
+   * 850rb/malam bila sewa villa — aturan lama).
+   *
+   * `res` bisa objek reservasi tersimpan atau nilai form (checkin/checkout/
+   * vipRooms/extraBeds). Komponen yang sudah tersimpan di reservasi
+   * (extraBedCost/vipCost) diutamakan bila ada; bila tidak ada (reservasi lama
+   * atau nilai form), dihitung dari jumlah — fallback untuk data lama.
+   * Komponen ini TIDAK mengubah total reservasi (total tetap memakai
+   * extraCost); dipakai untuk tampilan dan pemisahan rekening extra bed. */
+  function extraCostBreakdown(res, settings) {
+    var r = res || {};
+    var nights = nightsBetween(r.checkin, r.checkout);
+    if (typeof r.extraBedCost === 'number' && typeof r.vipCost === 'number') {
+      return { extraBedCost: r.extraBedCost, vipCost: r.vipCost, total: r.extraBedCost + r.vipCost, nights: nights };
+    }
+    var t = (settings && settings.tariffs) || {};
+    var beds = Math.max(0, parseInt(r.extraBeds, 10) || 0);
+    var vip = Math.max(0, parseInt(r.vipRooms, 10) || 0);
+    var extraBedCost = beds * (+t.extraBed || 0); /* per menginap — tanpa × malam */
+    var vipCost = vip * (+t.vipWithVilla || 0) * nights; /* VIP per malam */
+    return { extraBedCost: extraBedCost, vipCost: vipCost, total: extraBedCost + vipCost, nights: nights };
+  }
+
   /* Reservasi aktif pertama yang rentangnya tumpang tindih, atau null. */
   function findOverlap(reservations, checkin, checkout, excludeId) {
     if (!isISODate(checkin) || !isISODate(checkout) || checkout <= checkin) { return null; }
@@ -483,9 +512,14 @@
     var fixed = fixedMonthlyCost(data.operationalCosts);
     var be = breakevenNights(fixed.total, data.settings);
 
-    /* Target bulanan vs realisasi (uang masuk terverifikasi bulan terpilih). */
+    /* Target bulanan vs realisasi (uang masuk terverifikasi bulan terpilih,
+     * dan okupansi bulan terpilih vs settings.targetOccupancyPct). */
+    var occupancyPct = dim ? (nightsOccupied / dim) * 100 : 0;
     var mt = monthlyTarget(data.settings, data.operationalCosts);
     var tp = targetProgress(moneyIn, mt.target);
+    var occTargetPct = (data.settings && typeof data.settings.targetOccupancyPct === 'number' && data.settings.targetOccupancyPct > 0)
+      ? +data.settings.targetOccupancyPct : null;
+    var occProg = targetProgress(occupancyPct, occTargetPct || 0);
     var target = {
       target: mt.target,
       isDefault: mt.isDefault,
@@ -493,7 +527,15 @@
       pct: tp.pct,
       diff: tp.diff,
       reached: tp.reached,
-      hasTarget: tp.hasTarget
+      hasTarget: tp.hasTarget,
+      occ: {
+        target: occTargetPct,
+        actual: occupancyPct,
+        pct: occProg.pct,
+        diff: occProg.diff,
+        reached: occProg.reached,
+        hasTarget: occProg.hasTarget
+      }
     };
 
     return {
@@ -502,7 +544,7 @@
       daysInMonth: dim,
       bookingsCheckin: bookingsCheckin,
       nightsOccupied: nightsOccupied,
-      occupancyPct: dim ? (nightsOccupied / dim) * 100 : 0,
+      occupancyPct: occupancyPct,
       leadsThisMonth: leadsThisMonth,
       moneyIn: moneyIn,
       moneyOut: moneyOut,
@@ -900,6 +942,7 @@
     deadlineDays: deadlineDays,
     paidForBooking: paidForBooking,
     reservationCalc: reservationCalc,
+    extraCostBreakdown: extraCostBreakdown,
     findOverlap: findOverlap,
     capacityLevel: capacityLevel,
     nextId: nextId,

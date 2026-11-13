@@ -95,6 +95,8 @@
     pendingForm: null,
     /* tarif reservasi sudah diubah manual (agar saran tidak menimpa) */
     rateTouched: false,
+    /* biaya tambahan reservasi sudah diubah manual (agar isi otomatis tidak menimpa) */
+    extraCostTouched: false,
     conn: loadConn()
   };
 
@@ -954,28 +956,42 @@
       '</div>';
   }
 
-  /* Kartu "Target bulan ini" — target vs uang masuk terverifikasi bulan terpilih. */
+  /* Kartu "Target bulan ini" — target vs uang masuk terverifikasi bulan terpilih,
+   * plus target okupansi bila diisi (settings.targetOccupancyPct). */
   function targetCardHTML(d) {
     var t = d.target;
-    if (!t.hasTarget) {
+    var occ = t.occ || { hasTarget: false };
+    if (!t.hasTarget && !occ.hasTarget) {
       return '<div class="card"><h2>Target bulan ini</h2>' +
         '<p class="empty">Belum ada target. Isi target bulanan di Pengaturan (atau lengkapi ' +
         'biaya tetap agar target default = titik impas bisa dihitung).</p>' +
         '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'pengaturan\')">Atur target</button></div></div>';
     }
-    var pct = Math.min(100, Math.max(0, t.pct));
-    var diffText = t.reached
-      ? 'Melebihi target <strong>' + L.fmtRp(t.diff) + '</strong>'
-      : 'Kurang <strong>' + L.fmtRp(Math.abs(t.diff)) + '</strong> lagi';
-    return '<div class="card"><h2>Target bulan ini</h2>' +
-      '<p>Realisasi <strong>' + L.fmtRp(t.actual) + '</strong> dari target <strong>' + L.fmtRp(t.target) + '</strong> ' +
-      '(' + L.fmtPct(t.pct) + ')</p>' +
-      '<div class="progress" role="progressbar" aria-valuenow="' + Math.round(t.pct) + '" aria-valuemin="0" aria-valuemax="100" aria-label="Progres target bulanan">' +
-      '<div class="progress-fill' + (t.reached ? ' reached' : '') + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
-      '<p class="hint">' + diffText + ' • ' + esc(d.monthLabel) + ' (uang masuk terverifikasi).' +
-      (t.isDefault ? ' Target default = total biaya tetap; ubah di Pengaturan.' : '') + '</p>' +
-      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'pengaturan\')">Ubah target</button></div>' +
+    var html = '<div class="card"><h2>Target bulan ini</h2>';
+    if (t.hasTarget) {
+      var pct = Math.min(100, Math.max(0, t.pct));
+      var diffText = t.reached
+        ? 'Melebihi target <strong>' + L.fmtRp(t.diff) + '</strong>'
+        : 'Kurang <strong>' + L.fmtRp(Math.abs(t.diff)) + '</strong> lagi';
+      html += '<p>Realisasi <strong>' + L.fmtRp(t.actual) + '</strong> dari target <strong>' + L.fmtRp(t.target) + '</strong> ' +
+        '(' + L.fmtPct(t.pct) + ')</p>' +
+        '<div class="progress" role="progressbar" aria-valuenow="' + Math.round(t.pct) + '" aria-valuemin="0" aria-valuemax="100" aria-label="Progres target bulanan">' +
+        '<div class="progress-fill' + (t.reached ? ' reached' : '') + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+        '<p class="hint">' + diffText + ' • ' + esc(d.monthLabel) + ' (uang masuk terverifikasi).' +
+        (t.isDefault ? ' Target default = total biaya tetap; ubah di Pengaturan.' : '') + '</p>';
+    }
+    if (occ.hasTarget) {
+      var opct = Math.min(100, Math.max(0, occ.pct));
+      html += '<p>Okupansi <strong>' + L.fmtPct(occ.actual) + '</strong> dari target <strong>' + L.fmtPct(occ.target) + '</strong> ' +
+        '(' + L.fmtPct(occ.pct) + ')</p>' +
+        '<div class="progress" role="progressbar" aria-valuenow="' + Math.round(occ.pct) + '" aria-valuemin="0" aria-valuemax="100" aria-label="Progres target okupansi">' +
+        '<div class="progress-fill' + (occ.reached ? ' reached' : '') + '" style="width:' + opct.toFixed(1) + '%"></div></div>' +
+        '<p class="hint">' + (occ.reached ? 'Target okupansi tercapai.' : 'Kurang ' + L.fmtPct(occ.target - occ.actual) + ' lagi.') +
+        ' • ' + esc(d.monthLabel) + ' (' + L.fmtNum(d.nightsOccupied) + ' dari ' + L.fmtNum(d.daysInMonth) + ' malam).</p>';
+    }
+    html += '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'pengaturan\')">Ubah target</button></div>' +
       '</div>';
+    return html;
   }
 
   /* Kartu "30 hari ke depan" — malam terisi/kosong, weekend belum terisi,
@@ -1049,6 +1065,7 @@
     });
     var rows = list.map(function (r) {
       var c = L.reservationCalc(r, state.data.transactions, state.data.settings);
+      var bd = L.extraCostBreakdown(r, state.data.settings);
       return '<tr class="clickable" onclick="VTK.openResForm(\'' + esc(r.id) + '\')">' +
         '<td data-label="Booking ID">' + esc(r.id) + '</td>' +
         '<td data-label="Tamu">' + esc(r.guestName) + '</td>' +
@@ -1056,7 +1073,8 @@
         '<td data-label="Check-out">' + L.fmtDate(r.checkout) + '</td>' +
         '<td data-label="Malam">' + c.nights + '</td>' +
         '<td data-label="Tamu (pax)">' + L.fmtNum(r.pax) + '</td>' +
-        '<td data-label="Total">' + L.fmtRp(c.total) + '</td>' +
+        '<td data-label="Total">' + L.fmtRp(c.total) +
+        (bd.extraBedCost > 0 ? '<br /><span class="muted">extra bed ' + L.fmtRp(bd.extraBedCost) + '</span>' : '') + '</td>' +
         '<td data-label="Terbayar">' + L.fmtRp(c.paid) + '</td>' +
         '<td data-label="Sisa">' + L.fmtRp(c.remaining) + '</td>' +
         '<td data-label="Status Bayar">' + payBadge(c.payStatus) + '</td>' +
@@ -1107,8 +1125,10 @@
       h1EmptyVerified: 'Belum', promoHelped: 'Tidak Ditanya', promoDirectCost: 0
     };
     state.rateTouched = !!r; /* saat edit, saran tidak menimpa tarif tersimpan */
+    state.extraCostTouched = !!r; /* saat edit, isi otomatis tidak menimpa biaya tersimpan */
     var title = isNew ? 'Reservasi baru' : 'Ubah reservasi ' + esc(r.id);
     var existingCalc = r ? L.reservationCalc(r, state.data.transactions, state.data.settings) : null;
+    var existingBd = r ? L.extraCostBreakdown(r, state.data.settings) : null;
 
     return '<section class="page-head"><h1>' + title + '</h1>' +
       '<button type="button" class="btn" onclick="VTK.closeForm()">← Kembali ke daftar</button></section>' +
@@ -1135,7 +1155,9 @@
       '<label class="field"><span>Tarif / malam (Rp) *</span>' +
       '<input type="number" name="ratePerNight" id="rf-rate" min="0" step="1000" value="' + esc(v.ratePerNight) + '" required oninput="VTK.markRateTouched()" />' +
       '<span class="hint" id="rf-rate-hint"></span></label>' +
-      '<label class="field"><span>Biaya tambahan (Rp)</span><input type="number" name="extraCost" min="0" step="1000" value="' + esc(v.extraCost) + '" /></label>' +
+      '<label class="field"><span>Biaya tambahan (Rp)</span>' +
+      '<input type="number" name="extraCost" id="rf-extra-cost" min="0" step="1000" value="' + esc(v.extraCost) + '" oninput="VTK.markExtraCostTouched()" />' +
+      '<span class="hint" id="rf-extra-hint"></span></label>' +
       '<label class="field"><span>Diskon (Rp)</span><input type="number" name="discount" min="0" step="1000" value="' + esc(v.discount) + '" /></label>' +
       '</div>' +
       '<div class="calc-box" id="res-calc"></div>' +
@@ -1162,7 +1184,9 @@
       '</div>' +
       (existingCalc ? '<p class="hint">Terbayar saat ini (dari transaksi terverifikasi): <strong>' + L.fmtRp(existingCalc.paid) +
         '</strong> — sisa ' + L.fmtRp(existingCalc.remaining) + ' (' + esc(existingCalc.payStatus) + '). ' +
-        'Untuk mencatat pembayaran, tambah transaksi di modul Keuangan dengan Booking ID ini.</p>' : '') +
+        'Untuk mencatat pembayaran, tambah transaksi di modul Keuangan dengan Booking ID ini.' +
+        (existingBd && existingBd.extraBedCost > 0 ? ' Porsi extra bed <strong>' + L.fmtRp(existingBd.extraBedCost) +
+          '</strong> dibayar ke ' + esc(accountLabel('katering')) + ' — catat sebagai transaksi "Pendapatan Extra Bed" terpisah.' : '') + '</p>' : '') +
       '<div id="res-overlap-confirm"></div>' +
       saveStatusHTML() +
       '<div class="form-actions">' +
@@ -1231,6 +1255,30 @@
       }
     }
 
+    /* Rincian biaya tambahan: extra bed (PER MENGINAP, bukan per malam) +
+     * kamar VIP (per malam). Isi otomatis hanya untuk reservasi baru &
+     * biaya belum disentuh manual — seperti pola rateTouched. */
+    var bd = L.extraCostBreakdown(v, s);
+    var extraHintEl = $('rf-extra-hint');
+    if (extraHintEl) {
+      var bdParts = [];
+      var t = s.tariffs || {};
+      if (bd.extraBedCost > 0) {
+        bdParts.push('Extra bed ' + L.fmtNum(v.extraBeds) + ' × ' + L.fmtRp(+t.extraBed || 0) + ' = ' + L.fmtRp(bd.extraBedCost) + ' (per menginap)');
+      }
+      if (bd.vipCost > 0) {
+        bdParts.push('VIP ' + L.fmtNum(v.vipRooms) + ' kamar × ' + bd.nights + ' malam × ' + L.fmtRp(+t.vipWithVilla || 0) + ' = ' + L.fmtRp(bd.vipCost));
+      }
+      extraHintEl.textContent = bdParts.length
+        ? bdParts.join(' + ') + ' — diisi otomatis di bawah ini; bisa diubah bila ada biaya tambahan lain.' +
+          (bd.extraBedCost > 0 ? ' Porsi extra bed dicatat terpisah sebagai Pendapatan Extra Bed (' + accountLabel('katering') + ').' : '')
+        : 'Tidak ada extra bed / kamar VIP. Isi bila ada biaya tambahan lain.';
+    }
+    if (!v.id && !state.extraCostTouched && bd.total > 0) {
+      var extraInput = $('rf-extra-cost');
+      if (extraInput) { extraInput.value = bd.total; v.extraCost = bd.total; }
+    }
+
     /* Peringatan */
     var warnings = [];
     if (v.checkin && v.checkout && v.checkout <= v.checkin) {
@@ -1271,6 +1319,8 @@
         '<div><span>Total booking</span><strong>' + L.fmtRp(c.total) + '</strong></div>' +
         '<div><span>DP 50%</span><strong>' + L.fmtRp(c.dpAmount) + '</strong></div>' +
         '<div><span>Jatuh tempo pelunasan (H-3)</span><strong>' + L.fmtDate(c.dueDate) + '</strong></div>' +
+        (bd.extraBedCost > 0 ? '<div><span>Extra bed (per menginap)</span><strong>' + L.fmtRp(bd.extraBedCost) + '</strong></div>' : '') +
+        (bd.vipCost > 0 ? '<div><span>Kamar VIP</span><strong>' + L.fmtRp(bd.vipCost) + '</strong></div>' : '') +
         (v.id ? '<div><span>Terbayar</span><strong>' + L.fmtRp(paidNow) + '</strong></div>' +
           '<div><span>Sisa tagihan</span><strong>' + L.fmtRp(remainingNow) + '</strong></div>' : '');
     }
@@ -1294,6 +1344,13 @@
       }
     }
     if (errors.length) { setSaveStatus(errors.join(' '), 'error'); return false; }
+
+    /* Simpan komponen biaya tambahan (extra bed per menginap + VIP per malam)
+     * agar porsi extra bed bisa dipisahkan ke rekening katering. Total tetap
+     * memakai extraCost (rumus total tidak berubah). */
+    var bdSave = L.extraCostBreakdown(v, state.data.settings);
+    v.extraBedCost = bdSave.extraBedCost;
+    v.vipCost = bdSave.vipCost;
 
     setSaveStatus('Menyimpan…', '');
     var isNew = !v.id;
@@ -1393,11 +1450,13 @@
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Rekening</th><th>Masuk</th><th>Keluar</th><th>Bersih</th></tr></thead>' +
       '<tbody>' + acctSubRows + '</tbody></table></div></section>';
 
-    /* Grafik per kategori (bulan yang difilter; hanya transaksi Terverifikasi) */
+    /* Grafik per kategori (mengikuti SEMUA filter yang aktif, termasuk rekening;
+     * hanya transaksi Terverifikasi — categoryTotals menyaringnya sendiri). */
     var catMonth = f.month || null;
     var catLabel = catMonth ? L.monthLabel(catMonth) : 'Semua bulan';
-    var inCats = L.categoryTotals(state.data.transactions, catMonth, 'Masuk');
-    var outCats = L.categoryTotals(state.data.transactions, catMonth, 'Keluar');
+    if (f.account) { catLabel += ' • ' + accountLabel(f.account); }
+    var inCats = L.categoryTotals(list, catMonth, 'Masuk');
+    var outCats = L.categoryTotals(list, catMonth, 'Keluar');
     var catCharts = '<section class="two-col">' +
       '<div class="card chart-card"><h2>Pemasukan per kategori</h2>' +
       '<p class="hint">' + esc(catLabel) + ' — hanya transaksi Terverifikasi.</p>' +
@@ -2325,9 +2384,10 @@
     var labor = L.cateringLaborEstimate(state.data.operationalCosts);
     var parts = labor.items.map(function (it) { return esc(it.name) + ' ' + L.fmtRp(it.amount); }).join(' + ');
     return '<p class="hint">Perkiraan honor juru masak per event: <strong>' + L.fmtRp(labor.total) + '</strong>' +
-      (parts ? ' (' + parts + ')' : '') + '. Ini info biaya saja — bukan transaksi otomatis. ' +
-      'Catat pembayaran katering di Keuangan (kategori Pendapatan Katering) dan honor juru masak ' +
-      'sebagai pengeluaran (kategori Biaya Katering).</p>';
+      (parts ? ' (' + parts + ')' : '') + ', dibayar dari ' + esc(accountLabel('villa')) + '. Ini info biaya saja — bukan transaksi otomatis. ' +
+      'Catat pembayaran katering di Keuangan (kategori Pendapatan Katering), honor juru masak ' +
+      'sebagai pengeluaran (kategori Honor Juru Masak, ' + esc(accountLabel('villa')) + '), dan belanja bahan ' +
+      'sebagai pengeluaran (kategori Belanja Bahan Katering, ' + esc(accountLabel('katering')) + ').</p>';
   }
 
   function ckListHTML() {
@@ -2573,6 +2633,10 @@
       '<div class="form-row">' +
       '<label class="field"><span>Target pemasukan bulanan (Rp)</span><input type="number" name="monthlyTarget" min="0" step="100000" value="' + esc(s.monthlyTarget || '') + '" />' +
       '<span class="hint">Kosongkan untuk memakai total biaya tetap (' + L.fmtRp(fixedTotal) + '/bulan) sebagai target = titik impas.</span></label>' +
+      '<label class="field"><span>Target okupansi bulanan (%)</span><input type="number" name="targetOccupancyPct" min="0" max="100" step="1" value="' + esc(s.targetOccupancyPct || '') + '" />' +
+      '<span class="hint">Mis. 33 = 10 malam dari 30 hari. Kosongkan bila tidak memakai target okupansi.</span></label>' +
+      '</div>' +
+      '<div class="form-row">' +
       '<label class="field"><span>Label rekening villa</span><input type="text" name="accountLabelVilla" value="' + esc(labels.villa) + '" /></label>' +
       '<label class="field"><span>Label rekening katering &amp; extra bed</span><input type="text" name="accountLabelKatering" value="' + esc(labels.katering) + '" /></label>' +
       '</div>' +
@@ -2677,6 +2741,9 @@
     var mtRaw = (fd.get('monthlyTarget') || '').trim();
     var mtNum = parseFloat(mtRaw);
     s.monthlyTarget = (mtRaw === '' || isNaN(mtNum) || mtNum <= 0) ? null : mtNum;
+    var occRaw = (fd.get('targetOccupancyPct') || '').trim();
+    var occNum = parseFloat(occRaw);
+    s.targetOccupancyPct = (occRaw === '' || isNaN(occNum) || occNum <= 0) ? null : Math.min(100, occNum);
     var labV = (fd.get('accountLabelVilla') || '').trim();
     var labK = (fd.get('accountLabelKatering') || '').trim();
     s.accountLabels = {
@@ -3029,6 +3096,7 @@
     leadFormToggleLostReason: leadFormToggleLostReason,
     resFormRecalc: resFormRecalc,
     markRateTouched: function () { state.rateTouched = true; },
+    markExtraCostTouched: function () { state.extraCostTouched = true; },
     applySuggestedRate: function (v) {
       var input = $('rf-rate');
       if (input) { input.value = v; }

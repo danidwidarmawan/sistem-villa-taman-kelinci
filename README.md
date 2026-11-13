@@ -52,7 +52,12 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
 - **Reservasi:** tambah/ubah/hapus, hitung otomatis (malam, total, terbayar
   dari transaksi terverifikasi, sisa, status bayar), saran tarif
   peak/weekend/weekday, peringatan bentrok tanggal & kapasitas, info DP 50%
-  dan jatuh tempo H-3.
+  dan jatuh tempo H-3. Biaya tambahan dirinci otomatis: extra bed
+  Rp50.000/bed **per menginap** (sekali bayar, bukan per malam — keputusan
+  pemilik 2026-11-13) + kamar VIP Rp850.000/kamar/malam; nilai ini diisi
+  otomatis ke kolom biaya tambahan saat reservasi baru dibuat, tetap bisa
+  diubah manual. Porsi extra bed tampil di daftar & form agar mudah dicatat
+  sebagai transaksi "Pendapatan Extra Bed" terpisah (Rekening Katering).
 - **Keuangan:** transaksi masuk/keluar, kategori, status verifikasi,
   ringkasan per bulan, grafik pemasukan & pengeluaran per kategori,
   ekspor CSV.
@@ -71,12 +76,16 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
   Rekening Villa. Setiap transaksi ditandai rekeningnya (terisi otomatis
   dari kategori, bisa diubah); Dashboard menampilkan saldo per rekening,
   Keuangan punya filter + subtotal per rekening, label rekening bisa
-  diubah di Pengaturan.
+  diubah di Pengaturan. Biaya katering dipisah dua kategori: **Honor Juru
+  Masak** (Irma/Nyai, dari Rekening Villa) dan **Belanja Bahan Katering**
+  (dari Rekening Katering & Extra Bed).
 - **Pandangan 30 hari ke depan (Dashboard):** malam terisi vs kosong,
   daftar weekend yang belum terisi, dan booking yang sudah masuk.
 - **Target bulanan vs realisasi (Dashboard + Pengaturan):** target
-  pemasukan bulanan (default = total biaya tetap = titik impas) dengan
-  progress bar dan selisih.
+  pemasukan bulanan (default Rp60.000.000) dan target okupansi (default
+  33% ≈ 10 malam/bulan), masing-masing dengan progress bar dan selisih.
+  Kosongkan target pemasukan untuk memakai total biaya tetap (= titik
+  impas) sebagai pembanding.
 - **Operasional:** Housekeeping (tugas "Siapkan villa" H-1 & "Bersihkan
   villa" saat check-out dibuat otomatis dari reservasi + tugas manual),
   Perawatan (log + tombol "Catat sebagai pengeluaran"), Inventaris,

@@ -7,8 +7,8 @@
   "settings": {
     "propertyName": "Villa Taman Kelinci",
     "unitsForRent": 1,
-    "targetOccupancyPct": null,
-    "monthlyTarget": null,
+    "targetOccupancyPct": 33,
+    "monthlyTarget": 60000000,
     "accountLabels": {
       "villa": "Rekening Villa",
       "katering": "Rekening Katering & Extra Bed"
