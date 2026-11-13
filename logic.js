@@ -30,6 +30,68 @@
   var TX_METHODS = ['Transfer Bank', 'Tunai', 'QRIS', 'E-wallet', 'Lainnya'];
   var TX_VERIFY = ['Belum Dicek', 'Terverifikasi', 'Ditolak'];
 
+  /* Kalender nasional Indonesia (v1.11.0): hari libur nasional + cuti
+   * bersama 2026 & 2027 dari SKB 3 Menteri — 2026: SKB Menag 1497/2025,
+   * Menaker 2/2025, MenPANRB 5/2025 (17 libur + 8 cuti); 2027: SKB
+   * Menag 1205/2026, Menaker 3/2026, MenPANRB 2/2026 (18 libur + 8
+   * cuti, diteken 15 Sep 2026). Hari raya Islam mengikuti SKB; tanggal
+   * pastinya bisa bergeser ±1 hari mengikuti sidang isbat. Tahun
+   * berikutnya ditambahkan saat SKB-nya terbit. */
+  var HOLIDAYS = {
+    '2026-01-01': { name: 'Tahun Baru Masehi', type: 'nasional' },
+    '2026-01-16': { name: 'Isra Mikraj', type: 'nasional' },
+    '2026-02-16': { name: 'Tahun Baru Imlek', type: 'cuti' },
+    '2026-02-17': { name: 'Tahun Baru Imlek', type: 'nasional' },
+    '2026-03-18': { name: 'Hari Suci Nyepi', type: 'cuti' },
+    '2026-03-19': { name: 'Hari Suci Nyepi', type: 'nasional' },
+    '2026-03-20': { name: 'Idulfitri', type: 'cuti' },
+    '2026-03-21': { name: 'Idulfitri', type: 'nasional' },
+    '2026-03-22': { name: 'Idulfitri', type: 'nasional' },
+    '2026-03-23': { name: 'Idulfitri', type: 'cuti' },
+    '2026-03-24': { name: 'Idulfitri', type: 'cuti' },
+    '2026-04-03': { name: 'Wafat Yesus Kristus', type: 'nasional' },
+    '2026-04-05': { name: 'Paskah', type: 'nasional' },
+    '2026-05-01': { name: 'Hari Buruh Internasional', type: 'nasional' },
+    '2026-05-14': { name: 'Kenaikan Yesus Kristus', type: 'nasional' },
+    '2026-05-15': { name: 'Kenaikan Yesus Kristus', type: 'cuti' },
+    '2026-05-27': { name: 'Iduladha', type: 'nasional' },
+    '2026-05-28': { name: 'Iduladha', type: 'cuti' },
+    '2026-05-31': { name: 'Hari Raya Waisak', type: 'nasional' },
+    '2026-06-01': { name: 'Hari Lahir Pancasila', type: 'nasional' },
+    '2026-06-16': { name: 'Tahun Baru Islam', type: 'nasional' },
+    '2026-08-17': { name: 'Proklamasi Kemerdekaan', type: 'nasional' },
+    '2026-08-25': { name: 'Maulid Nabi', type: 'nasional' },
+    '2026-12-24': { name: 'Hari Raya Natal', type: 'cuti' },
+    '2026-12-25': { name: 'Hari Raya Natal', type: 'nasional' },
+    '2027-01-01': { name: 'Tahun Baru Masehi', type: 'nasional' },
+    '2027-01-05': { name: 'Isra Mikraj', type: 'nasional' },
+    '2027-02-05': { name: 'Tahun Baru Imlek', type: 'cuti' },
+    '2027-02-06': { name: 'Tahun Baru Imlek', type: 'nasional' },
+    '2027-03-08': { name: 'Hari Suci Nyepi', type: 'nasional' },
+    '2027-03-09': { name: 'Idulfitri', type: 'cuti' },
+    '2027-03-10': { name: 'Idulfitri', type: 'nasional' },
+    '2027-03-11': { name: 'Idulfitri', type: 'nasional' },
+    '2027-03-12': { name: 'Idulfitri', type: 'cuti' },
+    '2027-03-15': { name: 'Idulfitri', type: 'cuti' },
+    '2027-03-25': { name: 'Wafat Yesus Kristus', type: 'cuti' },
+    '2027-03-26': { name: 'Wafat Yesus Kristus', type: 'nasional' },
+    '2027-03-28': { name: 'Paskah', type: 'nasional' },
+    '2027-05-01': { name: 'Hari Buruh Internasional', type: 'nasional' },
+    '2027-05-06': { name: 'Kenaikan Yesus Kristus', type: 'nasional' },
+    '2027-05-17': { name: 'Iduladha', type: 'nasional' },
+    '2027-05-18': { name: 'Iduladha', type: 'cuti' },
+    '2027-05-19': { name: 'Hari Raya Waisak', type: 'cuti' },
+    '2027-05-20': { name: 'Hari Raya Waisak', type: 'nasional' },
+    '2027-06-01': { name: 'Hari Lahir Pancasila', type: 'nasional' },
+    '2027-06-06': { name: 'Tahun Baru Islam', type: 'nasional' },
+    '2027-08-15': { name: 'Maulid Nabi', type: 'nasional' },
+    '2027-08-17': { name: 'Proklamasi Kemerdekaan', type: 'nasional' },
+    '2027-12-24': { name: 'Hari Raya Natal', type: 'cuti' },
+    '2027-12-25': { name: 'Hari Raya Natal', type: 'nasional' },
+    '2027-12-26': { name: 'Isra Mikraj', type: 'nasional' }
+  };
+  function holidayFor(iso) { return HOLIDAYS[iso] || null; }
+
   /* Rekening (Fase 2): pembayaran villa dan pembayaran katering/extra bed
    * masuk rekening berbeda. Kunci stabil 'villa' | 'katering'; label tampil
    * bisa diedit di settings.accountLabels. */
@@ -494,6 +556,7 @@
         isToday: iso === today,
         isWeekend: ((data.settings && data.settings.weekendNights) || [5, 6]).indexOf(d.getDay()) !== -1,
         peak: peakForNight(iso, data.settings),
+        holiday: holidayFor(iso),
         reservations: res,
         checkins: checkins,
         checkouts: checkouts,
@@ -1071,6 +1134,8 @@
     TX_METHODS: TX_METHODS,
     TX_VERIFY: TX_VERIFY,
     ACCOUNT_KEYS: ACCOUNT_KEYS,
+    HOLIDAYS: HOLIDAYS,
+    holidayFor: holidayFor,
     DEFAULT_ACCOUNT_LABELS: DEFAULT_ACCOUNT_LABELS,
     CATERING_MEALS: CATERING_MEALS,
     MNT_STATUSES: MNT_STATUSES,

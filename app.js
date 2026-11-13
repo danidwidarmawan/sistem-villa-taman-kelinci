@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.10.0-kalender-hotel';
+  var APP_VERSION = '1.11.0-tanggal-merah';
 
   var LS = {
     data: 'vtk_data',
@@ -1006,8 +1006,7 @@
       '<p class="hint">6 bulan terakhir, berakhir ' + esc(d.monthLabel) + '.</p>' +
       VTKCharts.occupancyChart(occ) + '</div></section>';
 
-    /* Target bulan ini (kartu Saldo rekening sudah pindah ke tab Rekening). */
-    html += targetCardHTML(d);
+    /* Target bulan ini PINDAH ke rel kanan (v1.11.0) — lihat rakitan rel. */
 
     /* Perlu tindakan (rel kanan) + kinerja sumber lead (kolom utama). */
     var a = d.actions;
@@ -1044,6 +1043,26 @@
       (actionItems.length ? '<ul class="action-list">' + actionItems.join('') + '</ul>' : emptyState('Tidak ada yang perlu tindakan.')) +
       '</div>';
 
+    /* Kartu rel kanan v1.11.0 (pindah agar rel seimbang dengan kolom utama —
+     * sebelumnya rel hanya ~38% tinggi kolom utama): Check-in berikutnya +
+     * Biaya tetap & titik impas. Target dirakit targetCardHTML(d) saat rel
+     * disusun. */
+    var nextRows = d.nextCheckins.length ? d.nextCheckins.map(function (r) {
+      var c = L.reservationCalc(r, state.data.transactions, s);
+      return '<li><a href="#/reservasi">' + esc(r.guestName) + '</a> — ' + L.fmtDate(r.checkin) +
+        ' (' + c.nights + ' malam, ' + L.fmtNum(r.pax) + ' tamu) ' + resStatusBadge(r.status) + '</li>';
+    }).join('') : '<li class="muted">Belum ada check-in mendatang.</li>';
+    var nextCheckinsCardHTML = '<div class="card"><h2>Check-in berikutnya</h2><ul class="simple-list">' + nextRows + '</ul></div>';
+    var be = d.breakeven;
+    var beText = (be.weekday !== null && be.weekend !== null)
+      ? '≈ ' + be.weekday + ' malam weekday / ' + be.weekend + ' malam weekend per bulan'
+      : '—';
+    var breakevenCardHTML = '<div class="card"><h2>Biaya tetap &amp; titik impas</h2>' +
+      '<p>Total biaya tetap <strong>' + L.fmtRp(d.fixedCost.total) + '/bulan</strong> ' +
+      '(gaji, listrik &amp; air, internet, keamanan, gaji owner, estimasi maintenance). ' +
+      'Titik impas kasar: <strong>' + esc(beText) + '</strong> ' +
+      '(pendapatan kotor, belum biaya variabel).</p></div>';
+
     /* Kinerja sumber lead + grafik batang nilai booking per sumber */
     var srcRows = d.sourcePerf.map(function (sp) {
       return '<tr><td data-label="Sumber">' + esc(sp.source) + '</td>' +
@@ -1065,8 +1084,10 @@
 
     html += '</div>'; /* Tutup .dash-main */
 
-    /* Rel kanan: kalender mini -> Perlu tindakan. Kartu outlook 30 hari
-     * dihapus v1.10.0 (permintaan pemilik): isinya duplikat kalender. */
+    /* Rel kanan v1.11.0: kalender mini -> Perlu tindakan -> Target bulan ini
+     * -> Biaya tetap & titik impas -> Check-in berikutnya. Tiga kartu terakhir
+     * pindah ke sini agar rel seimbang dengan kolom utama. Kartu outlook
+     * 30 hari dihapus v1.10.0 (isinya duplikat kalender). */
     html += '<aside class="dash-rail">' +
       '<div class="card mini-cal-card"><div class="mini-cal-head">' +
       '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan sebelumnya" onclick="VTK.miniCalNav(-1)">‹</button>' +
@@ -1077,33 +1098,18 @@
       '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
       '</div>' +
       actionsCardHTML +
+      targetCardHTML(d) +
+      breakevenCardHTML +
+      nextCheckinsCardHTML +
       '</aside></div>'; /* Tutup .dash-rail + .dash-layout */
 
-    /* Check-in berikutnya + transaksi terakhir */
-    var nextRows = d.nextCheckins.length ? d.nextCheckins.map(function (r) {
-      var c = L.reservationCalc(r, state.data.transactions, s);
-      return '<li><a href="#/reservasi">' + esc(r.guestName) + '</a> — ' + L.fmtDate(r.checkin) +
-        ' (' + c.nights + ' malam, ' + L.fmtNum(r.pax) + ' tamu) ' + resStatusBadge(r.status) + '</li>';
-    }).join('') : '<li class="muted">Belum ada check-in mendatang.</li>';
+    /* Transaksi terakhir (selebar penuh; Check-in berikutnya & Biaya tetap
+     * pindah ke rel kanan v1.11.0). */
     var txRows = d.recentTx.length ? d.recentTx.map(function (tx) {
       return '<li>' + L.fmtDate(tx.date) + ' — ' + esc(tx.description || tx.category) +
         ' <strong class="nowrap">' + (tx.type === 'Masuk' ? '+' : '−') + L.fmtRp(tx.amount) + '</strong> ' + verifyBadge(tx.verifyStatus) + '</li>';
     }).join('') : '<li class="muted">Belum ada transaksi.</li>';
-    html += '<section class="two-col">' +
-      '<div class="card"><h2>Check-in berikutnya</h2><ul class="simple-list">' + nextRows + '</ul></div>' +
-      '<div class="card"><h2>Transaksi terakhir</h2><ul class="simple-list">' + txRows + '</ul></div>' +
-      '</section>';
-
-    /* Biaya tetap + titik impas */
-    var be = d.breakeven;
-    var beText = (be.weekday !== null && be.weekend !== null)
-      ? '≈ ' + be.weekday + ' malam weekday / ' + be.weekend + ' malam weekend per bulan'
-      : '—';
-    html += '<section class="card"><h2>Biaya tetap &amp; titik impas</h2>' +
-      '<p>Total biaya tetap <strong>' + L.fmtRp(d.fixedCost.total) + '/bulan</strong> ' +
-      '(gaji, listrik &amp; air, internet, keamanan, gaji owner, estimasi maintenance). ' +
-      'Titik impas kasar: <strong>' + esc(beText) + '</strong> ' +
-      '(pendapatan kotor, belum biaya variabel).</p></section>';
+    html += '<section class="card"><h2>Transaksi terakhir</h2><ul class="simple-list">' + txRows + '</ul></section>';
 
     return html;
   }
@@ -1175,9 +1181,29 @@
         cls += ' blocked';
         if (c.inMonth) { blocked++; }
       }
-      var label = L.fmtDate(c.dateISO) + (c.reservations.length ? ' — terisi (' + c.reservations.length + ' reservasi)'
-        : c.checkouts.length ? ' — check-out: ' + c.checkouts.map(function (r) { return r.guestName; }).join(', ')
-        : c.blocked ? ' — terblokir (' + c.blocked.reason + ')' : ' — kosong');
+      /* Tanggal merah: angka merah (kecuali sel terisi — teks putih di
+       * atas tosca gelap harus dipertahankan agar tetap terbaca). */
+      if (c.holiday && !c.reservations.length) { cls += ' holiday'; }
+      /* v1.11.0: tanggal terisi menampilkan NAMA TAMU (bukan "terisi
+       * (1 reservasi)") — sama seperti hover check-out yang menyebut
+       * nama. Hari turnover menyebut keduanya (yang menginap + yang
+       * check-out). Tanggal merah disebut di akhir label. */
+      var label = L.fmtDate(c.dateISO);
+      if (c.reservations.length) {
+        label += ' — terisi: ' + c.reservations.map(function (r) { return r.guestName; }).join(', ');
+        if (c.checkouts.length) { label += ' • check-out: ' + c.checkouts.map(function (r) { return r.guestName; }).join(', '); }
+      } else if (c.checkouts.length) {
+        label += ' — check-out: ' + c.checkouts.map(function (r) { return r.guestName; }).join(', ');
+      } else if (c.blocked) {
+        label += ' — terblokir (' + c.blocked.reason + ')';
+      } else if (c.holiday) {
+        label += ' — libur: ' + c.holiday.name + (c.holiday.type === 'cuti' ? ' (cuti bersama)' : '');
+      } else {
+        label += ' — kosong';
+      }
+      if (c.holiday && (c.reservations.length || c.checkouts.length || c.blocked)) {
+        label += ' • libur: ' + c.holiday.name + (c.holiday.type === 'cuti' ? ' (cuti bersama)' : '');
+      }
       h += '<button type="button" class="' + cls + '" title="' + esc(label) + '" aria-label="' + esc(label) +
         '" onclick="VTK.miniCalGo(\'' + c.dateISO + '\')">' + c.day + '</button>';
     });
@@ -1187,7 +1213,8 @@
      * v1.5.2). Swatch memakai warna sel kalender mini yang sebenarnya. */
     h += '<p class="hint legend"><span class="sw mini-occupied"></span> Terisi &nbsp; ' +
       '<span class="sw mini-checkout"></span> Check-out &nbsp; ' +
-      '<span class="sw mini-blocked"></span> Terblokir &nbsp; <span class="sw today"></span> Hari ini</p>';
+      '<span class="sw mini-blocked"></span> Terblokir &nbsp; <span class="sw mini-holiday"></span> Libur &nbsp; ' +
+      '<span class="sw today"></span> Hari ini</p>';
     if (!occupied && !blocked && !checkouts) { h += '<p class="hint">Belum ada reservasi di bulan ini.</p>'; }
     return h;
   }
@@ -2227,6 +2254,7 @@
       if (c.isToday) { cls += ' today'; }
       if (c.isWeekend) { cls += ' weekend'; }
       if (c.peak) { cls += ' peak'; }
+      if (c.holiday) { cls += ' holiday'; }
       if (c.reservations.length) { cls += ' occupied'; }
       if (c.blocked) { cls += ' blocked'; }
       if (c.checkouts.length && !c.reservations.length) { cls += ' checkout-day'; }
@@ -2235,6 +2263,7 @@
       if (state.calSelected === c.dateISO) { cls += ' selected'; }
       var body = '<span class="cal-day">' + c.day + '</span>';
       if (c.peak) { body += '<span class="cal-tag peak-tag">' + esc(c.peak.name) + '</span>'; }
+      if (c.holiday) { body += '<span class="cal-tag holiday-tag">' + esc(c.holiday.name) + (c.holiday.type === 'cuti' ? ' (Cuti bersama)' : '') + '</span>'; }
       if (c.blocked) { body += '<span class="cal-tag blocked-tag">Terblokir</span>'; }
       if (c.reservations.length === 1) {
         var r = c.reservations[0];
@@ -2278,7 +2307,8 @@
           ? '<li><strong>Malam terblokir (tidak bisa dijual):</strong> ' + esc(sel.blocked.reason) + '.</li>'
           : '<li class="muted">Villa kosong pada hari ini.</li>';
       }
-      detail = '<section class="card"><h2>' + L.fmtDate(state.calSelected) + '</h2><ul class="simple-list">' + items + '</ul>' +
+      var holLine = (sel && sel.holiday) ? '<p><strong>Tanggal merah: ' + esc(sel.holiday.name) + '</strong> (' + (sel.holiday.type === 'cuti' ? 'Cuti bersama' : 'Libur nasional') + ').</p>' : '';
+      detail = '<section class="card"><h2>' + L.fmtDate(state.calSelected) + '</h2>' + holLine + '<ul class="simple-list">' + items + '</ul>' +
         '<button type="button" class="btn btn-primary" onclick="VTK.addResForDay(\'' + state.calSelected + '\')">+ Tambah reservasi (check-in hari ini)</button></section>';
     }
 
@@ -2301,7 +2331,7 @@
       '<button type="button" class="btn" onclick="VTK.calToday()">Hari ini</button>' +
       '</div></section>' +
       '<section class="card"><div class="cal-grid">' + grid + '</div>' +
-      '<p class="hint legend"><span class="sw occupied"></span> Terisi &nbsp; <span class="sw checkin"></span> Check-in &nbsp; <span class="sw checkout"></span> Check-out &nbsp; <span class="sw blocked"></span> Terblokir &nbsp; <span class="sw peak"></span> Peak &nbsp; ' +
+      '<p class="hint legend"><span class="sw occupied"></span> Terisi &nbsp; <span class="sw checkin"></span> Check-in &nbsp; <span class="sw checkout"></span> Check-out &nbsp; <span class="sw blocked"></span> Terblokir &nbsp; <span class="sw peak"></span> Peak &nbsp; <span class="sw holiday"></span> Tanggal merah &nbsp; ' +
       '<span class="sw weekend"></span> Weekend &nbsp; <span class="sw today"></span> Hari ini &nbsp; ' +
       '<span class="sw over-ideal"></span> Di atas kapasitas ideal &nbsp; <span class="sw over-max"></span> Melebihi maksimum</p></section>' +
       detail +
