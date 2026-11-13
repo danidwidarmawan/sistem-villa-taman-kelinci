@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.3.2-total-tambahan';
+  var APP_VERSION = '1.3.3-rincian-baris';
 
   var LS = {
     data: 'vtk_data',
@@ -1303,10 +1303,13 @@
       if (bd.vipCost > 0) {
         bdParts.push('VIP ' + L.fmtNum(v.vipRooms) + ' kamar × ' + bd.nights + ' malam × ' + L.fmtRp(+t.vipWithVilla || 0) + ' = ' + L.fmtRp(bd.vipCost));
       }
-      extraHintEl.textContent = bdParts.length
-        ? bdParts.join(' + ') + '. Total biaya tambahan: ' + L.fmtRp(bd.total) +
+      /* Rincian per baris (bukan satu kalimat): tiap komponen satu baris,
+       * lalu totalnya ditebalkan. Label rekening di-escape karena hint kini
+       * memakai innerHTML. */
+      extraHintEl.innerHTML = bdParts.length
+        ? bdParts.join('<br>') + '<br><strong>Total biaya tambahan: ' + L.fmtRp(bd.total) + '</strong>' +
           ' — diisi otomatis di bawah ini; bisa diubah bila ada biaya tambahan lain.' +
-          (bd.extraBedCost > 0 ? ' Porsi extra bed dicatat terpisah sebagai Pendapatan Extra Bed (' + accountLabel('katering') + ').' : '')
+          (bd.extraBedCost > 0 ? '<br>Porsi extra bed dicatat terpisah sebagai Pendapatan Extra Bed (' + esc(accountLabel('katering')) + ').' : '')
         : 'Tidak ada extra bed / kamar VIP. Isi bila ada biaya tambahan lain.';
     }
     if (!v.id && !state.extraCostTouched && bd.total > 0) {
