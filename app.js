@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.12.0-ramping-dashboard';
+  var APP_VERSION = '1.13.0-tanpa-gap';
 
   var LS = {
     data: 'vtk_data',
@@ -1054,6 +1054,14 @@
       '(gaji, listrik &amp; air, internet, keamanan, gaji owner, estimasi maintenance). ' +
       'Titik impas kasar: <strong>' + esc(beText) + '</strong> ' +
       '(pendapatan kotor, belum biaya variabel).</p></div>';
+    /* Transaksi terakhir PINDAH ke rel kanan v1.13.0 (sebelumnya selebar
+     * penuh di bawah layout): rel jadi hampir setinggi kolom utama dan
+     * halaman berakhir rapi di ujung layout. */
+    var txRows = d.recentTx.length ? d.recentTx.map(function (tx) {
+      return '<li>' + L.fmtDate(tx.date) + ' — ' + esc(tx.description || tx.category) +
+        ' <strong class="nowrap">' + (tx.type === 'Masuk' ? '+' : '−') + L.fmtRp(tx.amount) + '</strong> ' + verifyBadge(tx.verifyStatus) + '</li>';
+    }).join('') : '<li class="muted">Belum ada transaksi.</li>';
+    var txCardHTML = '<div class="card"><h2>Transaksi terakhir</h2><ul class="simple-list">' + txRows + '</ul></div>';
 
     /* Kinerja sumber lead + grafik batang nilai booking per sumber */
     var srcRows = d.sourcePerf.map(function (sp) {
@@ -1072,10 +1080,12 @@
 
     html += '</div>'; /* Tutup .dash-main */
 
-    /* Rel kanan v1.11.0: kalender mini -> Perlu tindakan -> Target bulan ini
-     * -> Biaya tetap & titik impas -> Check-in berikutnya. Tiga kartu terakhir
-     * pindah ke sini agar rel seimbang dengan kolom utama. Kartu outlook
-     * 30 hari dihapus v1.10.0 (isinya duplikat kalender). */
+    /* Rel kanan v1.11.0–v1.13.0: kalender mini -> Perlu tindakan ->
+     * Target bulan ini -> Biaya tetap & titik impas -> Check-in
+     * berikutnya -> Transaksi terakhir. Kartu-kartu ini pindah ke sini
+     * agar rel seimbang dengan kolom utama (v1.10.0: rel hanya ~38%
+     * tinggi kolom utama, gap kosong ±1.100px). Kartu outlook 30 hari
+     * dihapus v1.10.0 (isinya duplikat kalender). */
     html += '<aside class="dash-rail">' +
       '<div class="card mini-cal-card"><div class="mini-cal-head">' +
       '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan sebelumnya" onclick="VTK.miniCalNav(-1)">‹</button>' +
@@ -1089,15 +1099,8 @@
       targetCardHTML(d) +
       breakevenCardHTML +
       nextCheckinsCardHTML +
+      txCardHTML +
       '</aside></div>'; /* Tutup .dash-rail + .dash-layout */
-
-    /* Transaksi terakhir (selebar penuh; Check-in berikutnya & Biaya tetap
-     * pindah ke rel kanan v1.11.0). */
-    var txRows = d.recentTx.length ? d.recentTx.map(function (tx) {
-      return '<li>' + L.fmtDate(tx.date) + ' — ' + esc(tx.description || tx.category) +
-        ' <strong class="nowrap">' + (tx.type === 'Masuk' ? '+' : '−') + L.fmtRp(tx.amount) + '</strong> ' + verifyBadge(tx.verifyStatus) + '</li>';
-    }).join('') : '<li class="muted">Belum ada transaksi.</li>';
-    html += '<section class="card"><h2>Transaksi terakhir</h2><ul class="simple-list">' + txRows + '</ul></section>';
 
     return html;
   }

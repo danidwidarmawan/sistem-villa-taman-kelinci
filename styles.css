@@ -315,9 +315,14 @@ a.brand-mini:hover { opacity: 0.85; }
 
 /* Layout dashboard: kolom utama + rel kanan (desktop 2:1, HP menumpuk —
  * isi rel turun ke bawah isi kolom utama).
- * align-items: start — kartu setinggi kontennya, tidak diregangkan setinggi tetangga. */
-.dash-layout { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
-.dash-main, .dash-rail { min-width: 0; }
+ * v1.13.0: align-items: stretch + kedua kolom flex-column dengan kartu
+ * terakhir flex:1 — kedua kolom SELALU sama tinggi, tidak ada lagi gap
+ * kosong di bawah kolom yang lebih pendek (v1.10.0: rel hanya ~38% tinggi
+ * kolom utama, gap ±1.100px). Di HP (satu kolom) tidak berpengaruh karena
+ * tinggi tiap kolom = tinggi kontennya. */
+.dash-layout { display: grid; grid-template-columns: 1fr; gap: 0; align-items: stretch; }
+.dash-main, .dash-rail { min-width: 0; display: flex; flex-direction: column; }
+.dash-main > :last-child, .dash-rail > :last-child { flex: 1 0 auto; margin-bottom: 0; }
 
 .two-col { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
 /* Kartu berdampingan di kolom utama dashboard (donut + okupansi) dibuat
