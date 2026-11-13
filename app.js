@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.3.5-sumber-booking';
+  var APP_VERSION = '1.4.0-form-customer';
 
   var LS = {
     data: 'vtk_data',
@@ -1111,7 +1111,8 @@
     }).join('');
 
     return '<section class="page-head"><h1>Reservasi</h1>' +
-      '<button type="button" class="btn btn-primary" onclick="VTK.openResForm()">+ Tambah reservasi</button></section>' +
+      '<div class="page-head-actions"><a class="btn" href="form-tamu.html" target="_blank" rel="noopener">Form tamu (link untuk tamu)</a>' +
+      '<button type="button" class="btn btn-primary" onclick="VTK.openResForm()">+ Tambah reservasi</button></div></section>' +
       '<section class="filters card">' +
       '<label class="field"><span>Status</span><select onchange="VTK.setFilter(\'res\',\'status\',this.value)">' +
       '<option value="">Semua</option>' + optList(L.RES_STATUSES, f.status) + '</select></label>' +
@@ -1139,6 +1140,23 @@
     return opts;
   }
 
+  /* Opsi paket katering di form reservasi, dari settings.catering. */
+  function cateringPackageOptions(selected) {
+    var opts = '<option value="">Tanpa katering</option>';
+    (state.data.settings.catering || []).forEach(function (c) {
+      opts += '<option value="' + esc(c.package) + '"' + (c.package === selected ? ' selected' : '') + '>' +
+        esc(c.package) + ' — ' + L.fmtRp(+c.priceFull || 0) + '/pax</option>';
+    });
+    return opts;
+  }
+
+  function cateringMealsOptions(selected) {
+    var list = [['Full', 'Full (3x)'], ['2x', '2x (75%)'], ['1x', '1x (40%)']];
+    return list.map(function (m) {
+      return '<option value="' + m[0] + '"' + (m[0] === selected ? ' selected' : '') + '>' + m[1] + '</option>';
+    }).join('');
+  }
+
   function reservationFormHTML() {
     var f = state.form;
     var isNew = !f.id;
@@ -1147,6 +1165,8 @@
     var v = r || {
       bookingDate: L.todayISO(), checkin: p.checkin || '', checkout: p.checkout || '',
       guestName: p.guestName || '', wa: p.wa || '', pax: p.pax || '',
+      groupName: p.groupName || '', adults: '', children: '',
+      cateringPackage: '', cateringMeals: 'Full', cateringPax: '',
       vipRooms: 0, extraBeds: 0, source: p.source || 'WhatsApp',
       status: p.status || 'Permintaan', ratePerNight: '', extraCost: 0, discount: 0,
       leadId: p.leadId || '', specialRequest: '', internalNote: '',
@@ -1155,6 +1175,7 @@
     };
     state.rateTouched = !!r; /* saat edit, saran tidak menimpa tarif tersimpan */
     state.extraCostTouched = !!r; /* saat edit, isi otomatis tidak menimpa biaya tersimpan */
+    state.paxTouched = !!r; /* saat edit, Dewasa/Anak tidak menimpa total tersimpan */
     /* Form dirender ulang (DOM baru) — kunci konfirmasi bentrok direset agar
      * checkbox konfirmasi dirender lagi saat bentrok muncul. */
     state._overlapConfirmKey = state._turnoverConfirmKey = null;
@@ -1166,53 +1187,67 @@
       '<button type="button" class="btn" onclick="VTK.closeForm()">← Kembali ke daftar</button></section>' +
       '<form class="card form-card" id="res-form" onsubmit="return VTK.saveRes(event)" oninput="VTK.resFormRecalc()">' +
       '<input type="hidden" name="id" value="' + (r ? esc(r.id) : '') + '" />' +
-      '<h2>Tamu &amp; tanggal</h2>' +
+      '<h3 class="sec"><span class="sec-num">1</span>Data Tamu</h3>' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Nama tamu *</span><input type="text" name="guestName" value="' + esc(v.guestName) + '" required /></label>' +
+      '<label class="field"><span>Nomor WhatsApp</span><input type="tel" name="wa" value="' + esc(v.wa) + '" placeholder="08…" /></label>' +
+      '</div>' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Nama grup / acara <span class="baru">BARU</span></span><input type="text" name="groupName" value="' + esc(v.groupName) + '" placeholder="cth: Cilskid Taekwondo, Keluarga Besar H. Sabani" /><span class="hint">Bila tamu datang sebagai rombongan/komunitas — nama kontak tetap di kolom Nama tamu.</span></label>' +
+      '</div>' +
+      '<div class="form-row">' +
+      '<label class="field"><span>Dewasa <span class="baru">BARU</span></span><input type="number" name="adults" min="0" step="1" value="' + esc(v.adults) + '" /><span class="hint">Opsional — bila rincian tidak diketahui, kosongkan saja.</span></label>' +
+      '<label class="field"><span>Anak-anak <span class="baru">BARU</span></span><input type="number" name="children" min="0" step="1" value="' + esc(v.children) + '" /><span class="hint">Opsional.</span></label>' +
+      '<label class="field"><span>Jumlah tamu (pax) *</span><input type="number" name="pax" id="rf-pax" min="1" step="1" value="' + esc(v.pax) + '" required oninput="VTK.markPaxTouched()" /><span class="hint">Diisi manual. Bila Dewasa/Anak diisi, total terisi otomatis — tapi tetap bisa diubah.</span></label>' +
+      '</div>' +
+      '<h3 class="sec"><span class="sec-num">2</span>Jadwal Menginap</h3>' +
       '<div class="form-row">' +
       '<label class="field"><span>Tanggal booking *</span><input type="date" name="bookingDate" value="' + esc(v.bookingDate) + '" required /></label>' +
       '<label class="field"><span>Check-in *</span><input type="date" name="checkin" value="' + esc(v.checkin) + '" required /></label>' +
       '<label class="field"><span>Check-out *</span><input type="date" name="checkout" value="' + esc(v.checkout) + '" required /></label>' +
       '</div>' +
       '<div class="form-row">' +
-      '<label class="field field-grow"><span>Nama tamu *</span><input type="text" name="guestName" value="' + esc(v.guestName) + '" required /></label>' +
-      '<label class="field"><span>Nomor WhatsApp</span><input type="tel" name="wa" value="' + esc(v.wa) + '" placeholder="08…" /></label>' +
+      '<label class="field"><span>Jam check-in disepakati</span><input type="time" name="agreedCheckinTime" value="' + esc(v.agreedCheckinTime) + '" /><span class="hint">Standar 14.00. Di bawah itu = early check-in.</span></label>' +
+      '<label class="field"><span>Promo early check-in</span><select name="promoEarlyCheckin">' + optList(['Ya', 'Tidak'], v.promoEarlyCheckin) + '</select></label>' +
+      '<label class="field"><span>Konfirmasi H-1</span><input type="datetime-local" name="h1Confirmation" value="' + esc(v.h1Confirmation) + '" /><span class="hint">Kapan early check-in dikonfirmasi final ke tamu.</span></label>' +
       '</div>' +
       '<div class="form-row">' +
-      '<label class="field"><span>Jumlah tamu (pax) *</span><input type="number" name="pax" min="1" step="1" value="' + esc(v.pax) + '" required /></label>' +
-      '<label class="field"><span>Kamar VIP dipakai (0–4)</span><input type="number" name="vipRooms" min="0" max="4" step="1" value="' + esc(v.vipRooms) + '" /></label>' +
-      '<label class="field"><span>Extra bed dipakai</span><input type="number" name="extraBeds" min="0" step="1" value="' + esc(v.extraBeds) + '" /></label>' +
+      '<label class="field"><span>H-1: villa kosong terverifikasi</span><select name="h1EmptyVerified">' + optList(['Belum', 'Terverifikasi'], v.h1EmptyVerified) + '</select></label>' +
+      '<label class="field"><span>Promo membantu booking?</span><select name="promoHelped">' + optList(['Ya', 'Tidak', 'Tidak Ditanya'], v.promoHelped) + '</select></label>' +
+      '<label class="field"><span>Biaya langsung promo (Rp)</span><input type="number" name="promoDirectCost" min="0" step="1000" value="' + esc(v.promoDirectCost) + '" /></label>' +
       '</div>' +
       '<div id="res-warnings"></div>' +
-      '<h2>Harga</h2>' +
+      '<h3 class="sec"><span class="sec-num">3</span>Kamar &amp; Tambahan</h3>' +
       '<div class="form-row">' +
-      '<label class="field"><span>Tarif / malam (Rp) *</span>' +
-      '<input type="number" name="ratePerNight" id="rf-rate" min="0" step="1000" value="' + esc(v.ratePerNight) + '" required oninput="VTK.markRateTouched()" />' +
-      '<span class="hint" id="rf-rate-hint"></span></label>' +
+      '<label class="field"><span>Extra bed dipakai</span><input type="number" name="extraBeds" min="0" step="1" value="' + esc(v.extraBeds) + '" /><span class="hint">Rp 50.000 per bed per menginap (sekali bayar).</span></label>' +
+      '<label class="field"><span>Kamar VIP dipakai (0–4)</span><input type="number" name="vipRooms" min="0" max="4" step="1" value="' + esc(v.vipRooms) + '" /><span class="hint">Rp 850.000 per kamar per malam.</span></label>' +
       '<label class="field"><span>Biaya tambahan (Rp)</span>' +
       '<input type="number" name="extraCost" id="rf-extra-cost" min="0" step="1000" value="' + esc(v.extraCost) + '" oninput="VTK.markExtraCostTouched()" />' +
       '<span class="hint" id="rf-extra-hint"></span></label>' +
       '<label class="field"><span>Diskon (Rp)</span><input type="number" name="discount" min="0" step="1000" value="' + esc(v.discount) + '" /></label>' +
       '</div>' +
-      '<div class="calc-box" id="res-calc"></div>' +
-      '<h2>Status &amp; sumber</h2>' +
+      '<h3 class="sec"><span class="sec-num">4</span>Katering <span class="baru">BARU</span></h3>' +
       '<div class="form-row">' +
+      '<label class="field"><span>Paket katering</span><select name="cateringPackage">' + cateringPackageOptions(v.cateringPackage) + '</select></label>' +
+      '<label class="field"><span>Jumlah makan</span><select name="cateringMeals">' + cateringMealsOptions(v.cateringMeals) + '</select></label>' +
+      '<label class="field"><span>Pax katering</span><input type="number" name="cateringPax" min="0" step="1" value="' + esc(v.cateringPax) + '" placeholder="= total tamu bila dikosongkan" /></label>' +
+      '</div>' +
+      '<div class="calc-box" id="res-kat-calc"></div>' +
+      '<p class="hint">Bila paket dipilih, pesanan katering otomatis dibuat/diperbarui di modul Operasional saat reservasi disimpan.</p>' +
+      '<h3 class="sec"><span class="sec-num">5</span>Pembayaran</h3>' +
+      '<div class="form-row">' +
+      '<label class="field"><span>Tarif / malam (Rp) *</span>' +
+      '<input type="number" name="ratePerNight" id="rf-rate" min="0" step="1000" value="' + esc(v.ratePerNight) + '" required oninput="VTK.markRateTouched()" />' +
+      '<span class="hint" id="rf-rate-hint"></span></label>' +
       '<label class="field"><span>Status reservasi</span><select name="status">' + optList(L.RES_STATUSES, v.status) + '</select></label>' +
-      '<label class="field"><span>Sumber</span><select name="source">' + optList(L.LEAD_SOURCES, v.source) + '</select></label>' +
+      '<label class="field"><span>Sumber booking</span><select name="source">' + optList(L.LEAD_SOURCES, v.source) + '</select></label>' +
       '<label class="field"><span>Lead terkait</span><select name="leadId">' + leadOptions(v.leadId) + '</select></label>' +
       '</div>' +
+      '<div class="calc-box" id="res-calc"></div>' +
+      '<h3 class="sec"><span class="sec-num">6</span>Catatan</h3>' +
       '<div class="form-row">' +
-      '<label class="field field-grow"><span>Permintaan khusus</span><textarea name="specialRequest" rows="2">' + esc(v.specialRequest) + '</textarea></label>' +
-      '<label class="field field-grow"><span>Catatan internal</span><textarea name="internalNote" rows="2">' + esc(v.internalNote) + '</textarea></label>' +
-      '</div>' +
-      '<h2>Promo early check-in</h2>' +
-      '<div class="form-row">' +
-      '<label class="field"><span>Promo early check-in</span><select name="promoEarlyCheckin">' + optList(['Ya', 'Tidak'], v.promoEarlyCheckin) + '</select></label>' +
-      '<label class="field"><span>Jam check-in disepakati</span><input type="time" name="agreedCheckinTime" value="' + esc(v.agreedCheckinTime) + '" /></label>' +
-      '<label class="field"><span>Konfirmasi H-1</span><input type="datetime-local" name="h1Confirmation" value="' + esc(v.h1Confirmation) + '" /></label>' +
-      '</div>' +
-      '<div class="form-row">' +
-      '<label class="field"><span>H-1 kosong terverifikasi</span><select name="h1EmptyVerified">' + optList(['Belum', 'Terverifikasi'], v.h1EmptyVerified) + '</select></label>' +
-      '<label class="field"><span>Promo membantu booking</span><select name="promoHelped">' + optList(['Ya', 'Tidak', 'Tidak Ditanya'], v.promoHelped) + '</select></label>' +
-      '<label class="field"><span>Biaya langsung promo (Rp)</span><input type="number" name="promoDirectCost" min="0" step="1000" value="' + esc(v.promoDirectCost) + '" /></label>' +
+      '<label class="field field-grow"><span>Permintaan khusus (dari tamu)</span><textarea name="specialRequest" rows="2" placeholder="cth: minta karaoke disiapkan, ada tamu lansia">' + esc(v.specialRequest) + '</textarea></label>' +
+      '<label class="field field-grow"><span>Catatan internal (tidak terlihat tamu)</span><textarea name="internalNote" rows="2">' + esc(v.internalNote) + '</textarea></label>' +
       '</div>' +
       (existingCalc ? '<p class="hint">Terbayar saat ini (dari transaksi terverifikasi): <strong>' + L.fmtRp(existingCalc.paid) +
         '</strong> — sisa ' + L.fmtRp(existingCalc.remaining) + ' (' + esc(existingCalc.payStatus) + '). ' +
@@ -1233,6 +1268,8 @@
     var form = $('res-form');
     var fd = new FormData(form);
     var num = function (k) { var n = parseFloat(fd.get(k)); return isNaN(n) ? 0 : n; };
+    /* Field opsional (Dewasa/Anak/Pax katering): kosong tetap kosong, bukan 0. */
+    var intOrEmpty = function (k) { var n = parseInt(fd.get(k), 10); return isNaN(n) ? '' : n; };
     return {
       id: fd.get('id') || '',
       bookingDate: fd.get('bookingDate') || '',
@@ -1240,9 +1277,15 @@
       checkout: fd.get('checkout') || '',
       guestName: (fd.get('guestName') || '').trim(),
       wa: (fd.get('wa') || '').trim(),
+      groupName: (fd.get('groupName') || '').trim(),
+      adults: intOrEmpty('adults'),
+      children: intOrEmpty('children'),
       pax: parseInt(fd.get('pax'), 10) || 0,
       vipRooms: parseInt(fd.get('vipRooms'), 10) || 0,
       extraBeds: parseInt(fd.get('extraBeds'), 10) || 0,
+      cateringPackage: fd.get('cateringPackage') || '',
+      cateringMeals: fd.get('cateringMeals') || 'Full',
+      cateringPax: intOrEmpty('cateringPax'),
       source: fd.get('source') || '',
       status: fd.get('status') || 'Permintaan',
       ratePerNight: num('ratePerNight'),
@@ -1265,6 +1308,18 @@
   function resFormRecalc() {
     var form = $('res-form');
     if (!form) { return; }
+    /* Total tamu: isi otomatis dari Dewasa + Anak selama belum diubah manual
+     * (pola yang sama seperti tarif & biaya tambahan). Dilakukan SEBELUM
+     * readResForm agar hitungan di bawah memakai total terbaru. */
+    if (!state.paxTouched) {
+      var adEl = form.querySelector('[name="adults"]');
+      var anEl = form.querySelector('[name="children"]');
+      var pxEl = $('rf-pax');
+      if (adEl && anEl && pxEl) {
+        var ad = parseInt(adEl.value, 10), an = parseInt(anEl.value, 10);
+        if (!isNaN(ad) || !isNaN(an)) { pxEl.value = (isNaN(ad) ? 0 : ad) + (isNaN(an) ? 0 : an); }
+      }
+    }
     var v = readResForm();
     var s = state.data.settings;
     var calcEl = $('res-calc');
@@ -1315,6 +1370,30 @@
     if (!v.id && !state.extraCostTouched && bd.total > 0) {
       var extraInput = $('rf-extra-cost');
       if (extraInput) { extraInput.value = bd.total; v.extraCost = bd.total; }
+    }
+
+    /* Katering: hitung dari paket + jumlah makan + pax (pax kosong = total
+     * tamu). Ditagih terpisah — tidak masuk total booking & DP. */
+    var katEl = $('res-kat-calc');
+    var katCalc = null;
+    if (v.cateringPackage) {
+      var katPax = (v.cateringPax !== '' && v.cateringPax > 0) ? v.cateringPax : (v.pax || 0);
+      katCalc = L.cateringOrderCalc(s, v.cateringPackage, v.cateringMeals || 'Full', katPax);
+    }
+    if (katEl) {
+      if (katCalc && katCalc.total > 0) {
+        var labor = L.cateringLaborEstimate(state.data.operationalCosts);
+        var makanTxt = v.cateringMeals === '1x' ? '1x makan (40%)' : (v.cateringMeals === '2x' ? '2x makan (75%)' : 'Full (3x)');
+        katEl.innerHTML =
+          '<div><span>Paket</span><strong>' + esc(v.cateringPackage) + ' — ' + makanTxt + '</strong></div>' +
+          '<div><span>Harga/pax</span><strong>' + L.fmtRp(katCalc.pricePerPax) + '</strong></div>' +
+          '<div><span>' + L.fmtNum(katCalc.pax) + ' pax × ' + L.fmtRp(katCalc.pricePerPax) + '</span><strong>' + L.fmtRp(katCalc.total) + '</strong></div>' +
+          '<div><span>Total katering</span><strong>' + L.fmtRp(katCalc.total) + '</strong></div>' +
+          '<div><span>Perkiraan honor juru masak (Irma + Nyai)</span><strong>' + L.fmtRp(labor.total) + '</strong></div>' +
+          '<p class="hint">Ditagih terpisah ke ' + esc(accountLabel('katering')) + ' — tidak masuk Total booking &amp; DP. Honor juru masak dibayar dari ' + esc(accountLabel('villa')) + '.</p>';
+      } else {
+        katEl.innerHTML = '<div><span>Katering</span><strong>Tidak ada</strong></div>';
+      }
     }
 
     /* Peringatan */
@@ -1396,12 +1475,50 @@
       calcEl.innerHTML =
         '<div><span>Malam</span><strong>' + c.nights + '</strong></div>' +
         '<div><span>Total booking</span><strong>' + L.fmtRp(c.total) + '</strong></div>' +
+        (katCalc && katCalc.total > 0 ? '<div><span>Katering (dibayar terpisah)</span><strong>' + L.fmtRp(katCalc.total) + '</strong></div>' : '') +
         '<div><span>DP 50% (menginap saja)</span><strong>' + L.fmtRp(c.dpAmount) + '</strong></div>' +
         '<div><span>Jatuh tempo pelunasan (H-3)</span><strong>' + L.fmtDate(c.dueDate) + '</strong></div>' +
         (bd.extraBedCost > 0 ? '<div><span>Extra bed (per menginap)</span><strong>' + L.fmtRp(bd.extraBedCost) + '</strong></div>' : '') +
         (bd.vipCost > 0 ? '<div><span>Kamar VIP</span><strong>' + L.fmtRp(bd.vipCost) + '</strong></div>' : '') +
         (v.id ? '<div><span>Terbayar</span><strong>' + L.fmtRp(paidNow) + '</strong></div>' +
           '<div><span>Sisa tagihan</span><strong>' + L.fmtRp(remainingNow) + '</strong></div>' : '');
+    }
+  }
+
+  /* Katering dari form reservasi -> pesanan di Operasional (otomatis, satu
+   * pesanan per booking). Bila pesanan untuk booking ini sudah ada, paket/
+   * makan/pax/harga diperbarui (status & catatan dipertahankan). Bila paket
+   * dikosongkan, pesanan yang sudah ada TIDAK dihapus otomatis — hapus
+   * manual di Operasional bila memang batal (pesanan mungkin sudah
+   * disiapkan). */
+  function upsertCateringOrder(v) {
+    if (!v.cateringPackage) { return; }
+    var pax = (v.cateringPax !== '' && v.cateringPax > 0) ? v.cateringPax : (v.pax || 0);
+    if (pax < 1) { return; }
+    var calc = L.cateringOrderCalc(state.data.settings, v.cateringPackage, v.cateringMeals || 'Full', pax);
+    if (!calc || calc.total <= 0) { return; }
+    var orders = state.data.cateringOrders || [];
+    var existing = null;
+    for (var i = 0; i < orders.length; i++) { if (orders[i].bookingId === v.id) { existing = orders[i]; break; } }
+    if (existing) {
+      existing.package = v.cateringPackage;
+      existing.meals = v.cateringMeals || 'Full';
+      existing.pax = calc.pax;
+      existing.pricePerPax = calc.pricePerPax;
+      existing.total = calc.total;
+      touch(existing);
+    } else {
+      orders.push(touch({
+        id: L.nextId('CK', orders, L.todayISO()),
+        bookingId: v.id,
+        package: v.cateringPackage,
+        meals: v.cateringMeals || 'Full',
+        pax: calc.pax,
+        pricePerPax: calc.pricePerPax,
+        total: calc.total,
+        status: 'Dipesan',
+        note: ''
+      }));
     }
   }
 
@@ -1451,6 +1568,8 @@
       existing.createdAt = createdAt;
       touch(existing);
     }
+    /* Katering ikut tersimpan sebagai pesanan di Operasional (satu commit). */
+    upsertCateringOrder(v);
     commit().then(function (res) {
       if (res.ok) {
         setSaveStatus('Tersimpan ✓', 'ok');
@@ -3254,6 +3373,7 @@
     resFormRecalc: resFormRecalc,
     markRateTouched: function () { state.rateTouched = true; },
     markExtraCostTouched: function () { state.extraCostTouched = true; },
+    markPaxTouched: function () { state.paxTouched = true; },
     applySuggestedRate: function (v) {
       var input = $('rf-rate');
       if (input) { input.value = v; }

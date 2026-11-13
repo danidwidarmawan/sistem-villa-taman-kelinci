@@ -423,6 +423,12 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 
 .form-card h2 { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .form-card h2:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+/* Judul bagian bernomor di form reservasi (v1.4.0): nomor tosca + garis bawah. */
+.form-card h3.sec { margin: 1.4rem 0 0.6rem; font-size: 1rem; color: var(--navy-900); padding-bottom: 0.4rem; border-bottom: 2px solid var(--teal-soft); }
+.form-card h3.sec:first-of-type { margin-top: 0.25rem; }
+.sec-num { display: inline-block; background: var(--teal); color: #fff; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; font-size: 0.8rem; margin-right: 6px; }
+.baru { display: inline-block; background: var(--violet-soft); color: var(--violet); font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+.page-head-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .form-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
 
 .save-status { min-height: 1.4em; font-weight: 600; margin: 0.75rem 0 0; }
