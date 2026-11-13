@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.7.1-tombol-kanan-nama';
+  var APP_VERSION = '1.7.2-tombol-owner';
 
   var LS = {
     data: 'vtk_data',

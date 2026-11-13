@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="Sistem operasional harian Villa Taman Kelinci — reservasi, keuangan, leads, kalender, dan dashboard monitoring." />
 <title>Sistem Villa Taman Kelinci</title>
-<link rel="stylesheet" href="styles.css?v=1.7.1" />
+<link rel="stylesheet" href="styles.css?v=1.7.2" />
 </head>
 <body>
 <div id="app">
@@ -16,6 +16,7 @@
         <strong>Dani Dwi Darmawan</strong>
         <span>Owner</span>
       </div>
+      <button type="button" class="btn btn-ghost btn-small nav-collapse-btn" onclick="VTK.toggleNavCollapse()" aria-label="Ciutkan sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
     </div>
     <nav id="nav-desktop" aria-label="Navigasi utama"></nav>
     <div class="sidebar-foot">
@@ -26,10 +27,7 @@
 
   <div id="main">
     <header id="topbar">
-      <div class="topbar-left">
-        <div class="brand-mini"><span class="brand-mini-logo-wrap"><img src="villa-logo.png" alt="" class="brand-mini-logo" /></span> <strong>Villa Taman Kelinci</strong></div>
-        <button type="button" class="btn btn-ghost btn-small nav-collapse-btn" onclick="VTK.toggleNavCollapse()" aria-label="Ciutkan sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
-      </div>
+      <div class="brand-mini"><span class="brand-mini-logo-wrap"><img src="villa-logo.png" alt="" class="brand-mini-logo" /></span> <strong>Villa Taman Kelinci</strong></div>
       <span id="sync-pill" class="sync-pill offline">Memuat…</span>
     </header>
     <div id="banner"></div>
@@ -43,8 +41,8 @@
 <nav id="nav-mobile" aria-label="Navigasi utama"></nav>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script src="logic.js?v=1.7.1"></script>
-<script src="charts.js?v=1.7.1"></script>
-<script src="app.js?v=1.7.1"></script>
+<script src="logic.js?v=1.7.2"></script>
+<script src="charts.js?v=1.7.2"></script>
+<script src="app.js?v=1.7.2"></script>
 </body>
 </html>

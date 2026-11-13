@@ -874,11 +874,13 @@ input[type="password"], select, textarea {
 }
 
 /* ================= v1.7.0 — logo di header + sidebar bisa diminimize ================= */
-/* Kelompok kiri header: tombol minimize + logo/nama villa. */
-.topbar-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
 /* Tombol minimize hanya di desktop (di HP tidak ada sidebar). */
 .nav-collapse-btn { display: none; }
 .nav-collapse-btn svg { width: 18px; height: 18px; transition: transform 0.2s ease; }
+/* v1.7.2 — tombol minimize tinggal di sidebar, di sebelah nama owner:
+ * ikon terang agar terbaca di atas navy + rata kanan di baris profil. */
+#sidebar .nav-collapse-btn { color: #e2e8f0; margin-left: auto; flex-shrink: 0; }
+#sidebar .nav-collapse-btn:hover { background: rgba(255, 255, 255, 0.1); }
 
 @media (min-width: 900px) {
   .nav-collapse-btn { display: inline-flex; align-items: center; justify-content: center; }
@@ -894,5 +896,6 @@ input[type="password"], select, textarea {
   /* Spesifisitas harus mengalahkan .nav-group.open .nav-sublist (0,3,0). */
   body.nav-collapsed .nav-group.open .nav-sublist { display: none; }
   body.nav-collapsed #nav-desktop .nav-item, body.nav-collapsed .nav-group-head { justify-content: center; padding: 0.65rem 0; }
-  body.nav-collapsed .profile { justify-content: center; padding: 0.5rem; }
+  body.nav-collapsed .profile { flex-direction: column; gap: 0.5rem; justify-content: center; padding: 0.5rem; }
+  body.nav-collapsed .profile .nav-collapse-btn { margin-left: 0; }
 }
