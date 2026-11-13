@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.5.1-pengaturan-dropdown';
+  var APP_VERSION = '1.5.2-lompat-legenda';
 
   var LS = {
     data: 'vtk_data',
@@ -616,11 +616,16 @@
     if (state.route !== 'pengaturan') { state.settingsSection = null; }
     /* Hormati form yang dijadwalkan lintas-hash (mis. Leads -> Jadikan
      * reservasi, Kalender -> tambah reservasi); selain itu tutup form. */
+    /* Lompat ke bagian (mis. submenu Pengaturan) harus bertahan:
+     * tangkap sebelum renderView mengonsumsinya di afterRender, lalu
+     * jangan scroll ke atas bila ada lompatan (bug v1.5.1: scrollTo
+     * di akhir route() membatalkan scrollIntoView dari afterRender). */
+    var jumpTo = state.pendingScroll;
     state.form = state.pendingForm || null;
     state.pendingForm = null;
     renderShell();
     renderView();
-    window.scrollTo(0, 0);
+    if (!jumpTo) { window.scrollTo(0, 0); }
   }
 
   function go(routeName) {
@@ -1188,9 +1193,12 @@
         '" onclick="VTK.miniCalGo(\'' + c.dateISO + '\')">' + c.day + '</button>';
     });
     h += '</div>';
-    h += occupied || blocked
-      ? '<p class="hint">Hari tosca = terisi.' + (blocked ? ' Hari abu-abu = terblokir (besoknya early check-in).</p>' : '</p>')
-      : '<p class="hint">Belum ada reservasi di bulan ini.</p>';
+    /* Legenda warna (sama gayanya dengan kalender utama) — menggantikan
+     * keterangan kalimat "Hari tosca = terisi..." (permintaan pemilik
+     * v1.5.2). Swatch memakai warna sel kalender mini yang sebenarnya. */
+    h += '<p class="hint legend"><span class="sw mini-occupied"></span> Terisi &nbsp; ' +
+      '<span class="sw mini-blocked"></span> Terblokir &nbsp; <span class="sw today"></span> Hari ini</p>';
+    if (!occupied && !blocked) { h += '<p class="hint">Belum ada reservasi di bulan ini.</p>'; }
     return h;
   }
 
