@@ -13,16 +13,16 @@
   --brand-200: #fed7aa;
   --brand-100: #ffedd5;
   --brand-50: #fff7ed;
-  --navy-900: #0f2a43;
+  --navy-900: #0c2237;
   --navy-800: #16324f;
   --navy-700: #1d4568;
   --navy-100: #d9e2ec;
   --navy-50: #f0f4f8;
-  --cream: #f6f4f1;
+  --cream: #f7f6f3;
   --paper: #ffffff;
-  --ink: #292524;
+  --ink: #1c1917;
   --muted: #78716c;
-  --border: #e8e4db;
+  --border: #e9e5df;
   --orange: #e8590c;
   --orange-soft: #fff4e6;
   --positive: #2f9e44;
@@ -45,7 +45,7 @@
   --violet: #7c3aed;
   --violet-soft: #ede9fe;
   --radius: 16px;
-  --shadow: 0 1px 2px rgba(28, 25, 23, 0.05), 0 8px 24px rgba(28, 25, 23, 0.06);
+  --shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 10px 30px rgba(28, 25, 23, 0.06);
   --nav-h: 60px;
 }
 
@@ -55,7 +55,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: var(--cream);
   color: var(--ink);
   line-height: 1.5;
@@ -877,9 +877,9 @@ input[type="password"], select, textarea {
 /* Tombol minimize hanya di desktop (di HP tidak ada sidebar). */
 .nav-collapse-btn { display: none; }
 .nav-collapse-btn svg { width: 18px; height: 18px; transition: transform 0.2s ease; }
-/* v1.7.2 — tombol minimize tinggal di sidebar, di sebelah nama owner:
- * ikon terang agar terbaca di atas navy + rata kanan di baris profil. */
-#sidebar .nav-collapse-btn { color: #e2e8f0; margin-left: auto; flex-shrink: 0; }
+/* v1.7.2 — tombol minimize tinggal di sidebar: ikon terang agar
+ * terbaca di atas navy + hover putih transparan. */
+#sidebar .nav-collapse-btn { color: #e2e8f0; flex-shrink: 0; }
 #sidebar .nav-collapse-btn:hover { background: rgba(255, 255, 255, 0.1); }
 
 @media (min-width: 900px) {
@@ -896,6 +896,42 @@ input[type="password"], select, textarea {
   /* Spesifisitas harus mengalahkan .nav-group.open .nav-sublist (0,3,0). */
   body.nav-collapsed .nav-group.open .nav-sublist { display: none; }
   body.nav-collapsed #nav-desktop .nav-item, body.nav-collapsed .nav-group-head { justify-content: center; padding: 0.65rem 0; }
-  body.nav-collapsed .profile { flex-direction: column; gap: 0.5rem; justify-content: center; padding: 0.5rem; }
-  body.nav-collapsed .profile .nav-collapse-btn { margin-left: 0; }
+  body.nav-collapsed .profile { justify-content: center; padding: 0.5rem; }
+}
+
+/* ================= v1.8.0 — desain terbaik: tipografi + poles menyeluruh ================= */
+/* Font Plus Jakarta Sans dimuat dari Google Fonts (index.html); bila
+ * gagal dimuat, fallback ke system-ui — aplikasi tetap berfungsi penuh. */
+::selection { background: #fed7aa; color: #7c2d12; }
+/* Baris atas sidebar: tombol minimize di atas nama owner, rata kanan. */
+.sidebar-top { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+/* Topbar kaca: putih tembus pandang + blur saat konten bergulir di bawahnya. */
+#topbar { background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+/* KPI hero: angka lebih besar + rapat, chip ikon lebih besar berbayang,
+ * latar bergradasi sangat halus sesuai aksen tiap kartu. */
+.kpi-hero .kpi-value { font-size: 1.6rem; letter-spacing: -0.02em; padding-right: 3rem; }
+.kpi-hero .kpi-ico { width: 44px; height: 44px; border-radius: 12px; box-shadow: 0 4px 10px rgba(28, 25, 23, 0.08); }
+.kpi-hero .kpi-ico svg { width: 22px; height: 22px; }
+.kpi-hero.kpi-accent-teal { background: linear-gradient(180deg, #ffffff 0%, #f0fdfa 100%); }
+.kpi-hero.kpi-accent-blue { background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%); }
+.kpi-hero.kpi-accent-violet { background: linear-gradient(180deg, #ffffff 0%, #f5f3ff 100%); }
+.kpi-hero.kpi-accent-amber { background: linear-gradient(180deg, #ffffff 0%, #fffbeb 100%); }
+/* Tabel: angka tabular agar kolom nominal sejajar. */
+.tbl { font-variant-numeric: tabular-nums; }
+/* Nomor bagian form: lingkaran gradasi tosca berbayang. */
+.sec-num { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); box-shadow: 0 2px 6px rgba(13, 148, 136, 0.35); }
+/* Sel kalender mini terisi: gradasi tosca. */
+.mini-cal-cell.occupied { background: linear-gradient(135deg, var(--teal), var(--teal-dark)); }
+/* Scrollbar sidebar yang tipis dan halus. */
+#sidebar::-webkit-scrollbar { width: 6px; }
+#sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+#sidebar::-webkit-scrollbar-track { background: transparent; }
+/* Tombol utama: gradasi oranye lebih cerah dan modern. */
+.btn-primary { background: linear-gradient(180deg, #f97316, #ea580c); box-shadow: 0 6px 16px rgba(234, 88, 12, 0.3); }
+
+@media (min-width: 900px) {
+  /* Item nav aktif: sentuhan gradasi oranye di balik putih transparan. */
+  #nav-desktop .nav-item.active { background: linear-gradient(90deg, rgba(249, 115, 22, 0.18), rgba(255, 255, 255, 0.08)); }
+  /* Sidebar diminimize: tombol di atas rata tengah. */
+  body.nav-collapsed .sidebar-top { justify-content: center; }
 }
