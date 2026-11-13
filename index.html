@@ -5,13 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="Sistem operasional harian Villa Taman Kelinci — reservasi, keuangan, leads, kalender, dan dashboard monitoring." />
 <title>Sistem Villa Taman Kelinci</title>
-<link rel="stylesheet" href="styles.css?v=1.8.1" />
+<link rel="stylesheet" href="styles.css?v=1.9.0" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
 <div id="app">
+  <header id="topbar">
+    <div class="brand-mini"><span class="brand-mini-logo-wrap"><img src="villa-logo.png" alt="" class="brand-mini-logo" /></span> <strong>Villa Taman Kelinci</strong></div>
+    <span id="sync-pill" class="sync-pill offline">Memuat…</span>
+  </header>
+  <div id="body-row">
   <aside id="sidebar">
     <div class="sidebar-top">
       <button type="button" class="btn btn-ghost btn-small nav-collapse-btn" onclick="VTK.toggleNavCollapse()" aria-label="Ciutkan sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
@@ -31,23 +36,20 @@
   </aside>
 
   <div id="main">
-    <header id="topbar">
-      <div class="brand-mini"><span class="brand-mini-logo-wrap"><img src="villa-logo.png" alt="" class="brand-mini-logo" /></span> <strong>Villa Taman Kelinci</strong></div>
-      <span id="sync-pill" class="sync-pill offline">Memuat…</span>
-    </header>
     <div id="banner"></div>
     <main id="view" aria-live="polite"></main>
     <footer id="page-foot">
       <span>Data tersimpan di repo GitHub privat Anda. Token hanya ada di browser ini.</span>
     </footer>
   </div>
+  </div>
 </div>
 
 <nav id="nav-mobile" aria-label="Navigasi utama"></nav>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script src="logic.js?v=1.8.1"></script>
-<script src="charts.js?v=1.8.1"></script>
-<script src="app.js?v=1.8.1"></script>
+<script src="logic.js?v=1.9.0"></script>
+<script src="charts.js?v=1.9.0"></script>
+<script src="app.js?v=1.9.0"></script>
 </body>
 </html>

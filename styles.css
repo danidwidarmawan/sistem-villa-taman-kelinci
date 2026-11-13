@@ -942,3 +942,21 @@ input[type="password"], select, textarea {
   /* Sidebar diminimize: tombol di atas rata tengah. */
   body.nav-collapsed .sidebar-top { justify-content: center; }
 }
+
+/* ================= v1.9.0 — header selebar layar, logo pojok kiri ================= */
+/* Header kini anak pertama #app (selebar layar); sidebar + konten utama
+ * berada di #body-row di bawahnya. Tinggi header disamakan ke --nav-h
+ * (60px) agar posisi sticky sidebar pas tanpa celah. */
+#topbar { min-height: var(--nav-h); }
+
+@media (min-width: 900px) {
+  #app { flex-direction: column; }
+  #body-row { display: flex; flex: 1; min-width: 0; }
+  /* PERBAIKAN: aturan desktop lama memaksa justify-content: flex-end
+   * (sisa dari masa brand-mini disembunyikan di desktop) sehingga
+   * logo + nama menumpuk di KANAN header. Kini space-between: logo
+   * di pojok kiri, pill status di kanan. */
+  #topbar { justify-content: space-between; }
+  /* Sidebar menempel di bawah header saat halaman digulir. */
+  #sidebar { top: var(--nav-h); height: calc(100vh - var(--nav-h)); min-height: calc(100vh - var(--nav-h)); }
+}

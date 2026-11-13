@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.8.1-sembunyi-tersinkron';
+  var APP_VERSION = '1.9.0-header-penuh';
 
   var LS = {
     data: 'vtk_data',
