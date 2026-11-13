@@ -264,7 +264,10 @@
       paid: paid,
       remaining: remaining,
       payStatus: payStatus,
-      dpAmount: Math.round(total * dpPct),
+      /* DP: ATURAN PEMILIK (2026-11-13) — hanya dari biaya MENGINAP
+       * (malam × tarif). Extra bed, kamar VIP, dan diskon TIDAK masuk
+       * perhitungan DP. */
+      dpAmount: Math.round(nights * rate * dpPct),
       dueDate: res.checkin ? addDaysISO(res.checkin, -deadlineDays(settings)) : ''
     };
   }

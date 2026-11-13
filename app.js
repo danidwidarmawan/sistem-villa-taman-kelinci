@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.3.3-rincian-baris';
+  var APP_VERSION = '1.3.4-dp-menginap';
 
   var LS = {
     data: 'vtk_data',
@@ -1396,7 +1396,7 @@
       calcEl.innerHTML =
         '<div><span>Malam</span><strong>' + c.nights + '</strong></div>' +
         '<div><span>Total booking</span><strong>' + L.fmtRp(c.total) + '</strong></div>' +
-        '<div><span>DP 50%</span><strong>' + L.fmtRp(c.dpAmount) + '</strong></div>' +
+        '<div><span>DP 50% (menginap saja)</span><strong>' + L.fmtRp(c.dpAmount) + '</strong></div>' +
         '<div><span>Jatuh tempo pelunasan (H-3)</span><strong>' + L.fmtDate(c.dueDate) + '</strong></div>' +
         (bd.extraBedCost > 0 ? '<div><span>Extra bed (per menginap)</span><strong>' + L.fmtRp(bd.extraBedCost) + '</strong></div>' : '') +
         (bd.vipCost > 0 ? '<div><span>Kamar VIP</span><strong>' + L.fmtRp(bd.vipCost) + '</strong></div>' : '') +
