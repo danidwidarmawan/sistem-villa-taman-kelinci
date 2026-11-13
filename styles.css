@@ -100,6 +100,8 @@ input, select, textarea { color: var(--ink); }
 }
 
 .brand-mini { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; white-space: nowrap; }
+a.brand-mini { text-decoration: none; color: inherit; }
+a.brand-mini:hover { opacity: 0.85; }
 .brand-mini-logo-wrap { background: var(--paper); border-radius: 6px; padding: 2px 6px; display: inline-flex; align-items: center; }
 .brand-mini-logo { display: block; height: 26px; width: auto; }
 
@@ -373,6 +375,7 @@ input, select, textarea { color: var(--ink); }
 .mini-cal-cell.other { opacity: 0.35; }
 .mini-cal-cell.today { border: 2px solid var(--brand-700); font-weight: 800; }
 .mini-cal-cell.occupied { background: var(--teal-dark); color: #fff; font-weight: 700; }
+.mini-cal-cell.checkout { background: #ccfbf1; color: #0f766e; font-weight: 700; }
 .mini-cal-cell.blocked { background: #e5e0d5; color: #57534e; }
 .mini-cal-cell.occupied.today { box-shadow: 0 0 0 2px var(--brand-700); }
 .card-foot { margin-top: 0.9rem; }
@@ -478,6 +481,7 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 .cal-cell.weekend { background: #f4f1ea; }
 .cal-cell.peak { background: var(--brand-200); }
 .cal-cell.occupied { background: var(--teal-soft); }
+.cal-cell.checkout-day { background: #f0fdfa; }
 /* Malam terblokir: kosong tapi tidak bisa dijual (besoknya ada booking
  * early check-in). Arsir abu-abu — berbeda dari tosca terisi / oranye peak. */
 .cal-cell.blocked { background: repeating-linear-gradient(45deg, #faf8f4, #faf8f4 6px, #e7e1d6 6px, #e7e1d6 12px); }
@@ -491,10 +495,14 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 .peak-tag { background: #ffd8a8; color: #7c2d12; }
 .blocked-tag { background: #e5e0d5; color: #57534e; }
 .cap-tag { background: #ffe08a; color: #713f12; }
+.checkin-tag { background: #d3f9d8; color: #2b8a3e; }
+.checkout-tag { background: #fef3c7; color: #92400e; }
 
 .legend { margin-top: 0.75rem; line-height: 2; }
 .sw { display: inline-block; width: 0.85rem; height: 0.85rem; border-radius: 3px; border: 1px solid var(--border); vertical-align: middle; }
 .sw.occupied { background: var(--teal-soft); }
+.sw.checkin { background: #2f9e44; border-color: #2f9e44; }
+.sw.checkout { background: #d97706; border-color: #d97706; }
 .sw.blocked { background: repeating-linear-gradient(45deg, #faf8f4, #faf8f4 3px, #d6d0c4 3px, #d6d0c4 6px); }
 .sw.peak { background: var(--brand-200); }
 .sw.weekend { background: #f4f1ea; }
@@ -792,6 +800,7 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 
 /* v1.5.2 — swatch legenda kalender mini (warna sel mini-cal yang sebenarnya). */
 .sw.mini-occupied { background: var(--teal-dark); border-color: var(--teal-dark); }
+.sw.mini-checkout { background: #ccfbf1; border-color: #0f766e; }
 .sw.mini-blocked { background: #e5e0d5; }
 
 /* ================= v1.6.0 — redesain menyeluruh: premium warm minimal ================= */

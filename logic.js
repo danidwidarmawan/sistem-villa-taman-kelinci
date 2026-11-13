@@ -479,6 +479,11 @@
       var res = active.filter(function (r) {
         return isISODate(r.checkin) && isISODate(r.checkout) && iso >= r.checkin && iso < r.checkout;
       });
+      /* Gaya kalender hotel (v1.10.0): tiap sel juga tahu siapa yang check-in
+       * dan check-out pada hari itu — tanggal check-out tampil sebagai hari
+       * kepulangan tamu, bukan hari kosong tanpa keterangan. */
+      var checkins = active.filter(function (r) { return isISODate(r.checkin) && r.checkin === iso; });
+      var checkouts = active.filter(function (r) { return isISODate(r.checkout) && r.checkout === iso; });
       var pax = res.reduce(function (s, r) { return s + (+r.pax || 0); }, 0);
       /* Malam kosong yang terblokir: besok ada booking early check-in. */
       var blocked = res.length ? null : blockedNightInfo(data.reservations, iso, data.settings);
@@ -490,6 +495,8 @@
         isWeekend: ((data.settings && data.settings.weekendNights) || [5, 6]).indexOf(d.getDay()) !== -1,
         peak: peakForNight(iso, data.settings),
         reservations: res,
+        checkins: checkins,
+        checkouts: checkouts,
         pax: pax,
         capacity: capacityLevel(pax, data.settings),
         blocked: blocked ? { reservation: blocked.reservation, checkinTime: blocked.checkinTime, reason: blockedNightReason(blocked) } : null

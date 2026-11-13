@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.9.0-header-penuh';
+  var APP_VERSION = '1.10.0-kalender-hotel';
 
   var LS = {
     data: 'vtk_data',
@@ -1065,7 +1065,8 @@
 
     html += '</div>'; /* Tutup .dash-main */
 
-    /* Rel kanan: kalender mini -> Perlu tindakan -> outlook 30 hari. */
+    /* Rel kanan: kalender mini -> Perlu tindakan. Kartu outlook 30 hari
+     * dihapus v1.10.0 (permintaan pemilik): isinya duplikat kalender. */
     html += '<aside class="dash-rail">' +
       '<div class="card mini-cal-card"><div class="mini-cal-head">' +
       '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan sebelumnya" onclick="VTK.miniCalNav(-1)">‹</button>' +
@@ -1076,7 +1077,6 @@
       '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
       '</div>' +
       actionsCardHTML +
-      forwardOutlookCardHTML() +
       '</aside></div>'; /* Tutup .dash-rail + .dash-layout */
 
     /* Check-in berikutnya + transaksi terakhir */
@@ -1146,41 +1146,6 @@
     return html;
   }
 
-  /* Kartu "30 hari ke depan" — malam terisi/kosong, weekend belum terisi,
-   * dan booking yang sudah masuk dalam jendela. */
-  function forwardOutlookCardHTML() {
-    var today = L.todayISO();
-    var o = L.forwardOutlook(state.data.reservations, today, 30, state.data.settings);
-    var weekendItems = o.emptyWeekendNights.length
-      ? o.emptyWeekendNights.map(function (w) {
-          return '<li>' + esc(w.label) + ' — <span class="muted">belum terisi</span></li>';
-        }).join('')
-      : '<li class="muted">Semua malam weekend dalam 30 hari ke depan sudah terisi.</li>';
-    /* Malam weekend terblokir (besoknya ada booking early check-in) tampil
-     * terpisah dari "belum terisi" — tidak bisa dijual, beserta alasannya. */
-    var blockedItems = o.blockedWeekendNights.length
-      ? o.blockedWeekendNights.map(function (w) {
-          return '<li>' + esc(w.label) + ' — <span class="muted">terblokir: ' + esc(w.reason) + '</span></li>';
-        }).join('')
-      : '';
-    var bookingItems = o.bookings.length
-      ? o.bookings.map(function (b) {
-          return '<li><a href="#/reservasi">' + esc(b.guestName) + '</a> — ' + L.fmtDate(b.checkin) +
-            ' s.d. ' + L.fmtDate(b.checkout) + ' (' + b.nights + ' malam, ' + L.fmtNum(b.pax) + ' tamu) ' +
-            resStatusBadge(b.status) + '</li>';
-        }).join('')
-      : '<li class="muted">Belum ada reservasi dalam 30 hari ke depan.</li>';
-    return '<section class="card"><h2>30 hari ke depan</h2>' +
-      '<p><strong>' + o.nightsOccupied + ' dari ' + o.days + ' malam terisi</strong> (' + L.fmtPct(o.occupancyPct) + ') • ' +
-      '<strong>' + o.nightsBlocked + ' malam terblokir</strong> • ' +
-      '<strong>' + o.nightsEmpty + ' malam kosong</strong> • ' + L.fmtDate(o.start) + ' s.d. ' + L.fmtDate(L.addDaysISO(o.end, -1)) + '</p>' +
-      '<div class="two-col"><div><h3>Weekend belum terisi</h3><ul class="simple-list">' + weekendItems + '</ul>' +
-      (blockedItems ? '<h3>Weekend terblokir</h3><ul class="simple-list">' + blockedItems + '</ul>' +
-        '<p class="hint">Malam terblokir tidak bisa dijual: tamu keesokan paginya early check-in.</p>' : '') + '</div>' +
-      '<div><h3>Booking dalam 30 hari</h3><ul class="simple-list">' + bookingItems + '</ul></div></div>' +
-      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div></section>';
-  }
-
   /* Kalender mini dashboard: grid ringkas bulan yang dipilih (Senin dulu).
    * Hari terisi ditandai tosca, hari ini dilingkari; klik hari membuka
    * halaman Kalender pada bulan & hari tersebut. */
@@ -1191,6 +1156,7 @@
     var dows = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
     var occupied = 0;
     var blocked = 0;
+    var checkouts = 0;
     var h = '<div class="mini-cal" role="grid" aria-label="Kalender mini ' + esc(L.monthLabel(monthKey)) + '">';
     dows.forEach(function (dow) { h += '<div class="mini-cal-dow">' + dow + '</div>'; });
     cells.forEach(function (c) {
@@ -1200,11 +1166,17 @@
       if (c.reservations.length) {
         cls += ' occupied';
         if (c.inMonth) { occupied++; }
+      } else if (c.checkouts.length) {
+        /* Hari check-out saja (malamnya kosong): warna tosca pucat — tamu
+         * pulang siang itu, malamnya sudah bisa dijual lagi. */
+        cls += ' checkout';
+        if (c.inMonth) { checkouts++; }
       } else if (c.blocked) {
         cls += ' blocked';
         if (c.inMonth) { blocked++; }
       }
       var label = L.fmtDate(c.dateISO) + (c.reservations.length ? ' — terisi (' + c.reservations.length + ' reservasi)'
+        : c.checkouts.length ? ' — check-out: ' + c.checkouts.map(function (r) { return r.guestName; }).join(', ')
         : c.blocked ? ' — terblokir (' + c.blocked.reason + ')' : ' — kosong');
       h += '<button type="button" class="' + cls + '" title="' + esc(label) + '" aria-label="' + esc(label) +
         '" onclick="VTK.miniCalGo(\'' + c.dateISO + '\')">' + c.day + '</button>';
@@ -1214,8 +1186,9 @@
      * keterangan kalimat "Hari tosca = terisi..." (permintaan pemilik
      * v1.5.2). Swatch memakai warna sel kalender mini yang sebenarnya. */
     h += '<p class="hint legend"><span class="sw mini-occupied"></span> Terisi &nbsp; ' +
+      '<span class="sw mini-checkout"></span> Check-out &nbsp; ' +
       '<span class="sw mini-blocked"></span> Terblokir &nbsp; <span class="sw today"></span> Hari ini</p>';
-    if (!occupied && !blocked) { h += '<p class="hint">Belum ada reservasi di bulan ini.</p>'; }
+    if (!occupied && !blocked && !checkouts) { h += '<p class="hint">Belum ada reservasi di bulan ini.</p>'; }
     return h;
   }
 
@@ -2256,6 +2229,7 @@
       if (c.peak) { cls += ' peak'; }
       if (c.reservations.length) { cls += ' occupied'; }
       if (c.blocked) { cls += ' blocked'; }
+      if (c.checkouts.length && !c.reservations.length) { cls += ' checkout-day'; }
       if (c.capacity === 'ideal') { cls += ' over-ideal'; }
       if (c.capacity === 'max') { cls += ' over-max'; }
       if (state.calSelected === c.dateISO) { cls += ' selected'; }
@@ -2271,6 +2245,14 @@
       if (c.capacity !== 'ok' && c.reservations.length) {
         body += '<span class="cal-tag cap-tag">' + (c.capacity === 'max' ? 'Melebihi maks' : 'Di atas ideal') + '</span>';
       }
+      /* Gaya kalender hotel (v1.10.0): tandai check-in & check-out per hari.
+       * Tag check-out membawa nama tamu karena di hari itu tidak ada baris
+       * tamu menginap; tag check-in tidak perlu nama (sudah ada di baris). */
+      if (c.checkins.length) { body += '<span class="cal-tag checkin-tag">▼ Check-in</span>'; }
+      if (c.checkouts.length) {
+        var outNames = c.checkouts.map(function (r) { return r.guestName; }).join(', ');
+        body += '<span class="cal-tag checkout-tag">▲ Check-out: ' + esc(outNames) + '</span>';
+      }
       var title = c.blocked ? ' title="Terblokir: ' + esc(c.blocked.reason) + '"' : '';
       return '<button type="button" class="' + cls + '"' + title + ' onclick="VTK.calDayClick(\'' + c.dateISO + '\')">' + body + '</button>';
     }).join('');
@@ -2281,14 +2263,21 @@
       var selCells = cells.filter(function (c) { return c.dateISO === state.calSelected; });
       var sel = selCells[0];
       var selRes = sel ? sel.reservations : [];
-      var items = selRes.length ? selRes.map(function (r) {
+      var selOut = sel ? sel.checkouts : [];
+      var items = selRes.map(function (r) {
         var c = L.reservationCalc(r, state.data.transactions, state.data.settings);
         return '<li><a href="javascript:void(0)" onclick="VTK.openResForm(\'' + esc(r.id) + '\')">' + esc(r.guestName) + '</a> — ' +
           L.fmtDate(r.checkin) + ' s.d. ' + L.fmtDate(r.checkout) + ' (' + c.nights + ' malam, ' + L.fmtNum(r.pax) + ' tamu) ' +
           resStatusBadge(r.status) + '</li>';
-      }).join('') : (sel && sel.blocked
-        ? '<li><strong>Malam terblokir (tidak bisa dijual):</strong> ' + esc(sel.blocked.reason) + '.</li>'
-        : '<li class="muted">Villa kosong pada hari ini.</li>');
+      }).join('') + selOut.map(function (r) {
+        return '<li>▲ Check-out: <a href="javascript:void(0)" onclick="VTK.openResForm(\'' + esc(r.id) + '\')">' + esc(r.guestName) + '</a> — ' +
+          L.fmtDate(r.checkin) + ' s.d. ' + L.fmtDate(r.checkout) + ' (' + L.fmtNum(r.pax) + ' tamu) ' + resStatusBadge(r.status) + '</li>';
+      }).join('');
+      if (!items) {
+        items = (sel && sel.blocked)
+          ? '<li><strong>Malam terblokir (tidak bisa dijual):</strong> ' + esc(sel.blocked.reason) + '.</li>'
+          : '<li class="muted">Villa kosong pada hari ini.</li>';
+      }
       detail = '<section class="card"><h2>' + L.fmtDate(state.calSelected) + '</h2><ul class="simple-list">' + items + '</ul>' +
         '<button type="button" class="btn btn-primary" onclick="VTK.addResForDay(\'' + state.calSelected + '\')">+ Tambah reservasi (check-in hari ini)</button></section>';
     }
@@ -2312,7 +2301,7 @@
       '<button type="button" class="btn" onclick="VTK.calToday()">Hari ini</button>' +
       '</div></section>' +
       '<section class="card"><div class="cal-grid">' + grid + '</div>' +
-      '<p class="hint legend"><span class="sw occupied"></span> Terisi &nbsp; <span class="sw blocked"></span> Terblokir &nbsp; <span class="sw peak"></span> Peak &nbsp; ' +
+      '<p class="hint legend"><span class="sw occupied"></span> Terisi &nbsp; <span class="sw checkin"></span> Check-in &nbsp; <span class="sw checkout"></span> Check-out &nbsp; <span class="sw blocked"></span> Terblokir &nbsp; <span class="sw peak"></span> Peak &nbsp; ' +
       '<span class="sw weekend"></span> Weekend &nbsp; <span class="sw today"></span> Hari ini &nbsp; ' +
       '<span class="sw over-ideal"></span> Di atas kapasitas ideal &nbsp; <span class="sw over-max"></span> Melebihi maksimum</p></section>' +
       detail +
@@ -3006,9 +2995,10 @@
       '<label class="field"><span>Nomor WA utama</span><input type="tel" name="waUtama" value="' + esc(s.waUtama || '') + '" placeholder="08…" /></label>' +
       '</div>' +
       '<div class="form-row">' +
-      '<label class="field"><span>Tarif weekday 2026 (Rp)</span><input type="number" name="weekday2026" min="0" step="1000" value="' + esc(t.weekday2026) + '" /></label>' +
-      '<label class="field"><span>Tarif weekend 2026 (Rp)</span><input type="number" name="weekend2026" min="0" step="1000" value="' + esc(t.weekend2026) + '" /></label>' +
-      '<label class="field"><span>Tarif weekend sebelum 2026 (Rp)</span><input type="number" name="weekendPre2026" min="0" step="1000" value="' + esc(t.weekendPre2026) + '" /></label>' +
+      '<label class="field"><span>Tarif weekday (Rp)</span><input type="number" name="weekday2026" min="0" step="1000" value="' + esc(t.weekday2026) + '" /></label>' +
+      '<label class="field"><span>Tarif weekend (Rp)</span><input type="number" name="weekend2026" min="0" step="1000" value="' + esc(t.weekend2026) + '" /></label>' +
+      '<label class="field"><span>Tarif weekend lama (Rp)</span><input type="number" name="weekendPre2026" min="0" step="1000" value="' + esc(t.weekendPre2026) + '" />' +
+      '<span class="hint">Hanya dipakai untuk booking lama, sebelum tarif saat ini berlaku.</span></label>' +
       '</div>' +
       '<div class="form-row">' +
       '<label class="field"><span>Extra bed (Rp/bed)</span><input type="number" name="extraBed" min="0" step="1000" value="' + esc(t.extraBed) + '" /></label>' +
