@@ -525,7 +525,10 @@
         if (n > 0) { nightsOccupied += n; }
       }
       var c = reservationCalc(r, transactions, data.settings);
-      totalOutstanding += c.remaining;
+      /* 'Selesai' = menginap sudah lewat & dianggap beres, jadi sisanya
+         bukan tagihan berjalan (booking lama hasil impor tidak membebani
+         Sisa tagihan). Check-in, malam terisi & nilai booking tetap dihitung. */
+      if (r.status !== 'Selesai') { totalOutstanding += c.remaining; }
     });
 
     var leadsThisMonth = leads.filter(function (l) { return inMonth(l.dateIn, monthKey); }).length;

@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.3.0-rekening';
+  var APP_VERSION = '1.3.1-impor-gcal';
 
   var LS = {
     data: 'vtk_data',
