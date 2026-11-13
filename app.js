@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.5.0-nav-kalender-tampilan';
+  var APP_VERSION = '1.5.1-pengaturan-dropdown';
 
   var LS = {
     data: 'vtk_data',
@@ -66,7 +66,15 @@
       { route: 'operasional', label: 'Inventaris', tab: 'inventory', icon: 'box' },
       { route: 'operasional', label: 'Pesanan Katering', tab: 'catering', icon: 'utensils' }
     ]},
-    { label: 'Pengaturan', icon: 'sliders', route: 'pengaturan' }
+    { label: 'Pengaturan', icon: 'sliders', children: [
+      { route: 'pengaturan', label: 'Profil & Tarif', section: 'set-profil', icon: 'sliders' },
+      { route: 'pengaturan', label: 'Periode Peak', section: 'set-peak', icon: 'calendar' },
+      { route: 'pengaturan', label: 'Harga Katering', section: 'set-katering', icon: 'utensils' },
+      { route: 'pengaturan', label: 'Target & Rekening', section: 'set-target', icon: 'target' },
+      { route: 'pengaturan', label: 'Koneksi GitHub', section: 'set-koneksi', icon: 'key' },
+      { route: 'pengaturan', label: 'Data', section: 'set-data', icon: 'box' },
+      { route: 'pengaturan', label: 'Template WhatsApp', section: 'set-wa', icon: 'receipt' }
+    ]}
   ];
 
   /* Ikon SVG inline (stroke, currentColor) — tanpa emoji, tanpa file gambar. */
@@ -124,6 +132,12 @@
     /* Grup sidebar yang dibuka/tutup manual: { label: true/false }.
      * Tanpa pilihan manual, grup yang memuat rute aktif terbuka otomatis. */
     navOpen: {},
+    /* Bagian Pengaturan yang dituju dari submenu sidebar (id elemen) —
+     * dipakai untuk sorot aktif submenu; dikosongkan saat pindah rute. */
+    settingsSection: null,
+    /* Id elemen yang harus di-scroll setelah render berikutnya (dipakai
+     * goSettingsSection; hashchange bisa terjadi asinkron). */
+    pendingScroll: null,
     /* form aktif: { module: 'res'|'tx'|'lead'|'hk'|'mnt'|'inv'|'ck', id: string|null, prefill: object|null } */
     form: null,
     /* form yang dijadwalkan lintas-hash (mis. Leads -> Jadikan reservasi) */
@@ -484,15 +498,24 @@
 
   /* ---------------- Shell: navigasi, banner ---------------- */
 
+  /* Anak navigasi cocok dengan rute aktif (abaikan section — dipakai untuk
+   * membuka grup & menandai grup aktif). */
+  function navChildRouteMatches(c) {
+    var opsTab = state.opsTab || 'housekeeping';
+    return state.route === c.route && (!c.tab || opsTab === c.tab);
+  }
+
+  /* Anak navigasi sedang aktif penuh (termasuk section Pengaturan). */
+  function navChildActive(c) {
+    return navChildRouteMatches(c) && (!c.section || state.settingsSection === c.section);
+  }
+
   /* Apakah grup sidebar terbuka: pilihan manual menang; tanpa pilihan,
    * grup yang memuat rute (dan sub-tab) aktif terbuka otomatis. */
   function navGroupOpen(g) {
     if (state.navOpen[g.label] === true) { return true; }
     if (state.navOpen[g.label] === false) { return false; }
-    var opsTab = state.opsTab || 'housekeeping';
-    return (g.children || []).some(function (c) {
-      return state.route === c.route && (!c.tab || opsTab === c.tab);
-    });
+    return (g.children || []).some(navChildRouteMatches);
   }
 
   function renderNav() {
@@ -509,7 +532,6 @@
     /* Desktop (sidebar kiri): kelompok lipat agar ringkas. */
     var d = $('nav-desktop');
     if (!d) { return; }
-    var opsTab = state.opsTab || 'housekeeping';
     d.innerHTML = NAV_GROUPS.map(function (g) {
       if (!g.children) {
         var active = state.route === g.route ? ' active' : '';
@@ -517,15 +539,15 @@
           '<span class="nav-ico" aria-hidden="true">' + icon(g.icon) + '</span>' +
           '<span class="nav-label">' + g.label + '</span></a>';
       }
-      var hasActive = g.children.some(function (c) {
-        return state.route === c.route && (!c.tab || opsTab === c.tab);
-      });
+      var hasActive = g.children.some(navChildRouteMatches);
       var open = navGroupOpen(g);
       var items = g.children.map(function (c) {
-        var cActive = (state.route === c.route && (!c.tab || opsTab === c.tab)) ? ' active' : '';
-        var click = c.tab ? ' onclick="VTK.goOpsTab(\'' + c.tab + '\'); return false;"' : '';
+        var cActive = navChildActive(c) ? ' active' : '';
+        var click = c.tab ? ' onclick="VTK.goOpsTab(\'' + c.tab + '\'); return false;"'
+          : c.section ? ' onclick="VTK.goSettingsSection(\'' + c.section + '\'); return false;"' : '';
         return '<a href="#/' + c.route + '" class="nav-item nav-sub' + cActive + '" data-route="' + c.route + '"' +
-          (c.tab ? ' data-opstab="' + c.tab + '"' : '') + click + '>' +
+          (c.tab ? ' data-opstab="' + c.tab + '"' : '') +
+          (c.section ? ' data-section="' + c.section + '"' : '') + click + '>' +
           '<span class="nav-ico" aria-hidden="true">' + icon(c.icon) + '</span>' +
           '<span class="nav-label">' + c.label + '</span></a>';
       }).join('');
@@ -588,12 +610,10 @@
      * tersembunyi di dalam grup yang tertutup. */
     NAV_GROUPS.forEach(function (g) {
       if (!g.children) { return; }
-      var opsTab = state.opsTab || 'housekeeping';
-      var contains = g.children.some(function (c) {
-        return state.route === c.route && (!c.tab || opsTab === c.tab);
-      });
-      if (contains) { delete state.navOpen[g.label]; }
+      if (g.children.some(navChildRouteMatches)) { delete state.navOpen[g.label]; }
     });
+    /* Sorot section Pengaturan hanya berlaku selama di halaman Pengaturan. */
+    if (state.route !== 'pengaturan') { state.settingsSection = null; }
     /* Hormati form yang dijadwalkan lintas-hash (mis. Leads -> Jadikan
      * reservasi, Kalender -> tambah reservasi); selain itu tutup form. */
     state.form = state.pendingForm || null;
@@ -886,6 +906,12 @@
     if (state.form && state.form.module === 'res') { resFormRecalc(); }
     if (state.form && state.form.module === 'lead') { leadFormToggleLostReason(); }
     if (state.form && state.form.module === 'ck') { ckFormRecalc(); }
+    /* Lompat ke bagian Pengaturan yang diminta submenu sidebar. */
+    if (state.pendingScroll) {
+      var el = document.getElementById(state.pendingScroll);
+      state.pendingScroll = null;
+      if (el && typeof el.scrollIntoView === 'function') { el.scrollIntoView(); }
+    }
   }
 
   /* ---------------- 1. Dashboard ---------------- */
@@ -2943,7 +2969,7 @@
 
     return '<section class="page-head"><h1>Pengaturan</h1></section>' +
       '<form class="card form-card" id="settings-form" onsubmit="return VTK.saveSettings(event)">' +
-      '<h2>Profil &amp; tarif</h2>' +
+      '<h2 id="set-profil">Profil &amp; tarif</h2>' +
       '<div class="form-row">' +
       '<label class="field field-grow"><span>Nama properti</span><input type="text" name="propertyName" value="' + esc(s.propertyName) + '" /></label>' +
       '<label class="field"><span>Jam check-in standar</span><input type="time" name="checkinTime" value="' + esc(s.checkinTime || '') + '" />' +
@@ -2977,15 +3003,15 @@
       '<label class="field field-grow"><span>Kebijakan pembatalan</span><textarea name="cancellationPolicy" rows="2">' + esc(s.cancellationPolicy || '') + '</textarea></label>' +
       '<label class="field field-grow"><span>Kebijakan reschedule</span><textarea name="reschedulePolicy" rows="2">' + esc(s.reschedulePolicy || '') + '</textarea></label>' +
       '</div>' +
-      '<h2>Periode peak</h2>' +
+      '<h2 id="set-peak">Periode peak</h2>' +
       '<div id="peak-rows">' + peaks + '</div>' +
       '<p class="hint">' + esc(s.peakNote || '') + '</p>' +
       '<p class="hint">Tanggal selesai = tanggal check-out: malam terakhir yang kena tarif peak adalah sehari sebelumnya. Contoh: Natal 24–27 Des berarti malam peak 24, 25, 26 Des.</p>' +
       '<button type="button" class="btn btn-small" onclick="VTK.addPeakRow()">+ Tambah periode peak</button>' +
-      '<h2>Harga katering per paket (Rp/pax)</h2>' +
+      '<h2 id="set-katering">Harga katering per paket (Rp/pax)</h2>' +
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Paket</th><th>1x makan</th><th>2x makan</th><th>Paket lengkap</th></tr></thead>' +
       '<tbody>' + cateringRows + '</tbody></table></div>' +
-      '<h2>Target &amp; rekening</h2>' +
+      '<h2 id="set-target">Target &amp; rekening</h2>' +
       '<div class="form-row">' +
       '<label class="field"><span>Target pemasukan bulanan (Rp)</span><input type="number" name="monthlyTarget" min="0" step="100000" value="' + esc(s.monthlyTarget || '') + '" />' +
       '<span class="hint">Kosongkan untuk memakai total biaya tetap (' + L.fmtRp(fixedTotal) + '/bulan) sebagai target = titik impas.</span></label>' +
@@ -3001,7 +3027,7 @@
       '<div class="form-actions"><button type="submit" class="btn btn-primary">Simpan pengaturan</button></div>' +
       '</form>' +
 
-      '<section class="card"><h2>Koneksi GitHub</h2>' +
+      '<section class="card" id="set-koneksi"><h2>Koneksi GitHub</h2>' +
       '<p>Status token: ' + (hasToken
         ? '<strong>tersimpan di browser ini</strong> (tidak ditampilkan). Kosongkan kolom token bila tidak ingin menggantinya.'
         : '<strong>belum diatur</strong> — data hanya tersimpan di perangkat ini.') + '</p>' +
@@ -3020,7 +3046,7 @@
       (hasToken ? '<button type="button" class="btn btn-danger" onclick="VTK.clearToken()">Hapus token</button>' : '') +
       '</div></form></section>' +
 
-      '<section class="card"><h2>Data</h2>' +
+      '<section class="card" id="set-data"><h2>Data</h2>' +
       '<div class="form-actions">' +
       '<button type="button" class="btn" onclick="VTK.exportJSON()">Unduh data.json (backup)</button>' +
       '<label class="btn">Impor data.json<input type="file" id="import-file" accept=".json,application/json" hidden onchange="VTK.importJSON(event)" /></label>' +
@@ -3035,7 +3061,7 @@
 
       '<section class="card"><h2>Menu katering (baca-saja)</h2>' + (menuHTML || emptyState('Belum ada menu.')) + '</section>' +
 
-      '<section class="card"><h2>Template WhatsApp</h2>' + (waHTML || emptyState('Belum ada template.')) +
+      '<section class="card" id="set-wa"><h2>Template WhatsApp</h2>' + (waHTML || emptyState('Belum ada template.')) +
       '<p class="hint">Ganti teks dalam {kurung kurawal} sebelum mengirim. Modul Template WA menyusul di tahap 2.</p></section>' +
 
       '<p class="hint version-note">Sistem Villa Taman Kelinci v' + APP_VERSION + ' — repo kode: danidwidarmawan/sistem-villa-taman-kelinci · repo data: ' + esc(c.owner) + '/' + esc(c.repo) + ' (privat).</p>';
@@ -3405,6 +3431,14 @@
     goOpsTab: function (tab) {
       state.opsTab = tab;
       go('operasional');
+    },
+    /* Dari submenu sidebar Pengaturan: buka halaman Pengaturan lalu
+     * lompat ke bagian itu (scroll terjadi di afterRender setelah
+     * halaman ter-render, karena hashchange bisa asinkron). */
+    goSettingsSection: function (sectionId) {
+      state.settingsSection = sectionId;
+      state.pendingScroll = sectionId;
+      go('pengaturan');
     },
     setFilter: function (module, field, value) {
       state.filters[module][field] = value;
