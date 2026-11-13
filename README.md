@@ -83,9 +83,11 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
 - **Dua rekening terpisah dalam satu website:** pembayaran katering &
   extra bed masuk Rekening Katering & Extra Bed, pembayaran villa masuk
   Rekening Villa. Setiap transaksi ditandai rekeningnya (terisi otomatis
-  dari kategori, bisa diubah); Dashboard menampilkan saldo per rekening,
-  Keuangan punya filter + subtotal per rekening, label rekening bisa
-  diubah di Pengaturan. Biaya katering dipisah dua kategori: **Honor Juru
+  dari kategori, bisa diubah); **tab Rekening** menampilkan saldo per
+  rekening + total gabungan, ringkasan bulan berjalan, dan transaksi
+  terakhir per rekening (dengan tautan ke Keuangan yang mengatur filter
+  rekeningnya), Keuangan punya filter + subtotal per rekening, label
+  rekening bisa diubah di Pengaturan. Biaya katering dipisah dua kategori: **Honor Juru
   Masak** (Irma/Nyai, dari Rekening Villa) dan **Belanja Bahan Katering**
   (dari Rekening Katering & Extra Bed).
 - **Pandangan 30 hari ke depan (Dashboard):** malam terisi vs kosong,
@@ -111,12 +113,35 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
   Pesanan Katering (per booking, harga parsial 1x/2x/lengkap otomatis,
   info honor juru masak per event).
 
+## Tab Rekening & tampilan dashboard baru (v1.3.0-rekening)
+
+- **Tab Rekening** (di samping Keuangan): kartu per rekening — saldo
+  (hanya transaksi Terverifikasi, perhitungan sama dengan kartu Saldo lama),
+  total masuk/keluar semua waktu, ringkasan bulan berjalan (masuk/keluar/
+  bersih), jumlah transaksi, dan 10 transaksi terakhir per rekening (klik
+  baris untuk mengubah transaksi). Tombol "Lihat di Keuangan" di tiap kartu
+  membuka Keuangan dengan filter rekening itu. Kartu saldo tidak lagi ada
+  di Dashboard.
+- **Layout dashboard baru:** kolom utama (~2/3: KPI hero, strip pendukung,
+  grafik arus kas besar, donut + tren okupansi berdampingan, target,
+  kinerja sumber lead) + rel kanan (~1/3: kalender mini, Perlu tindakan,
+  outlook 30 hari). Di HP, isi rel turun ke bawah kolom utama. Semua
+  komponen lama tetap ada — hanya susunannya berubah.
+- **Palet multi-warna (tidak monoton):** tiap kartu KPI hero punya aksen
+  sendiri (Uang Masuk tosca, Okupansi biru, Booking Check-in ungu, Sisa
+  Tagihan amber); grafik: arus kas tosca/merah lembut, okupansi biru,
+  donut tiap kategori beda warna, nilai booking per sumber beda warna per
+  sumber; hari terisi di kalender (mini & penuh) menjadi tosca, terblokir
+  tetap abu-abu, peak tetap oranye. Sidebar tetap navy, oranye tetap aksen
+  merek (tombol utama, logo). Perubahan palet grafik ikut berlaku di
+  halaman Keuangan karena paletnya dipakai bersama.
+
 ## Struktur file
 
 | File | Isi |
 | --- | --- |
 | `index.html` | Struktur + shell SPA (navigasi hash `#/dashboard` dst) |
-| `styles.css` | Seluruh styling (mobile-first, palet oranye) |
+| `styles.css` | Seluruh styling (mobile-first, palet multi-warna tosca/biru/ungu/amber + oranye sebagai aksen merek) |
 | `logic.js` | Logika hitung murni (tanpa DOM) — bisa diuji di Node |
 | `charts.js` | Grafik SVG murni (arus kas, okupansi, batang horizontal) |
 | `app.js` | UI + sinkronisasi GitHub API |

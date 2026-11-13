@@ -819,6 +819,25 @@
     return out;
   }
 
+  /* Ringkasan satu rekening dalam satu bulan (hanya transaksi Terverifikasi):
+   * { masuk, keluar, bersih }. Dipakai tab Rekening untuk "bulan berjalan".
+   * Transaksi tanpa field account = villa (accountOf); rekening tidak
+   * dikenal diperlakukan sebagai villa. */
+  function accountMonthSummary(transactions, account, monthKey) {
+    var out = { masuk: 0, keluar: 0, bersih: 0 };
+    var a = account === 'katering' ? 'katering' : 'villa';
+    (transactions || []).forEach(function (tx) {
+      if (!tx || tx.verifyStatus !== 'Terverifikasi') { return; }
+      if (!inMonth(tx.date, monthKey)) { return; }
+      if (accountOf(tx) !== a) { return; }
+      var amt = +tx.amount || 0;
+      if (tx.type === 'Masuk') { out.masuk += amt; }
+      else if (tx.type === 'Keluar') { out.keluar += amt; }
+    });
+    out.bersih = out.masuk - out.keluar;
+    return out;
+  }
+
   /* ---------------- Target bulanan (Fase 2) ---------------- */
 
   /* Target bulanan efektif: settings.monthlyTarget bila > 0; bila tidak,
@@ -1076,6 +1095,7 @@
     accountOf: accountOf,
     suggestedAccount: suggestedAccount,
     accountBalances: accountBalances,
+    accountMonthSummary: accountMonthSummary,
     monthlyTarget: monthlyTarget,
     targetProgress: targetProgress,
     forwardOutlook: forwardOutlook,

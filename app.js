@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.2.0-turnover';
+  var APP_VERSION = '1.3.0-rekening';
 
   var LS = {
     data: 'vtk_data',
@@ -37,6 +37,7 @@
     { route: 'dashboard', label: 'Dashboard', icon: 'grid' },
     { route: 'reservasi', label: 'Reservasi', icon: 'key' },
     { route: 'keuangan', label: 'Keuangan', icon: 'banknote' },
+    { route: 'rekening', label: 'Rekening', icon: 'bank' },
     { route: 'leads', label: 'Leads', icon: 'users' },
     { route: 'kalender', label: 'Kalender', icon: 'calendar' },
     { route: 'operasional', label: 'Operasional', icon: 'clipboard' },
@@ -48,6 +49,7 @@
     grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9"/><path d="M17 4l2 2"/><path d="M14 7l2 2"/>',
     banknote: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/>',
+    bank: '<path d="M3 9l9-5 9 5"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M2.5 21h19"/>',
     users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5a3.5 3.5 0 0 1 0 6.9"/><path d="M17.5 14.2a6.5 6.5 0 0 1 4 5.8"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/>',
     sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/>',
@@ -782,6 +784,7 @@
     switch (state.route) {
       case 'reservasi': v.innerHTML = state.form && state.form.module === 'res' ? reservationFormHTML() : reservationsViewHTML(); break;
       case 'keuangan': v.innerHTML = state.form && state.form.module === 'tx' ? transactionFormHTML() : financeViewHTML(); break;
+      case 'rekening': v.innerHTML = state.form && state.form.module === 'tx' ? transactionFormHTML() : accountsViewHTML(); break;
       case 'leads': v.innerHTML = state.form && state.form.module === 'lead' ? leadFormHTML() : leadsViewHTML(); break;
       case 'kalender': v.innerHTML = calendarViewHTML(); break;
       case 'operasional': v.innerHTML = opsRouteHTML(); break;
@@ -809,8 +812,9 @@
         '<div class="kpi-value">' + value + '</div>' +
         (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>';
     };
-    /* Kartu KPI hero gaya referensi: ikon kecil + label + angka besar.
-     * extraCls: mis. 'kpi-hero-navy' untuk kartu pertama. */
+    /* Kartu KPI hero: ikon kecil + label + angka besar. extraCls memberi
+     * aksen warna per kartu ('kpi-accent-teal' dst: chip ikon bertinta
+     * lembut + nilai berwarna; kartu tetap putih). */
     var hero = function (label, value, sub, icoName, icoCls, extraCls) {
       return '<div class="kpi card kpi-hero' + (extraCls ? ' ' + extraCls : '') + '">' +
         '<span class="kpi-ico' + (icoCls ? ' ' + icoCls : '') + '" aria-hidden="true">' + icon(icoName) + '</span>' +
@@ -822,14 +826,19 @@
       '<h1>Dashboard</h1>' +
       '<label class="month-picker"><span>Bulan</span>' +
       '<input type="month" value="' + esc(state.dashMonth) + '" onchange="VTK.setDashMonth(this.value)" /></label>' +
-      '</section>';
+      '</section>' +
+      '<div class="dash-layout"><div class="dash-main">';
 
-    /* 4 kartu KPI hero */
+    /* Layout: kolom utama + rel kanan (desktop 2:1; HP menumpuk, isi rel
+     * turun ke bawah isi kolom utama). Semua komponen lama tetap ada —
+     * hanya susunannya berubah; kartu Saldo rekening pindah ke tab Rekening. */
+
+    /* 4 kartu KPI hero — tiap kartu aksen warna sendiri */
     html += '<section class="kpi-grid kpi-hero-grid">' +
-      hero('Uang masuk', L.fmtRp(d.moneyIn), d.monthLabel + ' • terverifikasi', 'banknote', '', 'kpi-hero-navy') +
-      hero('Okupansi', L.fmtPct(d.occupancyPct), d.monthLabel, 'percent', 'green') +
-      hero('Booking check-in', L.fmtNum(d.bookingsCheckin), d.monthLabel, 'calendarCheck', 'blue') +
-      hero('Sisa tagihan', L.fmtRp(d.totalOutstanding), 'semua reservasi aktif', 'receipt', 'amber') +
+      hero('Uang masuk', L.fmtRp(d.moneyIn), d.monthLabel + ' • terverifikasi', 'banknote', '', 'kpi-accent-teal') +
+      hero('Okupansi', L.fmtPct(d.occupancyPct), d.monthLabel, 'percent', '', 'kpi-accent-blue') +
+      hero('Booking check-in', L.fmtNum(d.bookingsCheckin), d.monthLabel, 'calendarCheck', '', 'kpi-accent-violet') +
+      hero('Sisa tagihan', L.fmtRp(d.totalOutstanding), 'semua reservasi aktif', 'receipt', '', 'kpi-accent-amber') +
       '</section>';
 
     /* 4 KPI pendukung sebagai strip ringkas (tidak ada data yang dihilangkan) */
@@ -840,41 +849,33 @@
       kpi('Arus kas bersih', L.fmtRp(d.netCash), d.monthLabel) +
       '</section>';
 
-    /* Saldo rekening (dua rekening terpisah) + target bulanan */
-    html += '<section class="two-col">' + accountBalanceCardHTML(d) + targetCardHTML(d) + '</section>';
-
-    /* Baris 1: arus kas (lebar) + donut komposisi pemasukan (sempit).
-     * Grafik memakai 6 bulan terakhir, berakhir di bulan yang dipilih. */
+    /* Arus kas — kartu besar selebar kolom utama. Grafik memakai 6 bulan
+     * terakhir, berakhir di bulan yang dipilih. */
     var cf = L.monthlyCashflow(state.data.transactions, state.dashMonth, 6);
+    html += '<section class="card chart-card"><h2>Arus kas 6 bulan terakhir</h2>' +
+      '<p class="hint">Hanya transaksi Terverifikasi. Bulan terakhir: ' + esc(d.monthLabel) + '.</p>' +
+      VTKCharts.cashflowChart(cf) + '</section>';
+
+    /* Donut komposisi pemasukan + tren okupansi, berdampingan. */
     var comp = L.incomeComposition(state.data.transactions, state.dashMonth);
     var donutItems = comp.items.map(function (c) { return { label: c.category, value: c.total }; });
-    html += '<section class="dash-row">' +
-      '<div class="card chart-card"><h2>Arus kas 6 bulan terakhir</h2>' +
-      '<p class="hint">Hanya transaksi Terverifikasi. Bulan terakhir: ' + esc(d.monthLabel) + '.</p>' +
-      VTKCharts.cashflowChart(cf) + '</div>' +
+    var occ = L.monthlyOccupancy(state.data.reservations, state.dashMonth, 6);
+    html += '<section class="two-col">' +
       '<div class="card chart-card donut-card"><h2>Komposisi pemasukan</h2>' +
       '<p class="hint">' + esc(d.monthLabel) + ' — hanya transaksi Terverifikasi.</p>' +
       VTKCharts.donutChart(donutItems, { total: comp.total, totalLabel: 'Pemasukan',
         ariaLabel: 'Grafik donut komposisi pemasukan per kategori.',
         emptyMsg: 'Belum ada pemasukan terverifikasi di bulan ini.' }) +
       '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'keuangan\')">Lihat Keuangan</button></div>' +
-      '</div></section>';
-
-    /* Baris 2: tren okupansi (lebar) + kalender mini (sempit) */
-    var occ = L.monthlyOccupancy(state.data.reservations, state.dashMonth, 6);
-    html += '<section class="dash-row">' +
+      '</div>' +
       '<div class="card chart-card"><h2>Tren okupansi</h2>' +
       '<p class="hint">6 bulan terakhir, berakhir ' + esc(d.monthLabel) + '.</p>' +
-      VTKCharts.occupancyChart(occ) + '</div>' +
-      '<div class="card mini-cal-card"><h2>Kalender — ' + esc(d.monthLabel) + '</h2>' +
-      miniCalHTML(state.dashMonth) +
-      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
-      '</div></section>';
+      VTKCharts.occupancyChart(occ) + '</div></section>';
 
-    /* Pandangan 30 hari ke depan */
-    html += forwardOutlookCardHTML();
+    /* Target bulan ini (kartu Saldo rekening sudah pindah ke tab Rekening). */
+    html += targetCardHTML(d);
 
-    /* Perlu tindakan + kinerja sumber lead, berdampingan di desktop */
+    /* Perlu tindakan (rel kanan) + kinerja sumber lead (kolom utama). */
     var a = d.actions;
     var actionItems = [];
     a.unverified.forEach(function (tx) {
@@ -904,8 +905,7 @@
       actionItems.push('<li><span class="bad-text">' + L.fmtDate(x.date) + ': ' + L.fmtNum(x.pax) +
         ' tamu — melebihi kapasitas maksimum (' + L.fmtNum(s.capacity.maxPax) + ')</span></li>');
     });
-    html += '<section class="two-col">' +
-      '<div class="card"><h2>Perlu tindakan ' +
+    var actionsCardHTML = '<div class="card"><h2>Perlu tindakan ' +
       (actionItems.length ? '<span class="count-badge">' + actionItems.length + '</span>' : '') + '</h2>' +
       (actionItems.length ? '<ul class="action-list">' + actionItems.join('') + '</ul>' : emptyState('Tidak ada yang perlu tindakan.')) +
       '</div>';
@@ -924,10 +924,22 @@
     html += '<div class="card chart-card"><h2>Kinerja sumber lead — ' + esc(d.monthLabel) + '</h2>' +
       '<h3>Nilai booking per sumber</h3>' +
       '<p class="hint">Berdasarkan tanggal booking.</p>' +
-      VTKCharts.hBarChart(srcItems, { color: 'orange', ariaLabel: 'Grafik batang nilai booking per sumber lead.',
+      VTKCharts.hBarChart(srcItems, { color: 'multi', ariaLabel: 'Grafik batang nilai booking per sumber lead.',
         emptyMsg: 'Belum ada data — grafik muncul setelah ada reservasi.' }) +
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Sumber</th><th>Leads</th><th>Menang</th><th>Konversi</th><th>Nilai booking</th></tr></thead>' +
-      '<tbody>' + srcRows + '</tbody></table></div></div></section>';
+      '<tbody>' + srcRows + '</tbody></table></div></div>';
+
+    html += '</div>'; /* Tutup .dash-main */
+
+    /* Rel kanan: kalender mini -> Perlu tindakan -> outlook 30 hari. */
+    html += '<aside class="dash-rail">' +
+      '<div class="card mini-cal-card"><h2>Kalender — ' + esc(d.monthLabel) + '</h2>' +
+      miniCalHTML(state.dashMonth) +
+      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
+      '</div>' +
+      actionsCardHTML +
+      forwardOutlookCardHTML() +
+      '</aside></div>'; /* Tutup .dash-rail + .dash-layout */
 
     /* Check-in berikutnya + transaksi terakhir */
     var nextRows = d.nextCheckins.length ? d.nextCheckins.map(function (r) {
@@ -956,29 +968,6 @@
       '(pendapatan kotor, belum biaya variabel).</p></section>';
 
     return html;
-  }
-
-  /* Kartu "Saldo rekening" — saldo per rekening (hanya Terverifikasi)
-   * + total gabungan. */
-  function accountBalanceCardHTML(d) {
-    var b = d.accountBalances;
-    var row = function (key) {
-      var x = b[key];
-      var saldoCls = x.saldo < 0 ? 'bad-text' : '';
-      return '<div class="acct-row"><div class="acct-name">' + esc(accountLabel(key)) + '</div>' +
-        '<div class="acct-nums"><span>Masuk <strong>' + L.fmtRp(x.masuk) + '</strong></span>' +
-        '<span>Keluar <strong>' + L.fmtRp(x.keluar) + '</strong></span>' +
-        '<span>Saldo <strong class="' + saldoCls + '">' + L.fmtRp(x.saldo) + '</strong></span></div></div>';
-    };
-    return '<div class="card"><h2>Saldo rekening</h2>' +
-      '<p class="hint">Hanya transaksi Terverifikasi, semua waktu.</p>' +
-      row('villa') + row('katering') +
-      '<div class="acct-row acct-total"><div class="acct-name">Total gabungan</div>' +
-      '<div class="acct-nums"><span>Masuk <strong>' + L.fmtRp(b.total.masuk) + '</strong></span>' +
-      '<span>Keluar <strong>' + L.fmtRp(b.total.keluar) + '</strong></span>' +
-      '<span>Saldo <strong>' + L.fmtRp(b.total.saldo) + '</strong></span></div></div>' +
-      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'keuangan\')">Lihat Keuangan</button></div>' +
-      '</div>';
   }
 
   /* Kartu "Target bulan ini" — target vs uang masuk terverifikasi bulan terpilih,
@@ -1055,7 +1044,7 @@
   }
 
   /* Kalender mini dashboard: grid ringkas bulan yang dipilih (Senin dulu).
-   * Hari terisi ditandai oranye, hari ini dilingkari; klik hari membuka
+   * Hari terisi ditandai tosca, hari ini dilingkari; klik hari membuka
    * halaman Kalender pada bulan & hari tersebut. */
   function miniCalHTML(monthKey) {
     var y = +String(monthKey).slice(0, 4);
@@ -1084,7 +1073,7 @@
     });
     h += '</div>';
     h += occupied || blocked
-      ? '<p class="hint">Hari oranye = terisi.' + (blocked ? ' Hari abu-abu = terblokir (besoknya early check-in).</p>' : '</p>')
+      ? '<p class="hint">Hari tosca = terisi.' + (blocked ? ' Hari abu-abu = terblokir (besoknya early check-in).</p>' : '</p>')
       : '<p class="hint">Belum ada reservasi di bulan ini.</p>';
     return h;
   }
@@ -1587,6 +1576,62 @@
       '<section class="card"><div class="table-wrap"><table class="tbl"><thead><tr>' +
       '<th>ID</th><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Rekening</th><th>Booking ID</th><th>Deskripsi</th><th>Metode</th><th>Jumlah</th><th>Status Verifikasi</th></tr></thead>' +
       '<tbody>' + (rows || '<tr><td colspan="10" class="empty">Belum ada transaksi.</td></tr>') + '</tbody></table></div></section>';
+  }
+
+  /* ---------------- 2b. Rekening ----------------
+   * Saldo per rekening pindah dari Dashboard ke tab sendiri (v1.3.0):
+   * kartu per rekening (saldo + masuk/keluar semua waktu + ringkasan bulan
+   * berjalan + jumlah transaksi) + transaksi terakhir per rekening.
+   * Saldo memakai perhitungan yang sama persis dengan kartu Saldo lama:
+   * L.accountBalances (hanya transaksi Terverifikasi). Klik baris transaksi
+   * membuka form ubah transaksi; tombol "Lihat di Keuangan" membuka
+   * Keuangan dengan filter rekening itu. */
+  function accountsViewHTML() {
+    var monthKey = L.currentMonthKey();
+    var monthLabel = L.monthLabel(monthKey);
+    var b = L.accountBalances(state.data.transactions);
+    var txs = transactionsSorted();
+    var html = '<section class="page-head"><h1>Rekening</h1></section>' +
+      '<p class="hint">Saldo hanya menghitung transaksi Terverifikasi, semua waktu. ' +
+      'Ringkasan bulanan memakai bulan berjalan (' + esc(monthLabel) + ').</p>' +
+      '<section class="kpi-grid kpi-grid-3">' +
+      '<div class="kpi card"><div class="kpi-label">Total saldo gabungan</div><div class="kpi-value">' + L.fmtRp(b.total.saldo) + '</div><div class="kpi-sub">semua rekening • terverifikasi</div></div>' +
+      '<div class="kpi card"><div class="kpi-label">Total masuk</div><div class="kpi-value">' + L.fmtRp(b.total.masuk) + '</div><div class="kpi-sub">semua waktu • terverifikasi</div></div>' +
+      '<div class="kpi card"><div class="kpi-label">Total keluar</div><div class="kpi-value">' + L.fmtRp(b.total.keluar) + '</div><div class="kpi-sub">semua waktu • terverifikasi</div></div>' +
+      '</section>';
+    L.ACCOUNT_KEYS.forEach(function (key) {
+      var x = b[key];
+      var sum = L.accountMonthSummary(state.data.transactions, key, monthKey);
+      var all = txs.filter(function (tx) { return L.accountOf(tx) === key; });
+      var recent = all.slice(0, 10);
+      var rows = recent.length ? recent.map(function (tx) {
+        var sign = tx.type === 'Masuk' ? '+' : '−';
+        var amtCls = tx.type === 'Masuk' ? 'acct-in' : 'acct-out';
+        return '<li class="acct-tx" onclick="VTK.openTxForm(\'' + esc(tx.id) + '\')">' +
+          '<span class="acct-tx-date">' + L.fmtDate(tx.date) + '</span>' +
+          '<span class="acct-tx-desc">' + esc(tx.description || tx.category) +
+          ' <span class="muted">• ' + esc(tx.category) + '</span></span>' +
+          '<strong class="nowrap ' + amtCls + '">' + sign + L.fmtRp(tx.amount) + '</strong> ' +
+          verifyBadge(tx.verifyStatus) + '</li>';
+      }).join('') : '<li class="muted">Belum ada transaksi di rekening ini.</li>';
+      var saldoCls = x.saldo < 0 ? 'bad-text' : '';
+      html += '<section class="card acct-card"><h2>' + esc(accountLabel(key)) + '</h2>' +
+        '<div class="acct-big">Saldo <strong class="' + saldoCls + '">' + L.fmtRp(x.saldo) + '</strong></div>' +
+        '<div class="acct-row"><div class="acct-name">Semua waktu</div>' +
+        '<div class="acct-nums"><span>Masuk <strong>' + L.fmtRp(x.masuk) + '</strong></span>' +
+        '<span>Keluar <strong>' + L.fmtRp(x.keluar) + '</strong></span>' +
+        '<span>' + L.fmtNum(all.length) + ' transaksi</span></div></div>' +
+        '<div class="acct-row"><div class="acct-name">' + esc(monthLabel) + '</div>' +
+        '<div class="acct-nums"><span>Masuk <strong>' + L.fmtRp(sum.masuk) + '</strong></span>' +
+        '<span>Keluar <strong>' + L.fmtRp(sum.keluar) + '</strong></span>' +
+        '<span>Bersih <strong>' + L.fmtRp(sum.bersih) + '</strong></span></div></div>' +
+        '<h3>Transaksi terakhir</h3>' +
+        '<ul class="simple-list">' + rows + '</ul>' +
+        '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" data-acct-link="' + key +
+        '" onclick="VTK.goFinanceAccount(\'' + key + '\')">Lihat di Keuangan</button></div>' +
+        '</section>';
+    });
+    return html;
   }
 
   function transactionById(id) {
@@ -3122,6 +3167,11 @@
   window.VTK = {
     go: go,
     route: route,
+    /* Dari halaman Rekening: buka Keuangan dengan filter rekening itu. */
+    goFinanceAccount: function (acct) {
+      state.filters.tx.account = (acct === 'katering' || acct === 'villa') ? acct : '';
+      go('keuangan');
+    },
     setDashMonth: function (v) { if (v) { state.dashMonth = v; renderView(); } },
     setFilter: function (module, field, value) {
       state.filters[module][field] = value;

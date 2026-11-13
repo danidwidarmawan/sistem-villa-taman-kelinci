@@ -5,10 +5,11 @@
  * sehingga bisa diuji di Node. Di browser, API tersedia sebagai objek
  * global `VTKCharts`; format angka memakai VTKLogic bila tersedia.
  *
- * Palet selaras dengan styles.css: oranye primer #e8590c dan navy #16324f
- * (identitas navy + oranye seperti referensi dashboard); hijau hanya
- * untuk makna positif di luar chart arus kas, merah untuk negatif.
- * Semua chart responsif: SVG memakai viewBox dan melebar mengikuti kartu.
+ * Palet selaras dengan styles.css: multi-warna agar dashboard tidak monoton
+ * (tosca pemasukan, merah lembut pengeluaran, biru okupansi, donut tiap
+ * kategori beda warna); oranye tetap aksen merek di tombol/logo, navy tetap
+ * identitas sidebar. Semua chart responsif: SVG memakai viewBox dan melebar
+ * mengikuti kartu.
  */
 (function (root, factory) {
   var api = factory();
@@ -25,17 +26,26 @@
     navyLight: '#1d4568',
     green: '#2f9e44',
     red: '#e03131',
+    redSoft: '#ef4444',
     gold: '#e9a13b',
     blue: '#1c5d99',
-    teal: '#0f766e',
+    blueStrong: '#2563eb',
+    teal: '#0d9488',
+    tealDark: '#0f766e',
+    violet: '#7c3aed',
+    amber: '#d97706',
     ink: '#292524',
     muted: '#78716c',
     grid: '#e7e0d3',
     track: '#f5efe4'
   };
 
-  /* Warna segmen donut (dipakai berurutan, terbesar dulu). */
-  var DONUT_COLORS = [C.orange, C.navy, C.green, C.gold, C.blue, C.teal];
+  /* Warna segmen donut (dipakai berurutan, terbesar dulu) — tiap kategori
+   * beda warna: tosca, biru, ungu, amber, hijau, navy. */
+  var DONUT_COLORS = [C.teal, C.blueStrong, C.violet, C.amber, C.green, C.navy];
+
+  /* Warna batang horizontal bila opts.color = 'multi' (satu warna per baris). */
+  var HBAR_COLORS = [C.teal, C.blueStrong, C.violet, C.amber, C.green, C.navy];
 
   var W = 560; /* lebar viewBox untuk chart vertikal */
 
@@ -135,8 +145,8 @@
       var masuk = +p.masuk || 0;
       var keluar = +p.keluar || 0;
       var bars = [
-        { v: masuk, x: x0, color: C.orange, name: 'Masuk' },
-        { v: keluar, x: x0 + barW + gap, color: C.navy, name: 'Keluar' }
+        { v: masuk, x: x0, color: C.teal, name: 'Masuk' },
+        { v: keluar, x: x0 + barW + gap, color: C.redSoft, name: 'Keluar' }
       ];
       bars.forEach(function (b) {
         if (b.v <= 0) { return; }
@@ -154,7 +164,7 @@
     });
     s += '</svg>';
     return '<div class="chart-wrap">' +
-      legendHTML([{ color: C.orange, label: 'Uang masuk' }, { color: C.navy, label: 'Uang keluar' }]) +
+      legendHTML([{ color: C.teal, label: 'Uang masuk' }, { color: C.redSoft, label: 'Uang keluar' }]) +
       s + '</div>';
   }
 
@@ -195,21 +205,21 @@
       s += '<text x="' + (mL - 8) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + C.muted + '">' +
         fmtAxis(t) + '%</text>';
     });
-    /* Area gradasi oranye di bawah garis navy. */
+    /* Area gradasi biru di bawah garis biru. */
     s += '<defs><linearGradient id="vtg-occ-grad" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" stop-color="' + C.orange + '" stop-opacity="0.35" />' +
-      '<stop offset="100%" stop-color="' + C.orange + '" stop-opacity="0.03" />' +
+      '<stop offset="0%" stop-color="' + C.blueStrong + '" stop-opacity="0.35" />' +
+      '<stop offset="100%" stop-color="' + C.blueStrong + '" stop-opacity="0.03" />' +
       '</linearGradient></defs>';
     var area = 'M ' + xAt(0).toFixed(1) + ',' + yAt(0).toFixed(1);
     list.forEach(function (p, i) { area += ' L ' + xAt(i).toFixed(1) + ',' + yAt(p.pct).toFixed(1); });
     area += ' L ' + xAt(n - 1).toFixed(1) + ',' + yAt(0).toFixed(1) + ' Z';
     s += '<path d="' + area + '" fill="url(#vtg-occ-grad)" />';
-    /* Garis navy */
+    /* Garis biru */
     var line = '';
     list.forEach(function (p, i) {
       line += (i === 0 ? 'M ' : ' L ') + xAt(i).toFixed(1) + ',' + yAt(p.pct).toFixed(1);
     });
-    s += '<path d="' + line + '" fill="none" stroke="' + C.navy + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />';
+    s += '<path d="' + line + '" fill="none" stroke="' + C.blueStrong + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />';
     /* Titik + label nilai + label bulan */
     list.forEach(function (p, i) {
       var cx = xAt(i);
@@ -218,7 +228,7 @@
       var L = logic();
       var exact = L && L.fmtPct ? L.fmtPct(p.pct) : pctLabel;
       s += '<g><title>' + esc(p.label) + ' — okupansi ' + esc(exact) + ' (' + esc(p.malam) + ' dari ' + esc(p.hari) + ' malam)</title>' +
-        '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="4.5" fill="#fff" stroke="' + C.navy + '" stroke-width="2.5" /></g>';
+        '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="4.5" fill="#fff" stroke="' + C.blueStrong + '" stroke-width="2.5" /></g>';
       s += '<text x="' + cx.toFixed(1) + '" y="' + (cy - 10).toFixed(1) +
         '" text-anchor="middle" font-size="11" font-weight="600" fill="' + C.ink + '">' + pctLabel + '</text>';
       s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="12" fill="' + C.muted + '">' +
@@ -229,7 +239,9 @@
   }
 
   /* ---------------- Batang horizontal: peringkat ----------------
-   * items: [{ label, value }] (urut terbesar dulu). opts: { color, emptyMsg, ariaLabel } */
+   * items: [{ label, value }] (urut terbesar dulu). opts: { color, emptyMsg, ariaLabel }
+   * color: nama warna di C, kode hex, atau 'multi' (satu warna per baris,
+   * dipakai grafik nilai booking per sumber agar tidak monoton). */
 
   function hBarChart(items, opts) {
     opts = opts || {};
@@ -239,7 +251,8 @@
     if (!list.length || maxVal <= 0) {
       return emptyHTML(opts.emptyMsg || 'Belum ada data.');
     }
-    var color = C[opts.color] || opts.color || C.orange;
+    var multi = opts.color === 'multi';
+    var color = multi ? null : (C[opts.color] || opts.color || C.orange);
     var labelW = 150;
     var barX = labelW + 8;
     var barMaxW = 290;
@@ -257,8 +270,9 @@
         esc(label) + '</text>';
       s += '<rect x="' + barX + '" y="' + (yMid - 10).toFixed(1) + '" width="' + barMaxW + '" height="20" rx="3" fill="' + C.track + '" />';
       if (v > 0) {
+        var barColor = multi ? HBAR_COLORS[i % HBAR_COLORS.length] : color;
         s += '<g><title>' + esc(it.label) + ' — ' + esc(fmtShort(v)) + '</title>' +
-          '<rect x="' + barX + '" y="' + (yMid - 10).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="20" rx="3" fill="' + color + '" /></g>';
+          '<rect x="' + barX + '" y="' + (yMid - 10).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="20" rx="3" fill="' + barColor + '" /></g>';
       }
       s += '<text x="' + (barX + bw + 8).toFixed(1) + '" y="' + (yMid + 4).toFixed(1) + '" font-size="12" font-weight="600" fill="' + C.ink + '">' +
         esc(fmtShort(v)) + '</text>';

@@ -1,7 +1,8 @@
 /* styles.css — Sistem Villa Taman Kelinci
  * Mobile-first, tanpa dependensi eksternal. Identitas navy + oranye
  * (sidebar navy gelap seperti referensi dashboard, aksen oranye selaras
- * logo kelinci oranye) + krem hangat.
+ * logo kelinci oranye) + krem hangat; kartu KPI dan grafik memakai palet
+ * multi-warna (tosca, biru, ungu, amber) agar dashboard tidak monoton.
  * Hijau dipakai hemat hanya untuk makna positif (uang masuk, sukses);
  * merah untuk negatif/peringatan. */
 
@@ -31,8 +32,18 @@
   --red-soft: #fff0f0;
   --amber: #a16207;
   --amber-soft: #fff8e1;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
+  --amber-chip: #fef3c7;
   --blue: #1c5d99;
   --blue-soft: #e8f1fa;
+  --blue-strong: #2563eb;
+  --blue-strong-soft: #dbeafe;
+  --teal: #0d9488;
+  --teal-dark: #0f766e;
+  --teal-soft: #ccfbf1;
+  --violet: #7c3aed;
+  --violet-soft: #ede9fe;
   --radius: 12px;
   --shadow: 0 1px 3px rgba(124, 45, 18, 0.08), 0 4px 14px rgba(124, 45, 18, 0.06);
   --nav-h: 60px;
@@ -280,26 +291,36 @@ input, select, textarea { color: var(--ink); }
   background: var(--brand-50); color: var(--brand-700);
 }
 .kpi-hero .kpi-ico svg { width: 20px; height: 20px; display: block; }
-.kpi-hero .kpi-ico.green { background: var(--positive-soft); color: var(--positive-dark); }
-.kpi-hero .kpi-ico.blue { background: var(--blue-soft); color: var(--blue); }
-.kpi-hero .kpi-ico.amber { background: var(--amber-soft); color: var(--amber); }
 .kpi-hero .kpi-value { padding-right: 2.6rem; word-break: break-word; }
-/* Kartu hero pertama navy, seperti kartu "Earning" di referensi */
-.kpi-hero-navy { background: var(--navy-800); border-color: var(--navy-800); }
-.kpi-hero-navy .kpi-label { color: #fdba74; }
-.kpi-hero-navy .kpi-value { color: #fff; }
-.kpi-hero-navy .kpi-sub { color: var(--navy-100); }
-.kpi-hero-navy .kpi-ico { background: rgba(255, 255, 255, 0.14); color: #fdba74; }
+/* Aksen per kartu KPI hero (masing-masing warna sendiri, bukan semua
+ * oranye): chip ikon bertinta lembut + nilai berwarna. Kartu tetap putih.
+ * Warna teks dipilih agar kontrasnya cukup di atas kertas/tinta lembut. */
+.kpi-hero.kpi-accent-teal .kpi-ico { background: var(--teal-soft); color: var(--teal-dark); }
+.kpi-hero.kpi-accent-teal .kpi-value { color: var(--teal); }
+.kpi-hero.kpi-accent-blue .kpi-ico { background: var(--blue-strong-soft); color: var(--blue-strong); }
+.kpi-hero.kpi-accent-blue .kpi-value { color: var(--blue-strong); }
+.kpi-hero.kpi-accent-violet .kpi-ico { background: var(--violet-soft); color: var(--violet); }
+.kpi-hero.kpi-accent-violet .kpi-value { color: var(--violet); }
+.kpi-hero.kpi-accent-amber .kpi-ico { background: var(--amber-chip); color: var(--amber-700); }
+.kpi-hero.kpi-accent-amber .kpi-value { color: var(--amber-600); }
 
 /* Strip KPI ringkas (4 KPI pendukung, tetap terlihat semua) */
 .kpi-strip .kpi { padding: 0.6rem 0.8rem; }
 .kpi-strip .kpi-label { font-size: 0.72rem; }
 .kpi-strip .kpi-value { font-size: 1.05rem; }
 .kpi-strip .kpi-sub { font-size: 0.78rem; }
+/* Garis aksen tipis di atas tiap kartu strip (bergilir tosca, biru, ungu,
+ * amber) — sentuhan ringan yang koheren dengan kartu hero. */
+.kpi-strip .kpi:nth-child(1) { border-top: 3px solid var(--teal); }
+.kpi-strip .kpi:nth-child(2) { border-top: 3px solid var(--blue-strong); }
+.kpi-strip .kpi:nth-child(3) { border-top: 3px solid var(--violet); }
+.kpi-strip .kpi:nth-child(4) { border-top: 3px solid var(--amber-600); }
 
-/* Baris grid dashboard: kartu lebar + kartu sempit (desktop 2:1, HP menumpuk).
+/* Layout dashboard: kolom utama + rel kanan (desktop 2:1, HP menumpuk —
+ * isi rel turun ke bawah isi kolom utama).
  * align-items: start — kartu setinggi kontennya, tidak diregangkan setinggi tetangga. */
-.dash-row { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
+.dash-layout { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
+.dash-main, .dash-rail { min-width: 0; }
 
 .two-col { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
 .nowrap { white-space: nowrap; }
@@ -346,7 +367,7 @@ input, select, textarea { color: var(--ink); }
 .mini-cal-cell:hover { border-color: var(--brand-500); }
 .mini-cal-cell.other { opacity: 0.35; }
 .mini-cal-cell.today { border: 2px solid var(--brand-700); font-weight: 800; }
-.mini-cal-cell.occupied { background: var(--orange); color: #fff; font-weight: 700; }
+.mini-cal-cell.occupied { background: var(--teal-dark); color: #fff; font-weight: 700; }
 .mini-cal-cell.blocked { background: #e5e0d5; color: #57534e; }
 .mini-cal-cell.occupied.today { box-shadow: 0 0 0 2px var(--brand-700); }
 .card-foot { margin-top: 0.9rem; }
@@ -445,9 +466,9 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 .cal-cell.today { border: 2px solid var(--brand-700); }
 .cal-cell.weekend { background: #f4f1ea; }
 .cal-cell.peak { background: var(--brand-200); }
-.cal-cell.occupied { background: var(--brand-100); }
+.cal-cell.occupied { background: var(--teal-soft); }
 /* Malam terblokir: kosong tapi tidak bisa dijual (besoknya ada booking
- * early check-in). Arsir abu-abu — berbeda dari oranye terisi/peak. */
+ * early check-in). Arsir abu-abu — berbeda dari tosca terisi / oranye peak. */
 .cal-cell.blocked { background: repeating-linear-gradient(45deg, #faf8f4, #faf8f4 6px, #e7e1d6 6px, #e7e1d6 12px); }
 .cal-cell.over-ideal { border-color: var(--amber); }
 .cal-cell.over-max { border-color: var(--red); background: var(--red-soft); }
@@ -462,7 +483,7 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 
 .legend { margin-top: 0.75rem; line-height: 2; }
 .sw { display: inline-block; width: 0.85rem; height: 0.85rem; border-radius: 3px; border: 1px solid var(--border); vertical-align: middle; }
-.sw.occupied { background: var(--brand-100); }
+.sw.occupied { background: var(--teal-soft); }
 .sw.blocked { background: repeating-linear-gradient(45deg, #faf8f4, #faf8f4 3px, #d6d0c4 3px, #d6d0c4 6px); }
 .sw.peak { background: var(--brand-200); }
 .sw.weekend { background: #f4f1ea; }
@@ -516,6 +537,16 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 .acct-nums { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; font-size: 0.92rem; }
 .acct-nums span { white-space: nowrap; }
 .acct-total { border-top: 2px solid var(--border); margin-top: 0.3rem; padding-top: 0.7rem; }
+
+/* Halaman Rekening: saldo besar + baris transaksi terakhir (klik untuk ubah) */
+.acct-big { font-size: 1.05rem; margin: 0.2rem 0 0.6rem; }
+.acct-big strong { font-size: 1.5rem; }
+.acct-tx { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.75rem; cursor: pointer; }
+.acct-tx:hover { background: var(--brand-50); }
+.acct-tx-date { color: var(--muted); font-size: 0.85rem; flex-shrink: 0; }
+.acct-tx-desc { flex: 1 1 200px; min-width: 0; }
+.acct-in { color: var(--positive-dark); }
+.acct-out { color: var(--red); }
 
 /* Daftar tugas housekeeping */
 .hk-list { list-style: none; margin: 0; padding: 0; }
@@ -650,8 +681,9 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
   #view { padding: 1.5rem; }
   .kpi-grid { grid-template-columns: repeat(4, 1fr); }
   .kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
-  .dash-row { grid-template-columns: 2fr 1fr; gap: 1rem; }
-  .dash-row .card { margin-bottom: 1rem; }
+  .dash-layout { grid-template-columns: 2fr 1fr; gap: 1rem; }
+  /* Dua kolom di dalam rel yang sempit ditumpuk saja (mis. isi kartu outlook). */
+  .dash-rail .two-col { grid-template-columns: 1fr; }
   .two-col { grid-template-columns: 1fr 1fr; gap: 1rem; }
   .two-col .card { margin-bottom: 1rem; }
   .cal-cell { min-height: 92px; padding: 0.5rem; }
