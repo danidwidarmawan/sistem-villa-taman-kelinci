@@ -45,9 +45,10 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
 
 - **Dashboard:** KPI bulanan (booking check-in, malam terisi, okupansi, leads,
   uang masuk/keluar terverifikasi, arus kas bersih, sisa tagihan), grafik
-  monitoring 6 bulan terakhir (arus kas, okupansi, nilai booking per sumber —
-  SVG murni, tanpa library), kinerja sumber lead, daftar perlu tindakan,
-  check-in berikutnya, transaksi terakhir, biaya tetap & titik impas.
+  monitoring 6 bulan terakhir (arus kas, okupansi, nilai booking per sumber,
+  donut komposisi pemasukan — SVG murni, tanpa library), kalender mini,
+  kinerja sumber lead, daftar perlu tindakan, check-in berikutnya, transaksi
+  terakhir, biaya tetap & titik impas.
 - **Reservasi:** tambah/ubah/hapus, hitung otomatis (malam, total, terbayar
   dari transaksi terverifikasi, sisa, status bayar), saran tarif
   peak/weekend/weekday, peringatan bentrok tanggal & kapasitas, info DP 50%
@@ -62,6 +63,25 @@ perubahan tidak tersimpan) atau **offline** dari data tersimpan di perangkat.
 - **Pengaturan:** tarif, periode peak, harga katering, kebijakan DP,
   definisi weekend, koneksi GitHub, ekspor/impor JSON, reset ke data master,
   kamar & menu katering (baca-saja), template WhatsApp (salin teks).
+
+## Fitur Fase 2
+
+- **Dua rekening terpisah dalam satu website:** pembayaran katering &
+  extra bed masuk Rekening Katering & Extra Bed, pembayaran villa masuk
+  Rekening Villa. Setiap transaksi ditandai rekeningnya (terisi otomatis
+  dari kategori, bisa diubah); Dashboard menampilkan saldo per rekening,
+  Keuangan punya filter + subtotal per rekening, label rekening bisa
+  diubah di Pengaturan.
+- **Pandangan 30 hari ke depan (Dashboard):** malam terisi vs kosong,
+  daftar weekend yang belum terisi, dan booking yang sudah masuk.
+- **Target bulanan vs realisasi (Dashboard + Pengaturan):** target
+  pemasukan bulanan (default = total biaya tetap = titik impas) dengan
+  progress bar dan selisih.
+- **Operasional:** Housekeeping (tugas "Siapkan villa" H-1 & "Bersihkan
+  villa" saat check-out dibuat otomatis dari reservasi + tugas manual),
+  Perawatan (log + tombol "Catat sebagai pengeluaran"), Inventaris,
+  Pesanan Katering (per booking, harga parsial 1x/2x/lengkap otomatis,
+  info honor juru masak per event).
 
 ## Struktur file
 
@@ -92,11 +112,13 @@ Cek sintaks:
 node --check logic.js && node --check charts.js && node --check app.js
 ```
 
-## Tahap 2 (belum dikerjakan)
+## Tahap berikutnya (belum dikerjakan)
 
-Modul Operasional (tugas/checklist), Maintenance, Inventaris, Pemasaran,
-Tamu & Ulasan, Pesanan Katering, kalkulator Paket Segmen & Paket Peak,
+Pemasaran, Tamu & Ulasan, kalkulator Paket Segmen & Paket Peak,
 Analisis Promo, edit kamar/menu katering, dan modul Template WA.
 Struktur data untuk modul-modul itu sudah disiapkan di `data.json`
-(`tasks`, `maintenance`, `inventory`, `marketing`, `guests`,
-`cateringOrders`) — saat ini masih kosong.
+(`tasks`, `maintenance`, `inventory`, `marketing`, `guests`) — saat ini
+masih kosong. Catatan: modul Operasional Fase 2 memakai koleksi baru
+`housekeepingDone`, `housekeepingTasks`, `maintenanceLogs`,
+`inventoryItems` (koleksi lama `tasks`/`maintenance`/`inventory` tidak
+dipakai dan dibiarkan kosong demi kompatibilitas data lama).

@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.0.0-tahap1';
+  var APP_VERSION = '1.1.0-fase2';
 
   var LS = {
     data: 'vtk_data',
@@ -39,6 +39,7 @@
     { route: 'keuangan', label: 'Keuangan', icon: 'banknote' },
     { route: 'leads', label: 'Leads', icon: 'users' },
     { route: 'kalender', label: 'Kalender', icon: 'calendar' },
+    { route: 'operasional', label: 'Operasional', icon: 'clipboard' },
     { route: 'pengaturan', label: 'Pengaturan', icon: 'sliders' }
   ];
 
@@ -52,7 +53,9 @@
     sliders: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/>',
     percent: '<circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6"/><path d="M9 9.5h.01M15 14.5h.01"/>',
     calendarCheck: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/>',
-    receipt: '<path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6"/>'
+    receipt: '<path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6"/>',
+    clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a2 2 0 0 1 6 0"/><path d="M9 12l2 2 4-4"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>'
   };
 
   /* '<svg …>' lengkap untuk ikon bernama; '' bila tidak dikenal. */
@@ -81,10 +84,12 @@
     calSelected: null,
     filters: {
       res: { status: '', month: '', q: '' },
-      tx: { month: L.currentMonthKey(), type: '', category: '', status: '' },
+      tx: { month: L.currentMonthKey(), type: '', category: '', status: '', account: '' },
       lead: { status: '', source: '', q: '' }
     },
-    /* form aktif: { module: 'res'|'tx'|'lead', id: string|null, prefill: object|null } */
+    /* Sub-tab halaman Operasional: housekeeping | maintenance | inventory | catering */
+    opsTab: 'housekeeping',
+    /* form aktif: { module: 'res'|'tx'|'lead'|'hk'|'mnt'|'inv'|'ck', id: string|null, prefill: object|null } */
     form: null,
     /* form yang dijadwalkan lintas-hash (mis. Leads -> Jadikan reservasi) */
     pendingForm: null,
@@ -710,6 +715,32 @@
     });
   }
 
+  /* Koleksi Fase 2 belum ada di data.json lama — pastikan selalu berupa
+   * array sebelum dipakai (hanya di memori; tersimpan permanen saat commit
+   * berikutnya). */
+  function ensureOpsCollections() {
+    var d = state.data;
+    if (!d) { return; }
+    if (!Array.isArray(d.housekeepingDone)) { d.housekeepingDone = []; }
+    if (!Array.isArray(d.housekeepingTasks)) { d.housekeepingTasks = []; }
+    if (!Array.isArray(d.maintenanceLogs)) { d.maintenanceLogs = []; }
+    if (!Array.isArray(d.inventoryItems)) { d.inventoryItems = []; }
+    if (!Array.isArray(d.cateringOrders)) { d.cateringOrders = []; }
+    if (!d.settings) { d.settings = {}; }
+  }
+
+  /* Label rekening dari settings (dengan default bila settings lama). */
+  function accountLabel(key) {
+    return L.accountLabel(state.data ? state.data.settings : null, key);
+  }
+
+  function accountOptions(selected) {
+    return L.ACCOUNT_KEYS.map(function (k) {
+      return '<option value="' + k + '"' + (k === selected ? ' selected' : '') + '>' +
+        esc(accountLabel(k)) + '</option>';
+    }).join('');
+  }
+
   /* ---------------- Dispatcher view ---------------- */
 
   function renderView() {
@@ -720,11 +751,13 @@
       showLoading('Memuat data…');
       return;
     }
+    ensureOpsCollections();
     switch (state.route) {
       case 'reservasi': v.innerHTML = state.form && state.form.module === 'res' ? reservationFormHTML() : reservationsViewHTML(); break;
       case 'keuangan': v.innerHTML = state.form && state.form.module === 'tx' ? transactionFormHTML() : financeViewHTML(); break;
       case 'leads': v.innerHTML = state.form && state.form.module === 'lead' ? leadFormHTML() : leadsViewHTML(); break;
       case 'kalender': v.innerHTML = calendarViewHTML(); break;
+      case 'operasional': v.innerHTML = opsRouteHTML(); break;
       case 'pengaturan': v.innerHTML = settingsViewHTML(); break;
       case 'dashboard':
       default: v.innerHTML = dashboardViewHTML(); break;
@@ -736,6 +769,7 @@
   function afterRender() {
     if (state.form && state.form.module === 'res') { resFormRecalc(); }
     if (state.form && state.form.module === 'lead') { leadFormToggleLostReason(); }
+    if (state.form && state.form.module === 'ck') { ckFormRecalc(); }
   }
 
   /* ---------------- 1. Dashboard ---------------- */
@@ -779,6 +813,9 @@
       kpi('Arus kas bersih', L.fmtRp(d.netCash), d.monthLabel) +
       '</section>';
 
+    /* Saldo rekening (dua rekening terpisah) + target bulanan */
+    html += '<section class="two-col">' + accountBalanceCardHTML(d) + targetCardHTML(d) + '</section>';
+
     /* Baris 1: arus kas (lebar) + donut komposisi pemasukan (sempit).
      * Grafik memakai 6 bulan terakhir, berakhir di bulan yang dipilih. */
     var cf = L.monthlyCashflow(state.data.transactions, state.dashMonth, 6);
@@ -806,6 +843,9 @@
       miniCalHTML(state.dashMonth) +
       '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div>' +
       '</div></section>';
+
+    /* Pandangan 30 hari ke depan */
+    html += forwardOutlookCardHTML();
 
     /* Perlu tindakan + kinerja sumber lead, berdampingan di desktop */
     var a = d.actions;
@@ -889,6 +929,78 @@
       '(pendapatan kotor, belum biaya variabel).</p></section>';
 
     return html;
+  }
+
+  /* Kartu "Saldo rekening" — saldo per rekening (hanya Terverifikasi)
+   * + total gabungan. */
+  function accountBalanceCardHTML(d) {
+    var b = d.accountBalances;
+    var row = function (key) {
+      var x = b[key];
+      var saldoCls = x.saldo < 0 ? 'bad-text' : '';
+      return '<div class="acct-row"><div class="acct-name">' + esc(accountLabel(key)) + '</div>' +
+        '<div class="acct-nums"><span>Masuk <strong>' + L.fmtRp(x.masuk) + '</strong></span>' +
+        '<span>Keluar <strong>' + L.fmtRp(x.keluar) + '</strong></span>' +
+        '<span>Saldo <strong class="' + saldoCls + '">' + L.fmtRp(x.saldo) + '</strong></span></div></div>';
+    };
+    return '<div class="card"><h2>Saldo rekening</h2>' +
+      '<p class="hint">Hanya transaksi Terverifikasi, semua waktu.</p>' +
+      row('villa') + row('katering') +
+      '<div class="acct-row acct-total"><div class="acct-name">Total gabungan</div>' +
+      '<div class="acct-nums"><span>Masuk <strong>' + L.fmtRp(b.total.masuk) + '</strong></span>' +
+      '<span>Keluar <strong>' + L.fmtRp(b.total.keluar) + '</strong></span>' +
+      '<span>Saldo <strong>' + L.fmtRp(b.total.saldo) + '</strong></span></div></div>' +
+      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'keuangan\')">Lihat Keuangan</button></div>' +
+      '</div>';
+  }
+
+  /* Kartu "Target bulan ini" — target vs uang masuk terverifikasi bulan terpilih. */
+  function targetCardHTML(d) {
+    var t = d.target;
+    if (!t.hasTarget) {
+      return '<div class="card"><h2>Target bulan ini</h2>' +
+        '<p class="empty">Belum ada target. Isi target bulanan di Pengaturan (atau lengkapi ' +
+        'biaya tetap agar target default = titik impas bisa dihitung).</p>' +
+        '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'pengaturan\')">Atur target</button></div></div>';
+    }
+    var pct = Math.min(100, Math.max(0, t.pct));
+    var diffText = t.reached
+      ? 'Melebihi target <strong>' + L.fmtRp(t.diff) + '</strong>'
+      : 'Kurang <strong>' + L.fmtRp(Math.abs(t.diff)) + '</strong> lagi';
+    return '<div class="card"><h2>Target bulan ini</h2>' +
+      '<p>Realisasi <strong>' + L.fmtRp(t.actual) + '</strong> dari target <strong>' + L.fmtRp(t.target) + '</strong> ' +
+      '(' + L.fmtPct(t.pct) + ')</p>' +
+      '<div class="progress" role="progressbar" aria-valuenow="' + Math.round(t.pct) + '" aria-valuemin="0" aria-valuemax="100" aria-label="Progres target bulanan">' +
+      '<div class="progress-fill' + (t.reached ? ' reached' : '') + '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+      '<p class="hint">' + diffText + ' • ' + esc(d.monthLabel) + ' (uang masuk terverifikasi).' +
+      (t.isDefault ? ' Target default = total biaya tetap; ubah di Pengaturan.' : '') + '</p>' +
+      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'pengaturan\')">Ubah target</button></div>' +
+      '</div>';
+  }
+
+  /* Kartu "30 hari ke depan" — malam terisi/kosong, weekend belum terisi,
+   * dan booking yang sudah masuk dalam jendela. */
+  function forwardOutlookCardHTML() {
+    var today = L.todayISO();
+    var o = L.forwardOutlook(state.data.reservations, today, 30, state.data.settings);
+    var weekendItems = o.emptyWeekendNights.length
+      ? o.emptyWeekendNights.map(function (w) {
+          return '<li>' + esc(w.label) + ' — <span class="muted">belum terisi</span></li>';
+        }).join('')
+      : '<li class="muted">Semua malam weekend dalam 30 hari ke depan sudah terisi.</li>';
+    var bookingItems = o.bookings.length
+      ? o.bookings.map(function (b) {
+          return '<li><a href="#/reservasi">' + esc(b.guestName) + '</a> — ' + L.fmtDate(b.checkin) +
+            ' s.d. ' + L.fmtDate(b.checkout) + ' (' + b.nights + ' malam, ' + L.fmtNum(b.pax) + ' tamu) ' +
+            resStatusBadge(b.status) + '</li>';
+        }).join('')
+      : '<li class="muted">Belum ada reservasi dalam 30 hari ke depan.</li>';
+    return '<section class="card"><h2>30 hari ke depan</h2>' +
+      '<p><strong>' + o.nightsOccupied + ' dari ' + o.days + ' malam terisi</strong> (' + L.fmtPct(o.occupancyPct) + ') • ' +
+      '<strong>' + o.nightsEmpty + ' malam kosong</strong> • ' + L.fmtDate(o.start) + ' s.d. ' + L.fmtDate(L.addDaysISO(o.end, -1)) + '</p>' +
+      '<div class="two-col"><div><h3>Weekend belum terisi</h3><ul class="simple-list">' + weekendItems + '</ul></div>' +
+      '<div><h3>Booking dalam 30 hari</h3><ul class="simple-list">' + bookingItems + '</ul></div></div>' +
+      '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'kalender\')">Lihat Kalender</button></div></section>';
   }
 
   /* Kalender mini dashboard: grid ringkas bulan yang dipilih (Senin dulu).
@@ -1242,13 +1354,17 @@
       if (f.type && tx.type !== f.type) { return false; }
       if (f.category && tx.category !== f.category) { return false; }
       if (f.status && tx.verifyStatus !== f.status) { return false; }
+      if (f.account && L.accountOf(tx) !== f.account) { return false; }
       return true;
     });
     var sumIn = 0;
     var sumOut = 0;
+    var perAcct = { villa: { masuk: 0, keluar: 0 }, katering: { masuk: 0, keluar: 0 } };
     list.forEach(function (tx) {
-      if (tx.type === 'Masuk') { sumIn += +tx.amount || 0; }
-      else { sumOut += +tx.amount || 0; }
+      var amt = +tx.amount || 0;
+      var a = L.accountOf(tx);
+      if (tx.type === 'Masuk') { sumIn += amt; perAcct[a].masuk += amt; }
+      else { sumOut += amt; perAcct[a].keluar += amt; }
     });
     var rows = list.map(function (tx) {
       return '<tr class="clickable" onclick="VTK.openTxForm(\'' + esc(tx.id) + '\')">' +
@@ -1256,12 +1372,26 @@
         '<td data-label="Tanggal">' + L.fmtDate(tx.date) + '</td>' +
         '<td data-label="Jenis">' + badge(tx.type, tx.type === 'Masuk' ? 'ok' : 'bad') + '</td>' +
         '<td data-label="Kategori">' + esc(tx.category) + '</td>' +
+        '<td data-label="Rekening">' + esc(accountLabel(L.accountOf(tx))) + '</td>' +
         '<td data-label="Booking ID">' + esc(tx.bookingId || '—') + '</td>' +
         '<td data-label="Deskripsi">' + esc(tx.description) + '</td>' +
         '<td data-label="Metode">' + esc(tx.method) + '</td>' +
         '<td data-label="Jumlah">' + L.fmtRp(tx.amount) + '</td>' +
         '<td data-label="Status Verifikasi">' + verifyBadge(tx.verifyStatus) + '</td></tr>';
     }).join('');
+
+    /* Subtotal per rekening (daftar yang sama dengan ringkasan di atas). */
+    var acctSubRows = L.ACCOUNT_KEYS.map(function (k) {
+      var x = perAcct[k];
+      return '<tr><td data-label="Rekening">' + esc(accountLabel(k)) + '</td>' +
+        '<td data-label="Masuk">' + L.fmtRp(x.masuk) + '</td>' +
+        '<td data-label="Keluar">' + L.fmtRp(x.keluar) + '</td>' +
+        '<td data-label="Bersih">' + L.fmtRp(x.masuk - x.keluar) + '</td></tr>';
+    }).join('');
+    var acctSub = '<section class="card"><h2>Subtotal per rekening</h2>' +
+      '<p class="hint">Sesuai filter yang aktif (semua status verifikasi, seperti ringkasan di atas).</p>' +
+      '<div class="table-wrap"><table class="tbl"><thead><tr><th>Rekening</th><th>Masuk</th><th>Keluar</th><th>Bersih</th></tr></thead>' +
+      '<tbody>' + acctSubRows + '</tbody></table></div></section>';
 
     /* Grafik per kategori (bulan yang difilter; hanya transaksi Terverifikasi) */
     var catMonth = f.month || null;
@@ -1296,12 +1426,15 @@
       '<option value="">Semua</option>' + optList(L.TX_CATEGORIES, f.category) + '</select></label>' +
       '<label class="field"><span>Status</span><select onchange="VTK.setFilter(\'tx\',\'status\',this.value)">' +
       '<option value="">Semua</option>' + optList(L.TX_VERIFY, f.status) + '</select></label>' +
+      '<label class="field"><span>Rekening</span><select onchange="VTK.setFilter(\'tx\',\'account\',this.value)">' +
+      '<option value="">Semua</option>' + accountOptions(f.account || '') + '</select></label>' +
       '<button type="button" class="btn btn-small" onclick="VTK.exportCSV(\'keuangan\')">Unduh CSV</button>' +
       '</section>' +
       catCharts +
+      acctSub +
       '<section class="card"><div class="table-wrap"><table class="tbl"><thead><tr>' +
-      '<th>ID</th><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Booking ID</th><th>Deskripsi</th><th>Metode</th><th>Jumlah</th><th>Status Verifikasi</th></tr></thead>' +
-      '<tbody>' + (rows || '<tr><td colspan="9" class="empty">Belum ada transaksi.</td></tr>') + '</tbody></table></div></section>';
+      '<th>ID</th><th>Tanggal</th><th>Jenis</th><th>Kategori</th><th>Rekening</th><th>Booking ID</th><th>Deskripsi</th><th>Metode</th><th>Jumlah</th><th>Status Verifikasi</th></tr></thead>' +
+      '<tbody>' + (rows || '<tr><td colspan="10" class="empty">Belum ada transaksi.</td></tr>') + '</tbody></table></div></section>';
   }
 
   function transactionById(id) {
@@ -1323,9 +1456,11 @@
     var p = f.prefill || {};
     var v = tx || {
       date: L.todayISO(), type: p.type || 'Masuk', category: p.category || 'Pembayaran Tamu',
+      account: p.account || L.suggestedAccount(p.category || 'Pembayaran Tamu'),
       bookingId: p.bookingId || '', description: p.description || '', method: 'Transfer Bank',
       amount: p.amount || '', pic: '', verifyStatus: 'Belum Dicek', proof: '', note: ''
     };
+    var acctVal = tx ? L.accountOf(tx) : (v.account || 'villa');
     return '<section class="page-head"><h1>' + (tx ? 'Ubah transaksi ' + esc(tx.id) : 'Transaksi baru') + '</h1>' +
       '<button type="button" class="btn" onclick="VTK.closeForm()">← Kembali ke daftar</button></section>' +
       '<form class="card form-card" id="tx-form" onsubmit="return VTK.saveTx(event)">' +
@@ -1333,13 +1468,17 @@
       '<div class="form-row">' +
       '<label class="field"><span>Tanggal *</span><input type="date" name="date" value="' + esc(v.date) + '" required /></label>' +
       '<label class="field"><span>Jenis *</span><select name="type">' + optList(L.TX_TYPES, v.type) + '</select></label>' +
-      '<label class="field"><span>Kategori *</span><select name="category">' + optList(L.TX_CATEGORIES, v.category) + '</select></label>' +
+      '<label class="field"><span>Kategori *</span><select name="category" id="tf-category" onchange="VTK.txFormSuggestAccount()">' + optList(L.TX_CATEGORIES, v.category) + '</select></label>' +
       '</div>' +
       '<div class="form-row">' +
-      '<label class="field"><span>Booking ID</span><select name="bookingId">' + bookingOptions(v.bookingId) + '</select>' +
-      '<span class="hint">Wajib untuk kategori Pembayaran Tamu / Refund Tamu (dipakai menghitung Terbayar).</span></label>' +
+      '<label class="field"><span>Rekening *</span><select name="account" id="tf-account">' + accountOptions(acctVal) + '</select>' +
+      '<span class="hint">Terisi otomatis dari kategori (katering &amp; extra bed → ' + esc(accountLabel('katering')) + '); bisa diubah.</span></label>' +
       '<label class="field"><span>Jumlah (Rp) *</span><input type="number" name="amount" min="0" step="1000" value="' + esc(v.amount) + '" required /></label>' +
       '<label class="field"><span>Metode</span><select name="method">' + optList(L.TX_METHODS, v.method) + '</select></label>' +
+      '</div>' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Booking ID</span><select name="bookingId">' + bookingOptions(v.bookingId) + '</select>' +
+      '<span class="hint">Wajib untuk kategori Pembayaran Tamu / Pembayaran Extra Bed / Refund Tamu (dipakai menghitung Terbayar).</span></label>' +
       '</div>' +
       '<div class="form-row">' +
       '<label class="field field-grow"><span>Deskripsi *</span><input type="text" name="description" value="' + esc(v.description) + '" required /></label>' +
@@ -1358,6 +1497,14 @@
       '</div></form>';
   }
 
+  /* Isi rekening otomatis dari kategori yang dipilih (saran — bisa diubah). */
+  function txFormSuggestAccount() {
+    var catEl = $('tf-category');
+    var acctEl = $('tf-account');
+    if (!catEl || !acctEl) { return; }
+    acctEl.value = L.suggestedAccount(catEl.value);
+  }
+
   function saveTx(event) {
     event.preventDefault();
     var fd = new FormData($('tx-form'));
@@ -1368,18 +1515,21 @@
     if (!(fd.get('description') || '').trim()) { errors.push('Deskripsi wajib diisi.'); }
     var category = fd.get('category');
     var bookingId = fd.get('bookingId') || '';
-    if ((category === 'Pembayaran Tamu' || category === 'Refund Tamu') && !bookingId) {
+    if ((category === 'Pembayaran Tamu' || category === 'Pembayaran Extra Bed' || category === 'Refund Tamu') && !bookingId) {
       errors.push('Booking ID wajib diisi untuk kategori ' + category + '.');
     }
     if (errors.length) { setSaveStatus(errors.join(' '), 'error'); return false; }
 
     setSaveStatus('Menyimpan…', '');
     var id = fd.get('id') || '';
+    var acct = fd.get('account');
+    if (acct !== 'villa' && acct !== 'katering') { acct = L.suggestedAccount(category); }
     var obj = {
       id: id,
       date: fd.get('date'),
       type: fd.get('type'),
       category: category,
+      account: acct,
       bookingId: bookingId,
       description: (fd.get('description') || '').trim(),
       method: fd.get('method'),
@@ -1703,7 +1853,613 @@
       '<section class="card"><h2>Reservasi bulan ini</h2><ul class="simple-list">' + monthList + '</ul></section>';
   }
 
-  /* ---------------- 6. Pengaturan ---------------- */
+  /* ---------------- 6. Operasional (Fase 2) ---------------- */
+
+  function opsRouteHTML() {
+    if (state.form) {
+      if (state.form.module === 'hk') { return hkFormHTML(); }
+      if (state.form.module === 'mnt') { return mntFormHTML(); }
+      if (state.form.module === 'inv') { return invFormHTML(); }
+      if (state.form.module === 'ck') { return ckFormHTML(); }
+    }
+    return opsViewHTML();
+  }
+
+  function mntStatusBadge(status) {
+    var kind = { 'Dilaporkan': 'warn', 'Dikerjakan': 'info', 'Selesai': 'ok' }[status] || '';
+    return badge(status, kind);
+  }
+
+  function invConditionBadge(cond) {
+    var kind = { 'Baik': 'ok', 'Perlu Perbaikan': 'warn', 'Rusak': 'bad' }[cond] || '';
+    return badge(cond, kind);
+  }
+
+  function ckStatusBadge(status) {
+    var kind = { 'Dipesan': 'info', 'Disiapkan': 'warn', 'Selesai': 'ok', 'Dibatalkan': 'bad' }[status] || '';
+    return badge(status, kind);
+  }
+
+  function opsViewHTML() {
+    var tab = state.opsTab || 'housekeeping';
+    var today = L.todayISO();
+    var hkOpen = hkMergedTasks().filter(function (t) { return !t.done; }).length;
+    var mntOpen = (state.data.maintenanceLogs || []).filter(function (m) { return m.status !== 'Selesai'; }).length;
+    var invAttention = (state.data.inventoryItems || []).filter(function (it) { return it.condition && it.condition !== 'Baik'; }).length;
+    var ckActive = (state.data.cateringOrders || []).filter(function (o) { return o.status === 'Dipesan' || o.status === 'Disiapkan'; }).length;
+    var tabs = [
+      { key: 'housekeeping', label: 'Housekeeping', count: hkOpen },
+      { key: 'maintenance', label: 'Perawatan', count: mntOpen },
+      { key: 'inventory', label: 'Inventaris', count: invAttention },
+      { key: 'catering', label: 'Pesanan Katering', count: ckActive }
+    ];
+    var tabBar = '<div class="tabs" role="tablist">' + tabs.map(function (t) {
+      return '<button type="button" role="tab" aria-selected="' + (tab === t.key) + '" class="tab-btn' + (tab === t.key ? ' active' : '') + '" onclick="VTK.setOpsTab(\'' + t.key + '\')">' +
+        esc(t.label) + (t.count ? ' <span class="count-badge">' + t.count + '</span>' : '') + '</button>';
+    }).join('') + '</div>';
+    var body = '';
+    if (tab === 'maintenance') { body = mntListHTML(); }
+    else if (tab === 'inventory') { body = invListHTML(); }
+    else if (tab === 'catering') { body = ckListHTML(); }
+    else { body = hkListHTML(); }
+    return '<section class="page-head"><h1>Operasional</h1></section>' + tabBar + body;
+  }
+
+  /* ---- Housekeeping ---- */
+
+  /* Gabungan tugas turunan (dari reservasi) + tugas manual, urut:
+   * belum selesai dulu (tanggal terdekat dulu), selesai di belakang. */
+  function hkMergedTasks() {
+    var today = L.todayISO();
+    var derived = L.derivedHousekeeping(state.data.reservations, state.data.housekeepingDone, today);
+    var manual = (state.data.housekeepingTasks || []).map(function (t) {
+      return { key: 'manual:' + t.id, kind: 'manual', id: t.id, title: t.title,
+        date: t.date, detail: t.note || '', done: !!t.done };
+    });
+    var all = derived.concat(manual);
+    all.sort(function (a, b) {
+      if (a.done !== b.done) { return a.done ? 1 : -1; }
+      if (a.date !== b.date) { return a.date < b.date ? -1 : 1; }
+      return a.key < b.key ? -1 : 1;
+    });
+    return all;
+  }
+
+  function hkTaskById(id) {
+    return (state.data.housekeepingTasks || []).find(function (t) { return t.id === id; }) || null;
+  }
+
+  function hkListHTML() {
+    var today = L.todayISO();
+    var tomorrow = L.addDaysISO(today, 1);
+    var tasks = hkMergedTasks();
+    var items = tasks.length ? tasks.map(function (t) {
+      var overdue = !t.done && t.date < today;
+      var isToday = t.date === today;
+      var isTomorrow = t.date === tomorrow;
+      var cls = 'hk-item' + (t.done ? ' done' : '') + (overdue ? ' overdue' : '');
+      var when = overdue ? badge('Terlambat', 'bad') :
+        isToday ? badge('Hari ini', 'info') :
+        isTomorrow ? badge('Besok', 'muted') : '';
+      var actions = t.kind === 'manual'
+        ? '<button type="button" class="btn btn-small" onclick="VTK.openHkForm(\'' + esc(t.id) + '\')">Ubah</button> ' +
+          '<button type="button" class="btn btn-small btn-danger" onclick="VTK.delHkTask(\'' + esc(t.id) + '\')">Hapus</button>'
+        : '';
+      return '<li class="' + cls + '">' +
+        '<button type="button" class="hk-check" aria-label="' + (t.done ? 'Tandai belum selesai' : 'Tandai selesai') + '" ' +
+        'onclick="VTK.hkToggle(\'' + esc(t.key) + '\')">' + (t.done ? '✓' : '') + '</button>' +
+        '<div class="hk-body"><div class="hk-title">' + esc(t.title) + '</div>' +
+        '<div class="hk-meta">' + L.fmtDate(t.date) + (t.detail ? ' • ' + esc(t.detail) : '') + ' ' + when + '</div></div>' +
+        (actions ? '<div class="hk-actions">' + actions + '</div>' : '') +
+        '</li>';
+    }).join('') : '<li class="muted">Belum ada tugas housekeeping. Tugas "Siapkan villa" dan "Bersihkan villa" muncul otomatis dari reservasi.</li>';
+    return '<section class="card"><div class="page-head"><h2>Housekeeping</h2>' +
+      '<button type="button" class="btn btn-primary btn-small" onclick="VTK.openHkForm()">+ Tugas manual</button></div>' +
+      '<p class="hint">Tugas "Siapkan villa" (H-1 check-in) dan "Bersihkan villa" (hari check-out) dibuat otomatis dari reservasi aktif. Ketuk kotak untuk menandai selesai.</p>' +
+      '<ul class="hk-list">' + items + '</ul></section>';
+  }
+
+  function hkFormHTML() {
+    var f = state.form;
+    var t = f.id ? hkTaskById(f.id) : null;
+    var v = t || { title: '', date: L.todayISO(), note: '', done: false };
+    return '<section class="page-head"><h1>' + (t ? 'Ubah tugas ' + esc(t.id) : 'Tugas housekeeping baru') + '</h1>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">← Kembali ke Operasional</button></section>' +
+      '<form class="card form-card" id="hk-form" onsubmit="return VTK.saveHkTask(event)">' +
+      '<input type="hidden" name="id" value="' + (t ? esc(t.id) : '') + '" />' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Judul tugas *</span><input type="text" name="title" value="' + esc(v.title) + '" required placeholder="cth: Cuci sprei kamar VIP" /></label>' +
+      '<label class="field"><span>Tanggal *</span><input type="date" name="date" value="' + esc(v.date) + '" required /></label>' +
+      '</div>' +
+      '<label class="field"><span>Catatan</span><textarea name="note" rows="2">' + esc(v.note) + '</textarea></label>' +
+      (t ? '<label class="field checkbox"><input type="checkbox" name="done"' + (v.done ? ' checked' : '') + ' /> <span>Sudah selesai</span></label>' : '') +
+      saveStatusHTML() +
+      '<div class="form-actions">' +
+      '<button type="submit" class="btn btn-primary">Simpan tugas</button>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">Batal</button>' +
+      (t ? '<button type="button" class="btn btn-danger" onclick="VTK.delHkTask(\'' + esc(t.id) + '\')">Hapus</button>' : '') +
+      '</div></form>';
+  }
+
+  function saveHkTask(event) {
+    event.preventDefault();
+    var fd = new FormData($('hk-form'));
+    var errors = [];
+    if (!(fd.get('title') || '').trim()) { errors.push('Judul tugas wajib diisi.'); }
+    if (!L.isISODate(fd.get('date'))) { errors.push('Tanggal wajib diisi.'); }
+    if (errors.length) { setSaveStatus(errors.join(' '), 'error'); return false; }
+    var id = fd.get('id') || '';
+    var obj = {
+      id: id,
+      title: (fd.get('title') || '').trim(),
+      date: fd.get('date'),
+      note: (fd.get('note') || '').trim(),
+      done: !!fd.get('done')
+    };
+    if (!id) {
+      obj.id = L.nextId('OPS', state.data.housekeepingTasks, obj.date);
+      state.data.housekeepingTasks.push(touch(obj));
+    } else {
+      var existing = hkTaskById(id);
+      if (!existing) { setSaveStatus('Tugas tidak ditemukan.', 'error'); return false; }
+      var createdAt = existing.createdAt;
+      Object.assign(existing, obj);
+      existing.createdAt = createdAt;
+      touch(existing);
+    }
+    commit().then(function () {
+      toast('Tugas housekeeping tersimpan.');
+      state.form = null;
+      renderView();
+    });
+    return false;
+  }
+
+  function delHkTask(id) {
+    var t = hkTaskById(id);
+    if (!t) { return; }
+    if (!confirmDialog('Hapus tugas "' + t.title + '" (' + L.fmtDate(t.date) + ')?')) { return; }
+    state.data.housekeepingTasks = state.data.housekeepingTasks.filter(function (x) { return x.id !== id; });
+    commit().then(function () {
+      toast('Tugas dihapus.');
+      state.form = null;
+      renderView();
+    });
+  }
+
+  function hkToggle(key) {
+    if (key.indexOf('manual:') === 0) {
+      var t = hkTaskById(key.slice(7));
+      if (!t) { return; }
+      t.done = !t.done;
+      touch(t);
+    } else {
+      var done = state.data.housekeepingDone;
+      var idx = done.indexOf(key);
+      if (idx === -1) { done.push(key); }
+      else { done.splice(idx, 1); }
+    }
+    commit().then(function () { renderView(); });
+    renderView();
+  }
+
+  /* ---- Perawatan (maintenance) ---- */
+
+  function mntById(id) {
+    return (state.data.maintenanceLogs || []).find(function (m) { return m.id === id; }) || null;
+  }
+
+  function mntSorted() {
+    return (state.data.maintenanceLogs || []).slice().sort(function (a, b) {
+      if (a.date !== b.date) { return a.date < b.date ? 1 : -1; }
+      return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+    });
+  }
+
+  function mntListHTML() {
+    var rows = mntSorted().map(function (m) {
+      var expenseBtn = (!m.expensedTxId && (+m.cost || 0) > 0)
+        ? '<button type="button" class="btn btn-small" onclick="event.stopPropagation();VTK.mntToExpense(\'' + esc(m.id) + '\')">Catat sebagai pengeluaran</button>'
+        : (m.expensedTxId ? '<span class="badge ok">Sudah dicatat (' + esc(m.expensedTxId) + ')</span>' : '<span class="muted">—</span>');
+      return '<tr class="clickable" onclick="VTK.openMntForm(\'' + esc(m.id) + '\')">' +
+        '<td data-label="Tanggal">' + L.fmtDate(m.date) + '</td>' +
+        '<td data-label="Item/Area">' + esc(m.item) + '</td>' +
+        '<td data-label="Deskripsi">' + esc(m.description || '—') + '</td>' +
+        '<td data-label="Biaya">' + L.fmtRp(m.cost) + '</td>' +
+        '<td data-label="Status">' + mntStatusBadge(m.status) + '</td>' +
+        '<td data-label="Pengeluaran">' + expenseBtn + '</td></tr>';
+    }).join('');
+    return '<section class="card"><div class="page-head"><h2>Perawatan</h2>' +
+      '<button type="button" class="btn btn-primary btn-small" onclick="VTK.openMntForm()">+ Catat perawatan</button></div>' +
+      '<p class="hint">Biaya perawatan bisa dicatat sebagai pengeluaran (rekening Villa, kategori Maintenance, status Belum Dicek) lewat tombol di tiap baris.</p>' +
+      '<div class="table-wrap"><table class="tbl"><thead><tr><th>Tanggal</th><th>Item/Area</th><th>Deskripsi</th><th>Biaya</th><th>Status</th><th>Pengeluaran</th></tr></thead>' +
+      '<tbody>' + (rows || '<tr><td colspan="6" class="empty">Belum ada catatan perawatan.</td></tr>') + '</tbody></table></div></section>';
+  }
+
+  function mntFormHTML() {
+    var f = state.form;
+    var m = f.id ? mntById(f.id) : null;
+    var v = m || { date: L.todayISO(), item: '', description: '', cost: '', status: 'Dilaporkan' };
+    var expenseHint = '';
+    if (m && !m.expensedTxId && (+m.cost || 0) > 0) {
+      expenseHint = '<p class="hint">Setelah disimpan, biaya ini bisa dicatat sebagai pengeluaran dari daftar Perawatan.</p>';
+    } else if (m && m.expensedTxId) {
+      expenseHint = '<p class="hint">Sudah dicatat sebagai pengeluaran ' + esc(m.expensedTxId) + '.</p>';
+    }
+    return '<section class="page-head"><h1>' + (m ? 'Ubah catatan ' + esc(m.id) : 'Catatan perawatan baru') + '</h1>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">← Kembali ke Operasional</button></section>' +
+      '<form class="card form-card" id="mnt-form" onsubmit="return VTK.saveMnt(event)">' +
+      '<input type="hidden" name="id" value="' + (m ? esc(m.id) : '') + '" />' +
+      '<div class="form-row">' +
+      '<label class="field"><span>Tanggal *</span><input type="date" name="date" value="' + esc(v.date) + '" required /></label>' +
+      '<label class="field field-grow"><span>Item / area *</span><input type="text" name="item" value="' + esc(v.item) + '" required placeholder="cth: Pompa kolam renang" /></label>' +
+      '<label class="field"><span>Biaya (Rp)</span><input type="number" name="cost" min="0" step="1000" value="' + esc(v.cost) + '" /></label>' +
+      '<label class="field"><span>Status</span><select name="status">' + optList(L.MNT_STATUSES, v.status) + '</select></label>' +
+      '</div>' +
+      '<label class="field"><span>Deskripsi</span><textarea name="description" rows="2">' + esc(v.description) + '</textarea></label>' +
+      expenseHint +
+      saveStatusHTML() +
+      '<div class="form-actions">' +
+      '<button type="submit" class="btn btn-primary">Simpan catatan</button>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">Batal</button>' +
+      (m ? '<button type="button" class="btn btn-danger" onclick="VTK.delMnt(\'' + esc(m.id) + '\')">Hapus</button>' : '') +
+      '</div></form>';
+  }
+
+  function readMntForm() {
+    var fd = new FormData($('mnt-form'));
+    return {
+      id: fd.get('id') || '',
+      date: fd.get('date') || '',
+      item: (fd.get('item') || '').trim(),
+      description: (fd.get('description') || '').trim(),
+      cost: parseFloat(fd.get('cost')) || 0,
+      status: fd.get('status') || 'Dilaporkan'
+    };
+  }
+
+  function saveMnt(event) {
+    event.preventDefault();
+    var v = readMntForm();
+    var errors = [];
+    if (!L.isISODate(v.date)) { errors.push('Tanggal wajib diisi.'); }
+    if (!v.item) { errors.push('Item/area wajib diisi.'); }
+    if (v.cost < 0) { errors.push('Biaya tidak boleh negatif.'); }
+    if (errors.length) { setSaveStatus(errors.join(' '), 'error'); return false; }
+    if (!v.id) {
+      v.id = L.nextId('MNT', state.data.maintenanceLogs, v.date);
+      state.data.maintenanceLogs.push(touch(v));
+    } else {
+      var existing = mntById(v.id);
+      if (!existing) { setSaveStatus('Catatan tidak ditemukan.', 'error'); return false; }
+      var createdAt = existing.createdAt;
+      var expensedTxId = existing.expensedTxId;
+      Object.assign(existing, v);
+      existing.createdAt = createdAt;
+      if (expensedTxId) { existing.expensedTxId = expensedTxId; }
+      touch(existing);
+    }
+    commit().then(function () {
+      toast('Catatan perawatan tersimpan.');
+      state.form = null;
+      renderView();
+    });
+    return false;
+  }
+
+  function delMnt(id) {
+    var m = mntById(id);
+    if (!m) { return; }
+    var msg = 'Hapus catatan perawatan ' + id + ' (' + m.item + ')?' +
+      (m.expensedTxId ? '\n\nTransaksi pengeluaran ' + m.expensedTxId + ' yang sudah dicatat TIDAK ikut terhapus.' : '');
+    if (!confirmDialog(msg)) { return; }
+    state.data.maintenanceLogs = state.data.maintenanceLogs.filter(function (x) { return x.id !== id; });
+    commit().then(function () {
+      toast('Catatan perawatan dihapus.');
+      state.form = null;
+      renderView();
+    });
+  }
+
+  /* Buat transaksi Keluar dari log perawatan (sekali saja; ditandai expensedTxId). */
+  function mntToExpense(id) {
+    var m = mntById(id);
+    if (!m || m.expensedTxId) { return; }
+    var cost = +m.cost || 0;
+    if (cost <= 0) { toast('Biaya 0 — tidak ada pengeluaran untuk dicatat.', 'warn'); return; }
+    var tx = {
+      id: L.nextId('TRX', state.data.transactions, m.date),
+      date: m.date,
+      type: 'Keluar',
+      category: 'Maintenance',
+      account: 'villa',
+      bookingId: '',
+      description: 'Perawatan: ' + m.item + (m.description ? ' — ' + m.description : ''),
+      method: 'Lainnya',
+      amount: cost,
+      month: (m.date || '').slice(0, 7),
+      pic: '',
+      verifyStatus: 'Belum Dicek',
+      proof: '',
+      note: 'Dari log perawatan ' + m.id
+    };
+    state.data.transactions.push(touch(tx));
+    m.expensedTxId = tx.id;
+    touch(m);
+    commit().then(function () {
+      toast('Pengeluaran ' + tx.id + ' (' + L.fmtRp(cost) + ') dicatat — status Belum Dicek.');
+      renderView();
+    });
+  }
+
+  /* ---- Inventaris ---- */
+
+  function invById(id) {
+    return (state.data.inventoryItems || []).find(function (it) { return it.id === id; }) || null;
+  }
+
+  function invSorted() {
+    return (state.data.inventoryItems || []).slice().sort(function (a, b) {
+      var condRank = { 'Rusak': 0, 'Perlu Perbaikan': 1, 'Baik': 2 };
+      var ra = condRank[a.condition] === undefined ? 3 : condRank[a.condition];
+      var rb = condRank[b.condition] === undefined ? 3 : condRank[b.condition];
+      if (ra !== rb) { return ra - rb; }
+      return (a.name || '') < (b.name || '') ? -1 : 1;
+    });
+  }
+
+  function invListHTML() {
+    var rows = invSorted().map(function (it) {
+      return '<tr class="clickable" onclick="VTK.openInvForm(\'' + esc(it.id) + '\')">' +
+        '<td data-label="Nama barang">' + esc(it.name) + '</td>' +
+        '<td data-label="Kategori">' + esc(it.category || '—') + '</td>' +
+        '<td data-label="Jumlah">' + L.fmtNum(it.qty) + ' ' + esc(it.unit || '') + '</td>' +
+        '<td data-label="Kondisi">' + invConditionBadge(it.condition) + '</td>' +
+        '<td data-label="Catatan">' + esc(it.note || '—') + '</td></tr>';
+    }).join('');
+    return '<section class="card"><div class="page-head"><h2>Inventaris</h2>' +
+      '<button type="button" class="btn btn-primary btn-small" onclick="VTK.openInvForm()">+ Tambah barang</button></div>' +
+      '<p class="hint">Barang yang Rusak / Perlu Perbaikan tampil paling atas.</p>' +
+      '<div class="table-wrap"><table class="tbl"><thead><tr><th>Nama barang</th><th>Kategori</th><th>Jumlah</th><th>Kondisi</th><th>Catatan</th></tr></thead>' +
+      '<tbody>' + (rows || '<tr><td colspan="5" class="empty">Belum ada barang inventaris.</td></tr>') + '</tbody></table></div></section>';
+  }
+
+  function invFormHTML() {
+    var f = state.form;
+    var it = f.id ? invById(f.id) : null;
+    var v = it || { name: '', category: '', qty: '', unit: '', condition: 'Baik', note: '' };
+    return '<section class="page-head"><h1>' + (it ? 'Ubah barang ' + esc(it.id) : 'Barang inventaris baru') + '</h1>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">← Kembali ke Operasional</button></section>' +
+      '<form class="card form-card" id="inv-form" onsubmit="return VTK.saveInv(event)">' +
+      '<input type="hidden" name="id" value="' + (it ? esc(it.id) : '') + '" />' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Nama barang *</span><input type="text" name="name" value="' + esc(v.name) + '" required placeholder="cth: Sprei king size" /></label>' +
+      '<label class="field"><span>Kategori</span><input type="text" name="category" value="' + esc(v.category) + '" placeholder="cth: Kamar tidur" /></label>' +
+      '</div>' +
+      '<div class="form-row">' +
+      '<label class="field"><span>Jumlah *</span><input type="number" name="qty" min="0" step="1" value="' + esc(v.qty) + '" required /></label>' +
+      '<label class="field"><span>Satuan</span><input type="text" name="unit" value="' + esc(v.unit) + '" placeholder="cth: pcs, set, buah" /></label>' +
+      '<label class="field"><span>Kondisi</span><select name="condition">' + optList(L.INV_CONDITIONS, v.condition) + '</select></label>' +
+      '</div>' +
+      '<label class="field"><span>Catatan</span><textarea name="note" rows="2">' + esc(v.note) + '</textarea></label>' +
+      saveStatusHTML() +
+      '<div class="form-actions">' +
+      '<button type="submit" class="btn btn-primary">Simpan barang</button>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">Batal</button>' +
+      (it ? '<button type="button" class="btn btn-danger" onclick="VTK.delInv(\'' + esc(it.id) + '\')">Hapus</button>' : '') +
+      '</div></form>';
+  }
+
+  function saveInv(event) {
+    event.preventDefault();
+    var fd = new FormData($('inv-form'));
+    var qty = parseInt(fd.get('qty'), 10);
+    var errors = [];
+    if (!(fd.get('name') || '').trim()) { errors.push('Nama barang wajib diisi.'); }
+    if (isNaN(qty) || qty < 0) { errors.push('Jumlah wajib diisi (0 atau lebih).'); }
+    if (errors.length) { setSaveStatus(errors.join(' '), 'error'); return false; }
+    var id = fd.get('id') || '';
+    var obj = {
+      id: id,
+      name: (fd.get('name') || '').trim(),
+      category: (fd.get('category') || '').trim(),
+      qty: qty,
+      unit: (fd.get('unit') || '').trim(),
+      condition: fd.get('condition') || 'Baik',
+      note: (fd.get('note') || '').trim()
+    };
+    if (!id) {
+      obj.id = L.nextId('INV', state.data.inventoryItems, L.todayISO());
+      state.data.inventoryItems.push(touch(obj));
+    } else {
+      var existing = invById(id);
+      if (!existing) { setSaveStatus('Barang tidak ditemukan.', 'error'); return false; }
+      var createdAt = existing.createdAt;
+      Object.assign(existing, obj);
+      existing.createdAt = createdAt;
+      touch(existing);
+    }
+    commit().then(function () {
+      toast('Barang inventaris tersimpan.');
+      state.form = null;
+      renderView();
+    });
+    return false;
+  }
+
+  function delInv(id) {
+    var it = invById(id);
+    if (!it) { return; }
+    if (!confirmDialog('Hapus barang "' + it.name + '" dari inventaris?')) { return; }
+    state.data.inventoryItems = state.data.inventoryItems.filter(function (x) { return x.id !== id; });
+    commit().then(function () {
+      toast('Barang inventaris dihapus.');
+      state.form = null;
+      renderView();
+    });
+  }
+
+  /* ---- Pesanan katering ---- */
+
+  function ckById(id) {
+    return (state.data.cateringOrders || []).find(function (o) { return o.id === id; }) || null;
+  }
+
+  function ckSorted() {
+    return (state.data.cateringOrders || []).slice().sort(function (a, b) {
+      return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+    });
+  }
+
+  function ckBookingOptions(selectedId) {
+    var opts = '<option value="">— Pilih booking —</option>';
+    reservationsSorted().forEach(function (r) {
+      if (r.status === 'Dibatalkan') { return; }
+      opts += '<option value="' + esc(r.id) + '"' + (r.id === selectedId ? ' selected' : '') + '>' +
+        esc(r.id) + ' — ' + esc(r.guestName) + ' (' + L.fmtDate(r.checkin) + ')</option>';
+    });
+    return opts;
+  }
+
+  function ckLaborInfoHTML() {
+    var labor = L.cateringLaborEstimate(state.data.operationalCosts);
+    var parts = labor.items.map(function (it) { return esc(it.name) + ' ' + L.fmtRp(it.amount); }).join(' + ');
+    return '<p class="hint">Perkiraan honor juru masak per event: <strong>' + L.fmtRp(labor.total) + '</strong>' +
+      (parts ? ' (' + parts + ')' : '') + '. Ini info biaya saja — bukan transaksi otomatis. ' +
+      'Catat pembayaran katering di Keuangan (kategori Pendapatan Katering) dan honor juru masak ' +
+      'sebagai pengeluaran (kategori Biaya Katering).</p>';
+  }
+
+  function ckListHTML() {
+    var rows = ckSorted().map(function (o) {
+      var r = reservationById(o.bookingId);
+      return '<tr class="clickable" onclick="VTK.openCkForm(\'' + esc(o.id) + '\')">' +
+        '<td data-label="ID">' + esc(o.id) + '</td>' +
+        '<td data-label="Booking">' + esc(o.bookingId) + (r ? '<br /><span class="muted">' + esc(r.guestName) + '</span>' : '') + '</td>' +
+        '<td data-label="Paket">' + esc(o.package) + '</td>' +
+        '<td data-label="Makan">' + esc(o.meals) + '</td>' +
+        '<td data-label="Pax">' + L.fmtNum(o.pax) + '</td>' +
+        '<td data-label="Harga/pax">' + L.fmtRp(o.pricePerPax) + '</td>' +
+        '<td data-label="Total">' + L.fmtRp(o.total) + '</td>' +
+        '<td data-label="Status">' + ckStatusBadge(o.status) + '</td></tr>';
+    }).join('');
+    return '<section class="card"><div class="page-head"><h2>Pesanan Katering</h2>' +
+      '<button type="button" class="btn btn-primary btn-small" onclick="VTK.openCkForm()">+ Pesanan katering</button></div>' +
+      ckLaborInfoHTML() +
+      '<div class="table-wrap"><table class="tbl"><thead><tr><th>ID</th><th>Booking</th><th>Paket</th><th>Makan</th><th>Pax</th><th>Harga/pax</th><th>Total</th><th>Status</th></tr></thead>' +
+      '<tbody>' + (rows || '<tr><td colspan="8" class="empty">Belum ada pesanan katering.</td></tr>') + '</tbody></table></div></section>';
+  }
+
+  function ckFormHTML() {
+    var f = state.form;
+    var o = f.id ? ckById(f.id) : null;
+    var s = state.data.settings;
+    var v = o || {
+      bookingId: '', package: (s.catering && s.catering[0] ? s.catering[0].package : ''),
+      meals: 'Full', pax: '', status: 'Dipesan', note: ''
+    };
+    var pkgOpts = (s.catering || []).map(function (c) {
+      return '<option value="' + esc(c.package) + '"' + (c.package === v.package ? ' selected' : '') + '>' +
+        esc(c.package) + ' (' + L.fmtRp(c.price1x) + ' / ' + L.fmtRp(c.price2x) + ' / ' + L.fmtRp(c.priceFull) + ')</option>';
+    }).join('');
+    var res = reservationById(v.bookingId);
+    return '<section class="page-head"><h1>' + (o ? 'Ubah pesanan ' + esc(o.id) : 'Pesanan katering baru') + '</h1>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">← Kembali ke Operasional</button></section>' +
+      '<form class="card form-card" id="ck-form" onsubmit="return VTK.saveCk(event)" oninput="VTK.ckFormRecalc()">' +
+      '<input type="hidden" name="id" value="' + (o ? esc(o.id) : '') + '" />' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Booking *</span><select name="bookingId">' + ckBookingOptions(v.bookingId) + '</select>' +
+      (res ? '<span class="hint">' + esc(res.guestName) + ' — ' + L.fmtDate(res.checkin) + ' s.d. ' + L.fmtDate(res.checkout) + ' (' + L.fmtNum(res.pax) + ' tamu).</span>' : '') + '</label>' +
+      '<label class="field"><span>Paket katering *</span><select name="package">' + pkgOpts + '</select></label>' +
+      '</div>' +
+      '<div class="form-row">' +
+      '<label class="field"><span>Jumlah makan *</span><select name="meals">' + optList(L.CATERING_MEALS, v.meals) + '</select>' +
+      '<span class="hint">1x = 40%, 2x = 75% dari harga paket lengkap.</span></label>' +
+      '<label class="field"><span>Jumlah pax *</span><input type="number" name="pax" min="1" step="1" value="' + esc(v.pax) + '" required /></label>' +
+      '<label class="field"><span>Status</span><select name="status">' + optList(L.CK_STATUSES, v.status) + '</select></label>' +
+      '</div>' +
+      '<div class="calc-box" id="ck-calc"></div>' +
+      '<label class="field"><span>Catatan</span><textarea name="note" rows="2">' + esc(v.note) + '</textarea></label>' +
+      ckLaborInfoHTML() +
+      saveStatusHTML() +
+      '<div class="form-actions">' +
+      '<button type="submit" class="btn btn-primary">Simpan pesanan</button>' +
+      '<button type="button" class="btn" onclick="VTK.closeForm()">Batal</button>' +
+      (o ? '<button type="button" class="btn btn-danger" onclick="VTK.delCk(\'' + esc(o.id) + '\')">Hapus</button>' : '') +
+      '</div></form>';
+  }
+
+  /* Hitung ulang dinamis total pesanan katering dari paket + makan + pax. */
+  function ckFormRecalc() {
+    var form = $('ck-form');
+    var calcEl = $('ck-calc');
+    if (!form || !calcEl) { return; }
+    var fd = new FormData(form);
+    var calc = L.cateringOrderCalc(state.data.settings, fd.get('package'), fd.get('meals'), fd.get('pax'));
+    var labor = L.cateringLaborEstimate(state.data.operationalCosts);
+    calcEl.innerHTML =
+      '<div><span>Harga/pax</span><strong>' + L.fmtRp(calc.pricePerPax) + '</strong></div>' +
+      '<div><span>Pax</span><strong>' + L.fmtNum(calc.pax) + '</strong></div>' +
+      '<div><span>Total pesanan</span><strong>' + L.fmtRp(calc.total) + '</strong></div>' +
+      '<div><span>Perkiraan honor juru masak</span><strong>' + L.fmtRp(labor.total) + '</strong></div>';
+  }
+
+  function saveCk(event) {
+    event.preventDefault();
+    var fd = new FormData($('ck-form'));
+    var errors = [];
+    var bookingId = fd.get('bookingId') || '';
+    if (!bookingId) { errors.push('Booking wajib dipilih.'); }
+    else if (!reservationById(bookingId)) { errors.push('Booking tidak ditemukan.'); }
+    if (!fd.get('package')) { errors.push('Paket katering wajib dipilih.'); }
+    var pax = parseInt(fd.get('pax'), 10);
+    if (isNaN(pax) || pax < 1) { errors.push('Jumlah pax minimal 1.'); }
+    if (errors.length) { setSaveStatus(errors.join(' '), 'error'); return false; }
+    var calc = L.cateringOrderCalc(state.data.settings, fd.get('package'), fd.get('meals'), pax);
+    var id = fd.get('id') || '';
+    var obj = {
+      id: id,
+      bookingId: bookingId,
+      package: fd.get('package'),
+      meals: fd.get('meals') || 'Full',
+      pax: calc.pax,
+      pricePerPax: calc.pricePerPax,
+      total: calc.total,
+      status: fd.get('status') || 'Dipesan',
+      note: (fd.get('note') || '').trim()
+    };
+    if (!id) {
+      obj.id = L.nextId('CK', state.data.cateringOrders, L.todayISO());
+      state.data.cateringOrders.push(touch(obj));
+    } else {
+      var existing = ckById(id);
+      if (!existing) { setSaveStatus('Pesanan tidak ditemukan.', 'error'); return false; }
+      var createdAt = existing.createdAt;
+      Object.assign(existing, obj);
+      existing.createdAt = createdAt;
+      touch(existing);
+    }
+    commit().then(function () {
+      toast('Pesanan katering tersimpan.');
+      state.form = null;
+      renderView();
+    });
+    return false;
+  }
+
+  function delCk(id) {
+    var o = ckById(id);
+    if (!o) { return; }
+    if (!confirmDialog('Hapus pesanan katering ' + id + ' (' + o.package + ', ' + o.pax + ' pax)?')) { return; }
+    state.data.cateringOrders = state.data.cateringOrders.filter(function (x) { return x.id !== id; });
+    commit().then(function () {
+      toast('Pesanan katering dihapus.');
+      state.form = null;
+      renderView();
+    });
+  }
+
+  /* ---------------- 7. Pengaturan ---------------- */
 
   function peakRowHTML(p, idx) {
     p = p || { name: '', start: '', end: '', rate: '', minNights: 2 };
@@ -1766,6 +2522,8 @@
 
     var hasToken = !!getToken();
     var c = state.conn;
+    var fixedTotal = L.fixedMonthlyCost(state.data.operationalCosts).total;
+    var labels = L.accountLabels(s);
 
     return '<section class="page-head"><h1>Pengaturan</h1></section>' +
       '<form class="card form-card" id="settings-form" onsubmit="return VTK.saveSettings(event)">' +
@@ -1811,6 +2569,14 @@
       '<h2>Harga katering per paket (Rp/pax)</h2>' +
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Paket</th><th>1x makan</th><th>2x makan</th><th>Paket lengkap</th></tr></thead>' +
       '<tbody>' + cateringRows + '</tbody></table></div>' +
+      '<h2>Target &amp; rekening</h2>' +
+      '<div class="form-row">' +
+      '<label class="field"><span>Target pemasukan bulanan (Rp)</span><input type="number" name="monthlyTarget" min="0" step="100000" value="' + esc(s.monthlyTarget || '') + '" />' +
+      '<span class="hint">Kosongkan untuk memakai total biaya tetap (' + L.fmtRp(fixedTotal) + '/bulan) sebagai target = titik impas.</span></label>' +
+      '<label class="field"><span>Label rekening villa</span><input type="text" name="accountLabelVilla" value="' + esc(labels.villa) + '" /></label>' +
+      '<label class="field"><span>Label rekening katering &amp; extra bed</span><input type="text" name="accountLabelKatering" value="' + esc(labels.katering) + '" /></label>' +
+      '</div>' +
+      '<p class="hint">Pembayaran katering &amp; extra bed masuk rekening terpisah dari pembayaran villa. Label di atas hanya nama tampilan; rekening yang dipilih di tiap transaksi tetap tersimpan.</p>' +
       saveStatusHTML() +
       '<div class="form-actions"><button type="submit" class="btn btn-primary">Simpan pengaturan</button></div>' +
       '</form>' +
@@ -1907,6 +2673,16 @@
       c.price2x = num('cat-' + i + '-2x', c.price2x);
       c.priceFull = num('cat-' + i + '-full', c.priceFull);
     });
+    /* Target bulanan & label rekening (Fase 2). */
+    var mtRaw = (fd.get('monthlyTarget') || '').trim();
+    var mtNum = parseFloat(mtRaw);
+    s.monthlyTarget = (mtRaw === '' || isNaN(mtNum) || mtNum <= 0) ? null : mtNum;
+    var labV = (fd.get('accountLabelVilla') || '').trim();
+    var labK = (fd.get('accountLabelKatering') || '').trim();
+    s.accountLabels = {
+      villa: labV || L.DEFAULT_ACCOUNT_LABELS.villa,
+      katering: labK || L.DEFAULT_ACCOUNT_LABELS.katering
+    };
     setSaveStatus('Menyimpan…', '');
     commit().then(function (res) {
       if (res.ok || res.demo) {
@@ -1940,9 +2716,9 @@
       });
     } else if (module === 'keuangan') {
       filename = 'keuangan-villa-taman-kelinci.csv';
-      rows.push(['ID Transaksi', 'Tanggal', 'Jenis', 'Kategori', 'Booking ID', 'Deskripsi', 'Metode', 'Jumlah', 'Bulan', 'PIC', 'Status Verifikasi', 'Bukti / Referensi', 'Catatan']);
+      rows.push(['ID Transaksi', 'Tanggal', 'Jenis', 'Kategori', 'Rekening', 'Booking ID', 'Deskripsi', 'Metode', 'Jumlah', 'Bulan', 'PIC', 'Status Verifikasi', 'Bukti / Referensi', 'Catatan']);
       transactionsSorted().forEach(function (tx) {
-        rows.push([tx.id, tx.date, tx.type, tx.category, tx.bookingId, tx.description, tx.method, tx.amount, tx.month, tx.pic, tx.verifyStatus, tx.proof, tx.note]);
+        rows.push([tx.id, tx.date, tx.type, tx.category, accountLabel(L.accountOf(tx)), tx.bookingId, tx.description, tx.method, tx.amount, tx.month, tx.pic, tx.verifyStatus, tx.proof, tx.note]);
       });
     } else if (module === 'leads') {
       filename = 'leads-villa-taman-kelinci.csv';
@@ -2201,13 +2977,54 @@
       renderView();
       window.scrollTo(0, 0);
     },
+    openHkForm: function (id) {
+      state.form = { module: 'hk', id: id || null, prefill: null };
+      state.opsTab = 'housekeeping';
+      renderView();
+      window.scrollTo(0, 0);
+    },
+    openMntForm: function (id) {
+      state.form = { module: 'mnt', id: id || null, prefill: null };
+      state.opsTab = 'maintenance';
+      renderView();
+      window.scrollTo(0, 0);
+    },
+    openInvForm: function (id) {
+      state.form = { module: 'inv', id: id || null, prefill: null };
+      state.opsTab = 'inventory';
+      renderView();
+      window.scrollTo(0, 0);
+    },
+    openCkForm: function (id) {
+      state.form = { module: 'ck', id: id || null, prefill: null };
+      state.opsTab = 'catering';
+      renderView();
+      window.scrollTo(0, 0);
+    },
+    setOpsTab: function (tab) {
+      state.opsTab = tab;
+      state.form = null;
+      renderView();
+    },
     closeForm: function () { state.form = null; renderView(); },
     saveRes: saveRes,
     delRes: delRes,
     saveTx: saveTx,
     delTx: delTx,
+    txFormSuggestAccount: txFormSuggestAccount,
     saveLead: saveLead,
     delLead: delLead,
+    saveHkTask: saveHkTask,
+    delHkTask: delHkTask,
+    hkToggle: hkToggle,
+    saveMnt: saveMnt,
+    delMnt: delMnt,
+    mntToExpense: mntToExpense,
+    saveInv: saveInv,
+    delInv: delInv,
+    saveCk: saveCk,
+    delCk: delCk,
+    ckFormRecalc: ckFormRecalc,
     leadToRes: leadToRes,
     leadFormToggleLostReason: leadFormToggleLostReason,
     resFormRecalc: resFormRecalc,

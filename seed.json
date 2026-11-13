@@ -8,6 +8,11 @@
     "propertyName": "Villa Taman Kelinci",
     "unitsForRent": 1,
     "targetOccupancyPct": null,
+    "monthlyTarget": null,
+    "accountLabels": {
+      "villa": "Rekening Villa",
+      "katering": "Rekening Katering & Extra Bed"
+    },
     "checkinTime": null,
     "checkinTimeProposal": "14:00",
     "checkoutTime": "12:00",
@@ -385,5 +390,9 @@
   "inventory": [],
   "marketing": [],
   "guests": [],
-  "cateringOrders": []
+  "cateringOrders": [],
+  "housekeepingDone": [],
+  "housekeepingTasks": [],
+  "maintenanceLogs": [],
+  "inventoryItems": []
 }

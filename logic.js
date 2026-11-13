@@ -26,9 +26,22 @@
   var LOST_REASONS = ['Tanggal tidak tersedia', 'Harga', 'Kapasitas', 'Tidak merespons', 'Butuh early check-in tidak tersedia', 'Bentrok komitmen early check-in', 'Lainnya'];
   var RES_STATUSES = ['Permintaan', 'Menunggu DP', 'Terkonfirmasi', 'Check-in', 'Selesai', 'Dibatalkan'];
   var TX_TYPES = ['Masuk', 'Keluar'];
-  var TX_CATEGORIES = ['Pembayaran Tamu', 'Pendapatan Katering', 'Refund Tamu', 'Biaya Katering', 'Operasional', 'Housekeeping', 'Maintenance', 'Utilitas', 'Gaji / Jasa', 'Pemasaran', 'Perlengkapan', 'Lainnya'];
+  var TX_CATEGORIES = ['Pembayaran Tamu', 'Pembayaran Extra Bed', 'Pendapatan Katering', 'Refund Tamu', 'Biaya Katering', 'Operasional', 'Housekeeping', 'Maintenance', 'Utilitas', 'Gaji / Jasa', 'Pemasaran', 'Perlengkapan', 'Lainnya'];
   var TX_METHODS = ['Transfer Bank', 'Tunai', 'QRIS', 'E-wallet', 'Lainnya'];
   var TX_VERIFY = ['Belum Dicek', 'Terverifikasi', 'Ditolak'];
+
+  /* Rekening (Fase 2): pembayaran villa dan pembayaran katering/extra bed
+   * masuk rekening berbeda. Kunci stabil 'villa' | 'katering'; label tampil
+   * bisa diedit di settings.accountLabels. */
+  var ACCOUNT_KEYS = ['villa', 'katering'];
+  var DEFAULT_ACCOUNT_LABELS = { villa: 'Rekening Villa', katering: 'Rekening Katering & Extra Bed' };
+  /* Kategori yang rekeningnya otomatis 'katering'. */
+  var CATERING_ACCOUNT_CATEGORIES = ['Pendapatan Katering', 'Pembayaran Extra Bed', 'Biaya Katering'];
+
+  var CATERING_MEALS = ['1x', '2x', 'Full'];
+  var MNT_STATUSES = ['Dilaporkan', 'Dikerjakan', 'Selesai'];
+  var INV_CONDITIONS = ['Baik', 'Perlu Perbaikan', 'Rusak'];
+  var CK_STATUSES = ['Dipesan', 'Disiapkan', 'Selesai', 'Dibatalkan'];
 
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   function pad3(n) { return (n < 10 ? '00' : n < 100 ? '0' : '') + n; }
@@ -212,13 +225,15 @@
 
   /* ---------------- Reservasi ---------------- */
 
-  /* Terbayar = Pembayaran Tamu terverifikasi − Refund Tamu terverifikasi. */
+  /* Terbayar = Pembayaran Tamu + Pembayaran Extra Bed terverifikasi
+   * − Refund Tamu terverifikasi. (Biaya extra bed masuk ke total booking
+   * lewat extraCost, jadi pembayarannya ikut menghitung terbayar.) */
   function paidForBooking(bookingId, transactions) {
     if (!bookingId) { return 0; }
     var paid = 0;
     (transactions || []).forEach(function (tx) {
       if (tx.bookingId !== bookingId || tx.verifyStatus !== 'Terverifikasi') { return; }
-      if (tx.type === 'Masuk' && tx.category === 'Pembayaran Tamu') { paid += +tx.amount || 0; }
+      if (tx.type === 'Masuk' && (tx.category === 'Pembayaran Tamu' || tx.category === 'Pembayaran Extra Bed')) { paid += +tx.amount || 0; }
       if (tx.type === 'Keluar' && tx.category === 'Refund Tamu') { paid -= +tx.amount || 0; }
     });
     return paid;
@@ -468,6 +483,19 @@
     var fixed = fixedMonthlyCost(data.operationalCosts);
     var be = breakevenNights(fixed.total, data.settings);
 
+    /* Target bulanan vs realisasi (uang masuk terverifikasi bulan terpilih). */
+    var mt = monthlyTarget(data.settings, data.operationalCosts);
+    var tp = targetProgress(moneyIn, mt.target);
+    var target = {
+      target: mt.target,
+      isDefault: mt.isDefault,
+      actual: moneyIn,
+      pct: tp.pct,
+      diff: tp.diff,
+      reached: tp.reached,
+      hasTarget: tp.hasTarget
+    };
+
     return {
       monthKey: monthKey,
       monthLabel: monthLabel(monthKey),
@@ -480,6 +508,8 @@
       moneyOut: moneyOut,
       netCash: moneyIn - moneyOut,
       totalOutstanding: totalOutstanding,
+      accountBalances: accountBalances(transactions),
+      target: target,
       sourcePerf: sourcePerf,
       actions: {
         unverified: unverified,
@@ -602,6 +632,190 @@
     return { monthKey: monthKey, items: items, total: total };
   }
 
+  /* ---------------- Rekening (Fase 2) ---------------- */
+
+  /* Label rekening dari settings, dengan default bila settings lama
+   * belum punya accountLabels. */
+  function accountLabels(settings) {
+    var l = (settings && settings.accountLabels) || {};
+    return {
+      villa: (l.villa && String(l.villa).trim()) || DEFAULT_ACCOUNT_LABELS.villa,
+      katering: (l.katering && String(l.katering).trim()) || DEFAULT_ACCOUNT_LABELS.katering
+    };
+  }
+
+  function accountLabel(settings, key) {
+    return accountLabels(settings)[key] || accountLabels(settings).villa;
+  }
+
+  /* Rekening sebuah transaksi; data lama tanpa field account = 'villa'. */
+  function accountOf(tx) {
+    return tx && tx.account === 'katering' ? 'katering' : 'villa';
+  }
+
+  /* Saran rekening dari kategori (pengguna bisa mengubah di form). */
+  function suggestedAccount(category) {
+    return CATERING_ACCOUNT_CATEGORIES.indexOf(category) !== -1 ? 'katering' : 'villa';
+  }
+
+  /* Saldo per rekening (semua waktu, hanya transaksi Terverifikasi):
+   * { villa: { masuk, keluar, saldo }, katering: {...}, total: {...} }. */
+  function accountBalances(transactions) {
+    var out = {
+      villa: { masuk: 0, keluar: 0, saldo: 0 },
+      katering: { masuk: 0, keluar: 0, saldo: 0 },
+      total: { masuk: 0, keluar: 0, saldo: 0 }
+    };
+    (transactions || []).forEach(function (tx) {
+      if (!tx || tx.verifyStatus !== 'Terverifikasi') { return; }
+      var a = accountOf(tx);
+      var amt = +tx.amount || 0;
+      if (tx.type === 'Masuk') { out[a].masuk += amt; out.total.masuk += amt; }
+      else if (tx.type === 'Keluar') { out[a].keluar += amt; out.total.keluar += amt; }
+    });
+    ['villa', 'katering', 'total'].forEach(function (k) { out[k].saldo = out[k].masuk - out[k].keluar; });
+    return out;
+  }
+
+  /* ---------------- Target bulanan (Fase 2) ---------------- */
+
+  /* Target bulanan efektif: settings.monthlyTarget bila > 0; bila tidak,
+   * default = total biaya tetap bulanan (titik impas). */
+  function monthlyTarget(settings, operationalCosts) {
+    var t = settings ? +settings.monthlyTarget : NaN;
+    if (t > 0) { return { target: t, isDefault: false }; }
+    return { target: fixedMonthlyCost(operationalCosts).total, isDefault: true };
+  }
+
+  /* Progres realisasi vs target: { pct, diff (aktual − target), reached, hasTarget }. */
+  function targetProgress(actual, target) {
+    var a = +actual || 0;
+    var t = +target || 0;
+    if (t <= 0) { return { pct: 0, diff: a, reached: false, hasTarget: false }; }
+    return { pct: (a / t) * 100, diff: a - t, reached: a >= t, hasTarget: true };
+  }
+
+  /* ---------------- Pandangan ke depan (Fase 2) ---------------- */
+
+  /* Ringkasan `days` hari ke depan dari `today` (inklusif, malam [today, today+days)):
+   * malam terisi vs kosong, malam weekend (Jumat/Sabtu per settings.weekendNights)
+   * yang belum terisi, dan booking aktif yang masuk jendela itu.
+   * Aturan malam sama dengan kalender: [check-in, check-out). */
+  function forwardOutlook(reservations, today, days, settings) {
+    var n = Math.max(1, Math.min(90, days || 30));
+    var start = today;
+    var end = addDaysISO(today, n);
+    var weekend = (settings && settings.weekendNights) || [5, 6];
+    var active = (reservations || []).filter(function (r) {
+      return r && r.status !== 'Dibatalkan' && isISODate(r.checkin) && isISODate(r.checkout);
+    });
+    var occupied = {};
+    active.forEach(function (r) {
+      var d = r.checkin < start ? start : r.checkin;
+      var e = r.checkout > end ? end : r.checkout;
+      var nights = diffDays(d, e);
+      for (var i = 0; i < nights; i++) { occupied[addDaysISO(d, i)] = r; }
+    });
+    var nightsOccupied = 0;
+    var emptyWeekendNights = [];
+    for (var j = 0; j < n; j++) {
+      var iso = addDaysISO(today, j);
+      if (occupied[iso]) { nightsOccupied++; continue; }
+      var d = parseISO(iso);
+      if (d && weekend.indexOf(d.getDay()) !== -1) {
+        emptyWeekendNights.push({ dateISO: iso, label: fmtDate(iso) + ' (' + DAYS_ID[d.getDay()] + ')' });
+      }
+    }
+    var bookings = active.filter(function (r) { return r.checkin < end && r.checkout > start; })
+      .sort(function (a, b) { return a.checkin < b.checkin ? -1 : 1; })
+      .map(function (r) {
+        return { id: r.id, guestName: r.guestName, checkin: r.checkin, checkout: r.checkout,
+          nights: nightsBetween(r.checkin, r.checkout), pax: +r.pax || 0, status: r.status };
+      });
+    return {
+      start: start,
+      end: end,
+      days: n,
+      nightsOccupied: nightsOccupied,
+      nightsEmpty: n - nightsOccupied,
+      occupancyPct: n ? (nightsOccupied / n) * 100 : 0,
+      emptyWeekendNights: emptyWeekendNights,
+      bookings: bookings
+    };
+  }
+
+  /* ---------------- Pesanan katering (Fase 2) ---------------- */
+
+  /* Harga per pax dari settings.catering untuk paket + jumlah makan.
+   * '1x' = 40%, '2x' = 75%, 'Full' = 100% (harga parsial tersimpan di settings). */
+  function cateringPricePerPax(settings, pkg, meals) {
+    var list = (settings && settings.catering) || [];
+    var found = null;
+    for (var i = 0; i < list.length; i++) { if (list[i].package === pkg) { found = list[i]; break; } }
+    if (!found) { return 0; }
+    if (meals === '1x') { return +found.price1x || 0; }
+    if (meals === '2x') { return +found.price2x || 0; }
+    return +found.priceFull || 0;
+  }
+
+  /* Hitung pesanan: { pricePerPax, pax, total }. */
+  function cateringOrderCalc(settings, pkg, meals, pax) {
+    var price = cateringPricePerPax(settings, pkg, meals);
+    var n = Math.max(0, parseInt(pax, 10) || 0);
+    return { pricePerPax: price, pax: n, total: price * n };
+  }
+
+  /* Perkiraan honor juru masak per event dari
+   * operationalCosts.cateringLaborPerEvent: { items: [{ name, amount }], total }. */
+  function cateringLaborEstimate(operationalCosts) {
+    var items = ((operationalCosts || {}).cateringLaborPerEvent || []).map(function (it) {
+      return { name: it.name, amount: +it.amount || 0 };
+    });
+    var total = items.reduce(function (s, it) { return s + it.amount; }, 0);
+    return { items: items, total: total };
+  }
+
+  /* ---------------- Housekeeping turunan (Fase 2) ---------------- */
+
+  /* Tugas turunan dari reservasi aktif: "Siapkan villa" H-1 sebelum check-in
+   * dan "Bersihkan villa" pada hari check-out. Status selesai disimpan sebagai
+   * daftar kunci di `doneKeys` ('prep:BK-…' / 'clean:BK-…').
+   * Tugas yang sudah selesai dan tanggalnya lebih dari 7 hari lalu
+   * disembunyikan; tugas yang belum selesai tetap tampil berapa pun usianya.
+   * Urut: belum selesai dulu (tanggal terdekat dulu), selesai di belakang. */
+  function derivedHousekeeping(reservations, doneKeys, today) {
+    var done = {};
+    (doneKeys || []).forEach(function (k) { done[k] = true; });
+    var cutoff = addDaysISO(today, -7);
+    var tasks = [];
+    (reservations || []).forEach(function (r) {
+      if (!r || r.status === 'Dibatalkan') { return; }
+      if (!isISODate(r.checkin) || !isISODate(r.checkout)) { return; }
+      var prepKey = 'prep:' + r.id;
+      var cleanKey = 'clean:' + r.id;
+      tasks.push({
+        key: prepKey, kind: 'prep', bookingId: r.id, guestName: r.guestName,
+        date: addDaysISO(r.checkin, -1),
+        title: 'Siapkan villa — ' + r.guestName,
+        detail: 'Check-in ' + fmtDate(r.checkin),
+        done: !!done[prepKey]
+      });
+      tasks.push({
+        key: cleanKey, kind: 'clean', bookingId: r.id, guestName: r.guestName,
+        date: r.checkout,
+        title: 'Bersihkan villa — ' + r.guestName,
+        detail: 'Check-out ' + fmtDate(r.checkout),
+        done: !!done[cleanKey]
+      });
+    });
+    return tasks.filter(function (t) { return !t.done || t.date >= cutoff; })
+      .sort(function (a, b) {
+        if (a.done !== b.done) { return a.done ? 1 : -1; }
+        if (a.date !== b.date) { return a.date < b.date ? -1 : 1; }
+        return a.key < b.key ? -1 : 1;
+      });
+  }
+
   /* ---------------- Validasi bentuk data (untuk impor) ---------------- */
 
   var REQUIRED_ARRAYS = ['rooms', 'cateringMenus', 'waTemplates', 'leads', 'reservations', 'transactions', 'tasks', 'maintenance', 'inventory', 'marketing', 'guests', 'cateringOrders'];
@@ -634,6 +848,12 @@
     TX_CATEGORIES: TX_CATEGORIES,
     TX_METHODS: TX_METHODS,
     TX_VERIFY: TX_VERIFY,
+    ACCOUNT_KEYS: ACCOUNT_KEYS,
+    DEFAULT_ACCOUNT_LABELS: DEFAULT_ACCOUNT_LABELS,
+    CATERING_MEALS: CATERING_MEALS,
+    MNT_STATUSES: MNT_STATUSES,
+    INV_CONDITIONS: INV_CONDITIONS,
+    CK_STATUSES: CK_STATUSES,
     pad2: pad2,
     pad3: pad3,
     isISODate: isISODate,
@@ -660,6 +880,18 @@
     nightsInMonth: nightsInMonth,
     categoryTotals: categoryTotals,
     incomeComposition: incomeComposition,
+    accountLabels: accountLabels,
+    accountLabel: accountLabel,
+    accountOf: accountOf,
+    suggestedAccount: suggestedAccount,
+    accountBalances: accountBalances,
+    monthlyTarget: monthlyTarget,
+    targetProgress: targetProgress,
+    forwardOutlook: forwardOutlook,
+    cateringPricePerPax: cateringPricePerPax,
+    cateringOrderCalc: cateringOrderCalc,
+    cateringLaborEstimate: cateringLaborEstimate,
+    derivedHousekeeping: derivedHousekeeping,
     peakForNight: peakForNight,
     peakMinNightsWarning: peakMinNightsWarning,
     nightRate: nightRate,
