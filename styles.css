@@ -18,11 +18,11 @@
   --navy-700: #1d4568;
   --navy-100: #d9e2ec;
   --navy-50: #f0f4f8;
-  --cream: #faf7f0;
-  --paper: #fffdf8;
+  --cream: #f6f4f1;
+  --paper: #ffffff;
   --ink: #292524;
   --muted: #78716c;
-  --border: #e5e0d5;
+  --border: #e8e4db;
   --orange: #e8590c;
   --orange-soft: #fff4e6;
   --positive: #2f9e44;
@@ -44,8 +44,8 @@
   --teal-soft: #ccfbf1;
   --violet: #7c3aed;
   --violet-soft: #ede9fe;
-  --radius: 12px;
-  --shadow: 0 1px 3px rgba(124, 45, 18, 0.08), 0 4px 14px rgba(124, 45, 18, 0.06);
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(28, 25, 23, 0.05), 0 8px 24px rgba(28, 25, 23, 0.06);
   --nav-h: 60px;
 }
 
@@ -801,3 +801,83 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 /* v1.5.2 — swatch legenda kalender mini (warna sel mini-cal yang sebenarnya). */
 .sw.mini-occupied { background: var(--teal-dark); border-color: var(--teal-dark); }
 .sw.mini-blocked { background: #e5e0d5; }
+
+/* ================= v1.6.0 — redesain menyeluruh: premium warm minimal ================= */
+/* Tipografi: hierarki lebih tegas; angka KPI tabular agar nominal sejajar. */
+h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-weight: 800; letter-spacing: -0.01em; }
+.kpi-value { font-variant-numeric: tabular-nums; }
+/* Garis aksen oranye di bawah judul halaman. */
+.page-head h1 { position: relative; padding-bottom: 0.45rem; }
+.page-head h1::after {
+  content: ''; position: absolute; left: 0; bottom: 0;
+  width: 2.5rem; height: 3px; background: var(--orange); border-radius: 2px;
+}
+/* Kartu: putih bersih, sudut 16px, bayangan lebih lembut & menyebar. */
+.card { border: 1px solid #ece7dd; padding: 1.25rem; }
+/* Tombol: sudut 10px, bayangan halus, efek tekan. */
+.btn { border-radius: 10px; padding: 0.6rem 1.1rem; box-shadow: 0 1px 2px rgba(28, 25, 23, 0.06); }
+.btn:active { transform: translateY(0); box-shadow: none; }
+.btn-primary { box-shadow: 0 6px 16px rgba(194, 65, 12, 0.28); }
+.btn-ghost { box-shadow: none; }
+/* KPI: padding lega; hero punya bilah aksen warna di atas + chip ikon gradasi. */
+.kpi { padding: 1rem; }
+.kpi-hero { padding: 1.1rem; }
+.kpi-hero::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: var(--brand-500); border-radius: 16px 16px 0 0;
+}
+.kpi-hero.kpi-accent-teal::before { background: linear-gradient(90deg, var(--teal), #2dd4bf); }
+.kpi-hero.kpi-accent-blue::before { background: linear-gradient(90deg, var(--blue-strong), #60a5fa); }
+.kpi-hero.kpi-accent-violet::before { background: linear-gradient(90deg, var(--violet), #a78bfa); }
+.kpi-hero.kpi-accent-amber::before { background: linear-gradient(90deg, var(--amber-600), #fbbf24); }
+.kpi-hero .kpi-ico { width: 38px; height: 38px; border-radius: 11px; }
+.kpi-hero.kpi-accent-teal .kpi-ico { background: linear-gradient(135deg, #ccfbf1, #99f6e4); }
+.kpi-hero.kpi-accent-blue .kpi-ico { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+.kpi-hero.kpi-accent-violet .kpi-ico { background: linear-gradient(135deg, #ede9fe, #ddd6fe); }
+.kpi-hero.kpi-accent-amber .kpi-ico { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+.kpi-hero .kpi-value { font-size: 1.5rem; }
+/* Dashboard: ruang napas lebih lega. */
+.dash-layout { gap: 1.25rem; }
+.kpi-grid { gap: 1rem; }
+/* Tabel: striping halus + header lebih tegas + bingkai membulat. */
+.tbl tbody tr:nth-child(even) { background: #faf9f7; }
+.tbl th { background: #faf9f7; color: #44403c; font-size: 0.75rem; letter-spacing: 0.05em; }
+.table-wrap { border: 1px solid var(--border); border-radius: 12px; }
+/* Tab aktif: bayangan lembut. */
+.tab-btn { transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.tab-btn.active { box-shadow: 0 4px 12px rgba(194, 65, 12, 0.25); }
+/* Input: sudut 10px, padding lega. */
+input[type="text"], input[type="number"], input[type="date"], input[type="month"],
+input[type="time"], input[type="datetime-local"], input[type="tel"], input[type="search"],
+input[type="password"], select, textarea {
+  border-radius: 10px; padding: 0.6rem 0.75rem; border: 1px solid #e3ddd2; background: #fff;
+}
+/* Kalender mini: sel lebih membulat + tegas. */
+.mini-cal-cell { border-radius: 10px; font-weight: 600; }
+.mini-cal-cell.today { box-shadow: 0 0 0 2px rgba(194, 65, 12, 0.25); }
+/* Topbar: bayangan lebih lembut. */
+#topbar { box-shadow: 0 1px 3px rgba(28, 25, 23, 0.06), 0 4px 12px rgba(28, 25, 23, 0.04); }
+/* Badge: sedikit lebih lega. */
+.badge { padding: 0.15rem 0.6rem; }
+
+/* Sidebar desktop: lebih lega + navy lebih dalam + garis penghubung submenu. */
+@media (min-width: 900px) {
+  #sidebar {
+    width: 264px;
+    background: linear-gradient(180deg, #0d2137 0%, #081426 100%);
+    padding: 1.4rem 1rem;
+  }
+  #nav-desktop .nav-item, .nav-group-head { border-radius: 10px; padding: 0.65rem 0.85rem; }
+  #nav-desktop .nav-item.active {
+    background: rgba(255, 255, 255, 0.13);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  .nav-sublist {
+    position: relative; margin-left: 1.15rem; padding-left: 0.9rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  #nav-desktop .nav-item.nav-sub { padding-left: 0.6rem; }
+  .brand-text strong { letter-spacing: 0.01em; }
+  .profile { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.06); }
+}

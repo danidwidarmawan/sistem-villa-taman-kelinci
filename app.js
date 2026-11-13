@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.5.3-kpi-lebar';
+  var APP_VERSION = '1.6.0-redesain';
 
   var LS = {
     data: 'vtk_data',
@@ -1052,7 +1052,7 @@
     html += '<aside class="dash-rail">' +
       '<div class="card mini-cal-card"><div class="mini-cal-head">' +
       '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan sebelumnya" onclick="VTK.miniCalNav(-1)">‹</button>' +
-      '<h2>Kalender — ' + esc(d.monthLabel) + '</h2>' +
+      '<h2>' + esc(d.monthLabel) + '</h2>' +
       '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan berikutnya" onclick="VTK.miniCalNav(1)">›</button>' +
       '</div>' +
       miniCalHTML(state.dashMonth) +
