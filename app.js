@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.16.0-dp-30-persen';
+  var APP_VERSION = '1.16.1-wa11-kapasitas';
 
   var LS = {
     data: 'vtk_data',
