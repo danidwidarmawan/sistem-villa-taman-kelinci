@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.24.0-hapus-tag-kapasitas';
+  var APP_VERSION = '1.25.0-riwayat-tamu';
 
   var LS = {
     data: 'vtk_data',
@@ -41,6 +41,7 @@
     { route: 'rekening', label: 'Rekening', icon: 'bank' },
     { route: 'leads', label: 'Leads', icon: 'users' },
     { route: 'kalender', label: 'Kalender', icon: 'calendar' },
+    { route: 'tamu', label: 'Tamu', icon: 'users' },
     { route: 'operasional', label: 'Operasional', icon: 'clipboard' },
     { route: 'pengaturan', label: 'Pengaturan', icon: 'sliders' }
   ];
@@ -54,7 +55,8 @@
     { label: 'Dashboard', icon: 'grid', route: 'dashboard' },
     { label: 'Booking', icon: 'key', children: [
       { route: 'reservasi', label: 'Reservasi', icon: 'key' },
-      { route: 'kalender', label: 'Kalender', icon: 'calendar' }
+      { route: 'kalender', label: 'Kalender', icon: 'calendar' },
+      { route: 'tamu', label: 'Tamu', icon: 'users' }
     ]},
     { label: 'Keuangan', icon: 'banknote', children: [
       { route: 'keuangan', label: 'Keuangan', icon: 'banknote' },
@@ -121,10 +123,12 @@
     calYear: new Date().getFullYear(),
     calMonth: new Date().getMonth(),
     calSelected: null,
+    tamuGuest: null, /* kunci tamu di halaman detail Tamu (null = daftar) */
     filters: {
       res: { status: '', month: '', q: '' },
       tx: { month: L.currentMonthKey(), type: '', category: '', status: '', account: '' },
-      lead: { status: '', source: '', q: '' }
+      lead: { status: '', source: '', q: '' },
+      tamu: { q: '' }
     },
     /* Sub-tab halaman Operasional: housekeeping | maintenance | inventory | catering */
     opsTab: 'housekeeping',
@@ -638,6 +642,8 @@
     });
     /* Sorot section Pengaturan hanya berlaku selama di halaman Pengaturan. */
     if (state.route !== 'pengaturan') { state.settingsSection = null; }
+    /* Detail Tamu hanya berlaku selama di halaman Tamu. */
+    if (state.route !== 'tamu') { state.tamuGuest = null; }
     /* Hormati form yang dijadwalkan lintas-hash (mis. Leads -> Jadikan
      * reservasi, Kalender -> tambah reservasi); selain itu tutup form. */
     /* Lompat ke bagian (mis. submenu Pengaturan) harus bertahan:
@@ -921,6 +927,7 @@
       case 'rekening': v.innerHTML = state.form && state.form.module === 'tx' ? transactionFormHTML() : accountsViewHTML(); break;
       case 'leads': v.innerHTML = state.form && state.form.module === 'lead' ? leadFormHTML() : leadsViewHTML(); break;
       case 'kalender': v.innerHTML = calendarViewHTML(); break;
+      case 'tamu': v.innerHTML = state.form && state.form.module === 'res' ? reservationFormHTML() : tamuViewHTML(); break;
       case 'operasional': v.innerHTML = opsRouteHTML(); break;
       case 'pengaturan': v.innerHTML = settingsViewHTML(); break;
       case 'dashboard':
@@ -1730,6 +1737,61 @@
       state.form = null;
       renderView();
     });
+  }
+
+  /* ---------------- 2b. Tamu (Riwayat menginap, v1.25.0) ---------------- */
+
+  function tamuViewHTML() {
+    var guests = L.guestStats(state.data);
+    if (state.tamuGuest) {
+      var g = null;
+      guests.forEach(function (x) { if (x.key === state.tamuGuest) { g = x; } });
+      /* Tamu bisa hilang dari daftar (mis. status reservasi diubah) —
+       * kembali ke daftar daripada menampilkan detail kosong. */
+      if (g) { return tamuDetailHTML(g); }
+      state.tamuGuest = null;
+    }
+    var f = state.filters.tamu;
+    var q = (f.q || '').toLowerCase();
+    var list = q ? guests.filter(function (x) { return x.name.toLowerCase().indexOf(q) !== -1; }) : guests;
+    var totalStays = guests.reduce(function (a, x) { return a + x.stays; }, 0);
+    var totalSpend = guests.reduce(function (a, x) { return a + x.spend; }, 0);
+    var rows = list.map(function (x) {
+      return '<tr><td data-label="Tamu"><a href="javascript:void(0)" onclick="VTK.tamuDetail(\'' + encodeURIComponent(x.key).replace(/'/g, '%27') + '\')">' + esc(x.name) + '</a></td>' +
+        '<td data-label="Menginap">' + x.stays + 'x</td>' +
+        '<td data-label="Malam">' + x.nights + '</td>' +
+        '<td data-label="Total spend">' + L.fmtRp(x.spend) + '</td>' +
+        '<td data-label="Terakhir menginap">' + (x.lastStay ? L.fmtDate(x.lastStay) : '—') + '</td></tr>';
+    }).join('');
+    return '<section class="page-head"><h1>Tamu</h1></section>' +
+      '<section class="filters card">' +
+      '<label class="field field-grow"><span>Cari nama tamu</span>' +
+      '<input type="search" value="' + esc(f.q) + '" placeholder="cth: Budi" oninput="VTK.setFilter(\'tamu\',\'q\',this.value)" /></label>' +
+      '</section>' +
+      '<section class="card"><p><strong>' + guests.length + ' tamu</strong> · ' + totalStays + ' menginap · total spend ' + L.fmtRp(totalSpend) + '</p>' +
+      (list.length
+        ? '<div class="table-wrap"><table class="tbl"><thead><tr><th>Tamu</th><th>Menginap</th><th>Malam</th><th>Total spend</th><th>Terakhir menginap</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+        : emptyState(q ? 'Tidak ada tamu bernama "' + f.q + '".' : 'Belum ada tamu yang selesai menginap.')) +
+      '<p class="hint">Riwayat tamu yang sudah selesai menginap — untuk melihat loyalitas dan total spend sebelum memberi promo. Tamu dikenali dari nama; hanya reservasi berstatus Selesai yang dihitung. Total spend adalah jumlah nilai booking yang sudah selesai.</p></section>';
+  }
+
+  function tamuDetailHTML(g) {
+    var rows = g.reservations.map(function (r) {
+      var calc = L.reservationCalc(r, state.data.transactions || [], state.data.settings);
+      return '<tr><td data-label="Booking ID"><a href="javascript:void(0)" onclick="VTK.openResForm(\'' + esc(r.id) + '\')">' + esc(r.id) + '</a></td>' +
+        '<td data-label="Check-in">' + L.fmtDate(r.checkin) + '</td>' +
+        '<td data-label="Check-out">' + L.fmtDate(r.checkout) + '</td>' +
+        '<td data-label="Malam">' + calc.nights + '</td>' +
+        '<td data-label="Tamu">' + L.fmtNum(r.pax || 0) + '</td>' +
+        '<td data-label="Total">' + L.fmtRp(calc.total) + '</td>' +
+        '<td data-label="Status">' + resStatusBadge(r.status) + '</td></tr>';
+    }).join('');
+    return '<section class="page-head"><h1>' + esc(g.name) + '</h1></section>' +
+      '<section class="card"><button type="button" class="btn" onclick="VTK.tamuList()">← Semua tamu</button>' +
+      '<p><strong>' + g.stays + 'x menginap</strong> · ' + g.nights + ' malam · total spend ' + L.fmtRp(g.spend) +
+      ' · pertama ' + (g.firstStay ? L.fmtDate(g.firstStay) : '—') + ' · terakhir ' + (g.lastStay ? L.fmtDate(g.lastStay) : '—') + '</p>' +
+      '<div class="table-wrap"><table class="tbl"><thead><tr><th>Booking ID</th><th>Check-in</th><th>Check-out</th><th>Malam</th><th>Tamu</th><th>Total</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="hint">Reservasi yang akan datang ikut tampil di sini — tapi tidak dihitung ke jumlah menginap &amp; total spend. Klik Booking ID untuk membuka reservasi.</p></section>';
   }
 
   /* ---------------- 3. Keuangan ---------------- */
@@ -3374,6 +3436,10 @@
       renderView();
       window.scrollTo(0, 0);
     },
+    /* Halaman Tamu: kunci dikirim ter-encode (nama bisa mengandung
+     * spasi/tanda baca) lalu di-decode di sini. */
+    tamuDetail: function (key) { state.tamuGuest = decodeURIComponent(key || ''); renderView(); window.scrollTo(0, 0); },
+    tamuList: function () { state.tamuGuest = null; renderView(); },
     openTxForm: function (id, prefill) {
       state.form = { module: 'tx', id: id || null, prefill: prefill || null };
       renderView();

@@ -479,6 +479,56 @@
     return 'ok';
   }
 
+  /* Riwayat tamu (v1.25.0): kelompokkan reservasi per nama tamu.
+   * Tamu dikenali dari NAMA (huruf kecil, spasi dirapikan) — reservasi
+   * tidak menyimpan nomor telepon, jadi nama adalah satu-satunya kunci;
+   * ejaan nama yang berbeda dihitung sebagai tamu berbeda. Hanya
+   * reservasi 'Selesai' yang dihitung sebagai menginap; tamu yang baru
+   * booking tapi belum menginap tidak muncul di daftar. Spend = jumlah
+   * TOTAL reservasi Selesai (nilai booking), BUKAN pembayaran
+   * terverifikasi — pelunasan booking lama tidak tercatat lengkap,
+   * jadi pembayaran akan meremehkan spend. Mengembalikan array tamu
+   * terurut spend terbanyak dulu (lalu jumlah menginap, lalu nama):
+   * { key, name, stays, nights, spend, firstStay, lastStay,
+   *   reservations } — reservations = SEMUA reservasi tamu itu
+   * (termasuk yang akan datang), terurut check-in terbaru dulu. */
+  function guestStats(data) {
+    var d = data || {};
+    var txs = d.transactions || [];
+    var byKey = {};
+    (d.reservations || []).forEach(function (r) {
+      if (!r || r.status === 'Dibatalkan') { return; }
+      var name = (r.guestName || '').trim();
+      if (!name) { return; }
+      var key = name.toLowerCase().replace(/\s+/g, ' ');
+      if (!byKey[key]) {
+        byKey[key] = { key: key, name: name, stays: 0, nights: 0, spend: 0, firstStay: null, lastStay: null, reservations: [] };
+      }
+      var g = byKey[key];
+      g.reservations.push(r);
+      if (r.status === 'Selesai') {
+        var calc = reservationCalc(r, txs, d.settings);
+        g.stays++;
+        g.nights += calc.nights;
+        g.spend += calc.total;
+        if (isISODate(r.checkin)) {
+          if (!g.firstStay || r.checkin < g.firstStay) { g.firstStay = r.checkin; }
+          if (!g.lastStay || r.checkin > g.lastStay) { g.lastStay = r.checkin; }
+        }
+      }
+    });
+    return Object.keys(byKey).map(function (k) { return byKey[k]; }).filter(function (g) {
+      return g.stays > 0;
+    }).map(function (g) {
+      g.reservations.sort(function (a, b) { return (b.checkin || '') < (a.checkin || '') ? -1 : 1; });
+      return g;
+    }).sort(function (a, b) {
+      if (b.spend !== a.spend) { return b.spend - a.spend; }
+      if (b.stays !== a.stays) { return b.stays - a.stays; }
+      return a.name < b.name ? -1 : 1;
+    });
+  }
+
   /* ---------------- ID ---------------- */
 
   /* ID berikutnya format XX-YYYYMM-NNN, dari nomor terbesar di bulan itu + 1. */
@@ -1220,6 +1270,7 @@
     blockedNightReason: blockedNightReason,
     mergeWaTemplates: mergeWaTemplates,
     capacityLevel: capacityLevel,
+    guestStats: guestStats,
     nextId: nextId,
     fixedMonthlyCost: fixedMonthlyCost,
     breakevenNights: breakevenNights,
