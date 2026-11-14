@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.23.0-hapus-legenda-kapasitas';
+  var APP_VERSION = '1.24.0-hapus-tag-kapasitas';
 
   var LS = {
     data: 'vtk_data',
@@ -2242,8 +2242,6 @@
       if (c.reservations.length) { cls += ' occupied'; }
       if (c.blocked) { cls += ' blocked'; }
       if (c.checkouts.length && !c.reservations.length) { cls += ' checkout-day'; }
-      if (c.capacity === 'ideal') { cls += ' over-ideal'; }
-      if (c.capacity === 'max') { cls += ' over-max'; }
       if (state.calSelected === c.dateISO) { cls += ' selected'; }
       var body = '<span class="cal-day">' + c.day + '</span>';
       if (c.peak) { body += '<span class="cal-tag peak-tag">' + esc(c.peak.name) + '</span>'; }
@@ -2254,9 +2252,6 @@
         body += '<span class="cal-guest">' + esc(r.guestName) + '</span><span class="cal-pax">' + L.fmtNum(c.pax) + ' tamu</span>';
       } else if (c.reservations.length > 1) {
         body += '<span class="cal-guest">' + c.reservations.length + ' reservasi</span><span class="cal-pax">' + L.fmtNum(c.pax) + ' tamu</span>';
-      }
-      if (c.capacity !== 'ok' && c.reservations.length) {
-        body += '<span class="cal-tag cap-tag">' + (c.capacity === 'max' ? 'Melebihi maks' : 'Di atas ideal') + '</span>';
       }
       /* Gaya kalender hotel (v1.10.0): tandai check-in & check-out per hari.
        * Tag check-out membawa nama tamu karena di hari itu tidak ada baris
