@@ -319,16 +319,17 @@
     else if (paid <= 0) { payStatus = 'Belum Bayar'; }
     else if (paid < total) { payStatus = 'Sebagian'; }
     else { payStatus = 'Lunas'; }
-    var dpPct = settings && typeof settings.dpPct === 'number' ? settings.dpPct : 0.5;
+    var dpPct = settings && typeof settings.dpPct === 'number' ? settings.dpPct : 0.3;
     return {
       nights: nights,
       total: total,
       paid: paid,
       remaining: remaining,
       payStatus: payStatus,
-      /* DP: ATURAN PEMILIK (2026-11-13) — hanya dari biaya MENGINAP
-       * (malam × tarif). Extra bed, kamar VIP, dan diskon TIDAK masuk
-       * perhitungan DP. */
+      /* DP: ATURAN PEMILIK — hanya dari biaya MENGINAP (malam × tarif).
+       * Extra bed, kamar VIP, dan diskon TIDAK masuk perhitungan DP
+       * (2026-11-13). Besaran DP 30% (keputusan pemilik 2026-11-14;
+       * sebelumnya 50%). */
       dpAmount: Math.round(nights * rate * dpPct),
       dueDate: res.checkin ? addDaysISO(res.checkin, -deadlineDays(settings)) : ''
     };

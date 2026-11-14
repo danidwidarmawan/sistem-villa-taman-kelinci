@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.15.0-template-wa';
+  var APP_VERSION = '1.16.0-dp-30-persen';
 
   var LS = {
     data: 'vtk_data',
@@ -1595,7 +1595,7 @@
         '<div><span>Malam</span><strong>' + c.nights + '</strong></div>' +
         '<div><span>Total booking</span><strong>' + L.fmtRp(c.total) + '</strong></div>' +
         (katCalc && katCalc.total > 0 ? '<div><span>Katering (dibayar terpisah)</span><strong>' + L.fmtRp(katCalc.total) + '</strong></div>' : '') +
-        '<div><span>DP 50% (menginap saja)</span><strong>' + L.fmtRp(c.dpAmount) + '</strong></div>' +
+        '<div><span>DP ' + Math.round((typeof s.dpPct === 'number' ? s.dpPct : 0.3) * 100) + '% (menginap saja)</span><strong>' + L.fmtRp(c.dpAmount) + '</strong></div>' +
         '<div><span>Jatuh tempo pelunasan (H-3)</span><strong>' + L.fmtDate(c.dueDate) + '</strong></div>' +
         (bd.extraBedCost > 0 ? '<div><span>Extra bed (per menginap)</span><strong>' + L.fmtRp(bd.extraBedCost) + '</strong></div>' : '') +
         (bd.vipCost > 0 ? '<div><span>Kamar VIP</span><strong>' + L.fmtRp(bd.vipCost) + '</strong></div>' : '') +
