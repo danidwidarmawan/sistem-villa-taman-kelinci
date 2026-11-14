@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.28.0-tooltip-instan';
+  var APP_VERSION = '1.29.0-tooltip-kalender';
 
   var LS = {
     data: 'vtk_data',
@@ -1212,7 +1212,7 @@
       if (c.holiday && (c.reservations.length || c.checkouts.length || c.blocked)) {
         label += ' • libur: ' + c.holiday.name + (c.holiday.type === 'cuti' ? ' (cuti bersama)' : '');
       }
-      h += '<button type="button" class="' + cls + '" title="' + esc(label) + '" aria-label="' + esc(label) +
+      h += '<button type="button" class="' + cls + ' chart-tip" data-tip="' + esc(label) + '" aria-label="' + esc(label) +
         '" onclick="VTK.miniCalGo(\'' + c.dateISO + '\')">' + c.day + '</button>';
     });
     h += '</div>';
@@ -2340,8 +2340,9 @@
         var outNames = c.checkouts.map(function (r) { return r.guestName; }).join(', ');
         body += '<span class="cal-tag checkout-tag">▲ Check-out: ' + esc(outNames) + '</span>';
       }
-      var title = c.blocked ? ' title="Terblokir: ' + esc(c.blocked.reason) + '"' : '';
-      return '<button type="button" class="' + cls + '"' + title + ' onclick="VTK.calDayClick(\'' + c.dateISO + '\')">' + body + '</button>';
+      if (c.blocked) { cls += ' chart-tip'; }
+      var tip = c.blocked ? ' data-tip="Terblokir: ' + esc(c.blocked.reason) + '"' : '';
+      return '<button type="button" class="' + cls + '"' + tip + ' onclick="VTK.calDayClick(\'' + c.dateISO + '\')">' + body + '</button>';
     }).join('');
 
     /* Detail hari terpilih */
@@ -3613,6 +3614,9 @@
       document.title = 'Sistem ' + cached.settings.propertyName;
     }
     window.addEventListener('hashchange', route);
+    /* Tooltip instan (v1.29.0): pasang listener sekali di awal agar sel
+     * kalender — yang tidak merender chart — juga punya tooltip instan. */
+    if (typeof VTKCharts !== 'undefined' && VTKCharts.bindTips) { VTKCharts.bindTips(); }
     window.addEventListener('online', function () {
       if (state.mode === 'online' && state.pending > 0) { pushToRemote(); }
       else if (state.mode === 'online') { syncFromRemote({ silent: true }); }

@@ -393,6 +393,9 @@
     cashflowChart: cashflowChart,
     occupancyChart: occupancyChart,
     hBarChart: hBarChart,
-    donutChart: donutChart
+    donutChart: donutChart,
+    /* Dipanggil app.js saat boot (v1.29.0) agar elemen non-chart
+     * (sel kalender) juga memakai tooltip instan. */
+    bindTips: ensureTip
   };
 });
