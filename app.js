@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.20.0-nomor-urut-template';
+  var APP_VERSION = '1.21.0-hapus-pengaturan-koneksi-data';
 
   var LS = {
     data: 'vtk_data',
@@ -72,8 +72,6 @@
       { route: 'pengaturan', label: 'Periode Peak', section: 'set-peak', icon: 'calendar' },
       { route: 'pengaturan', label: 'Harga Katering', section: 'set-katering', icon: 'utensils' },
       { route: 'pengaturan', label: 'Target & Rekening', section: 'set-target', icon: 'target' },
-      { route: 'pengaturan', label: 'Koneksi GitHub', section: 'set-koneksi', icon: 'key' },
-      { route: 'pengaturan', label: 'Data', section: 'set-data', icon: 'box' },
       { route: 'pengaturan', label: 'Template WhatsApp', section: 'set-wa', icon: 'receipt' }
     ]}
   ];
@@ -287,7 +285,7 @@
   }
 
   function ghErrorMessage(status, bodyText) {
-    if (status === 401) { return 'Token ditolak (401). Periksa token di Pengaturan → Koneksi.'; }
+    if (status === 401) { return 'Token ditolak (401). Token mungkin sudah kedaluwarsa atau dicabut.'; }
     if (status === 403) { return 'Akses ditolak (403). Token mungkin tidak punya izin Contents: Read and write untuk repo data, atau rate limit tercapai.'; }
     if (status === 404) { return 'Repo atau file data.json tidak ditemukan (404). Periksa nama owner/repo/branch.'; }
     if (status === 409) { return 'Konflik versi (409): data berubah dari tempat lain.'; }
@@ -575,7 +573,8 @@
     var html = '';
     if (state.mode === 'demo') {
       html += '<div class="banner demo"><strong>MODE DEMO</strong> — data dari seed (tanpa transaksi). ' +
-        'Perubahan di sini <strong>tidak tersimpan</strong> permanen. Atur token GitHub di Pengaturan untuk memakai data asli.</div>';
+        'Perubahan di sini <strong>tidak tersimpan</strong> permanen. ' +
+        '<button type="button" class="btn btn-small" onclick="VTK.showSetup()">Kembali ke layar awal</button> untuk mengatur token dan memakai data asli.</div>';
     }
     if (state.conflict) {
       html += '<div class="banner conflict"><strong>Data berubah dari tempat lain.</strong> ' +
@@ -591,7 +590,7 @@
     if (state.mode === 'offline') {
       html += '<div class="banner offline">Anda membuka <strong>data tersimpan di perangkat ini</strong> tanpa token GitHub. ' +
         'Perubahan tersimpan lokal dan akan tersinkron setelah token diatur. ' +
-        '<button type="button" class="btn btn-small" onclick="VTK.go(\'pengaturan\')">Atur token</button></div>';
+        '<button type="button" class="btn btn-small" onclick="VTK.showSetup()">Atur token</button></div>';
     }
     b.innerHTML = html;
   }
@@ -2991,7 +2990,6 @@
         '<button type="button" class="btn btn-small" onclick="VTK.copyTemplate(' + i + ')">Salin teks</button></div></details>';
     }).join('');
 
-    var hasToken = !!getToken();
     var c = state.conn;
     var fixedTotal = L.fixedMonthlyCost(state.data.operationalCosts).total;
     var beSet = L.breakevenNights(fixedTotal, s);
@@ -3061,33 +3059,6 @@
       saveStatusHTML() +
       '<div class="form-actions"><button type="submit" class="btn btn-primary">Simpan pengaturan</button></div>' +
       '</form>' +
-
-      '<section class="card" id="set-koneksi"><h2>Koneksi GitHub</h2>' +
-      '<p>Status token: ' + (hasToken
-        ? '<strong>tersimpan di browser ini</strong> (tidak ditampilkan). Kosongkan kolom token bila tidak ingin menggantinya.'
-        : '<strong>belum diatur</strong> — data hanya tersimpan di perangkat ini.') + '</p>' +
-      '<form id="conn-form" onsubmit="return VTK.saveConn(event)">' +
-      '<div class="form-row">' +
-      '<label class="field"><span>Owner</span><input type="text" name="owner" value="' + esc(c.owner) + '" required /></label>' +
-      '<label class="field"><span>Repo data</span><input type="text" name="repo" value="' + esc(c.repo) + '" required /></label>' +
-      '<label class="field"><span>Branch</span><input type="text" name="branch" value="' + esc(c.branch) + '" required /></label>' +
-      '</div>' +
-      '<label class="field"><span>Token GitHub (fine-grained, Contents: Read and write untuk repo data)</span>' +
-      '<input type="password" name="token" autocomplete="off" placeholder="' + (hasToken ? '•••••••• (tersimpan)' : 'github_pat_...') + '" /></label>' +
-      '<p class="hint">Buat token di <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a> — pilih repo data saja. Token tidak pernah ditulis ke file atau repo.</p>' +
-      '<div class="form-actions">' +
-      '<button type="submit" class="btn btn-primary">Simpan koneksi</button>' +
-      '<button type="button" class="btn" onclick="VTK.testConn()">Tes koneksi</button>' +
-      (hasToken ? '<button type="button" class="btn btn-danger" onclick="VTK.clearToken()">Hapus token</button>' : '') +
-      '</div></form></section>' +
-
-      '<section class="card" id="set-data"><h2>Data</h2>' +
-      '<div class="form-actions">' +
-      '<button type="button" class="btn" onclick="VTK.exportJSON()">Unduh data.json (backup)</button>' +
-      '<label class="btn">Impor data.json<input type="file" id="import-file" accept=".json,application/json" hidden onchange="VTK.importJSON(event)" /></label>' +
-      '<button type="button" class="btn btn-danger" onclick="VTK.resetSeed()">Reset ke data master (seed)</button>' +
-      '</div>' +
-      '<p class="hint">Impor dan reset menimpa seluruh data (termasuk reservasi &amp; keuangan). Buat backup dulu bila ragu.</p></section>' +
 
       '<section class="card"><h2>Kamar &amp; kapasitas (baca-saja)</h2>' +
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Jenis</th><th>Jumlah</th><th>Kapasitas/unit</th><th>Kasur</th><th>Paket utama</th><th>Biaya tambahan</th><th>Catatan</th></tr></thead>' +
@@ -3216,62 +3187,6 @@
     toast('CSV ' + module + ' diunduh.');
   }
 
-  function exportJSON() {
-    var name = 'data-villa-taman-kelinci-' + L.todayISO() + '.json';
-    downloadText(name, JSON.stringify(state.data, null, 2));
-    toast('Backup data.json diunduh.');
-  }
-
-  function importJSON(event) {
-    var file = event.target.files && event.target.files[0];
-    event.target.value = '';
-    if (!file) { return; }
-    var reader = new FileReader();
-    reader.onload = function () {
-      var parsed;
-      try {
-        parsed = JSON.parse(reader.result);
-      } catch (e) {
-        toast('File bukan JSON yang valid: ' + e.message, 'error');
-        return;
-      }
-      var errs = L.validateData(parsed);
-      if (errs.length) {
-        toast('File tidak valid untuk sistem ini: ' + errs.join(' '), 'error');
-        return;
-      }
-      var counts = 'Reservasi: ' + parsed.reservations.length + ', Keuangan: ' + parsed.transactions.length + ', Leads: ' + parsed.leads.length + '.';
-      if (!confirmDialog('Impor akan MENIMPA seluruh data saat ini dengan isi file ini.\n\n' + counts + '\n\nLanjutkan?')) { return; }
-      state.data = parsed;
-      state.conflict = null;
-      renderView();
-      /* Merge template baru dulu, agar ikut tersimpan dalam commit impor. */
-      mergeDefaultTemplates().then(function () {
-        commit().then(function (res) {
-          if (res.ok || res.demo) { toast('Impor berhasil.'); }
-          else { toast('Impor tersimpan lokal, belum tersinkron: ' + res.error, 'warn'); }
-        });
-      });
-    };
-    reader.readAsText(file);
-  }
-
-  function resetSeed() {
-    if (!confirmDialog('Reset akan menghapus SEMUA data transaksi (reservasi, keuangan, leads, dll) dan kembali ke data master saja. Lanjutkan?')) { return; }
-    if (!confirmDialog('Yakin? Tindakan ini tidak bisa dibatalkan kecuali dari backup data.json Anda.')) { return; }
-    fetchSeed().then(function (seed) {
-      state.data = seed;
-      state.conflict = null;
-      renderView();
-      commit().then(function (res) {
-        if (res.ok || res.demo) { toast('Data direset ke data master.'); }
-        else { toast('Reset tersimpan lokal, belum tersinkron: ' + res.error, 'warn'); }
-      });
-    }).catch(function (e) {
-      toast('Gagal memuat seed: ' + e.message, 'error');
-    });
-  }
-
   /* ---------------- Token & koneksi ---------------- */
 
   function saveToken(event) {
@@ -3288,46 +3203,10 @@
     return false;
   }
 
-  function saveConn(event) {
-    event.preventDefault();
-    var fd = new FormData(event.target);
-    var token = (fd.get('token') || '').trim();
-    persistConn({ owner: (fd.get('owner') || '').trim(), repo: (fd.get('repo') || '').trim(), branch: (fd.get('branch') || '').trim() || 'main' });
-    if (token) { lsSet(LS.pat, token); }
-    state.syncError = '';
-    toast('Koneksi tersimpan.' + (token ? ' Token baru tersimpan di browser ini.' : ''));
-    if (state.mode === 'offline' && getToken()) {
-      state.mode = 'online';
-      state.sha = null; /* repo/branch mungkin berubah — ambil ulang */
-      syncFromRemote({ silent: false }).then(function () {
-        if (state.pending > 0) { pushToRemote(); }
-      });
-    } else if (getToken()) {
-      syncFromRemote({ silent: true });
-    }
-    renderShell();
-    renderView();
-    return false;
-  }
-
-  function testConn() {
-    if (!getToken()) { toast('Token belum diatur.', 'error'); return; }
-    toast('Menguji koneksi…');
-    apiGet().then(function (res) {
-      if (res.ok) {
-        toast('Koneksi berhasil. data.json ditemukan (reservasi: ' + res.data.reservations.length +
-          ', transaksi: ' + res.data.transactions.length + ', leads: ' + res.data.leads.length + ').');
-      } else if (res.status === 404) {
-        toast('Koneksi ke GitHub berhasil, tetapi data.json belum ada di repo (404). Data lokal akan dibuat sebagai file awal saat sinkronisasi pertama.', 'warn');
-      } else {
-        toast('Tes koneksi gagal: ' + res.error, 'error');
-      }
-    });
-  }
-
-  function clearToken() {
-    if (!confirmDialog('Hapus token dari browser ini? Data yang sudah tersinkron tetap ada di repo. Aplikasi akan kembali ke layar setup.')) { return; }
-    lsRemove(LS.pat);
+  /* Kembali ke layar setup (mis. dari banner demo/offline) tanpa
+   * menghapus token yang tersimpan. Token tetap diatur lewat layar
+   * setup; section Koneksi GitHub di Pengaturan dihapus (v1.21.0). */
+  function showSetup() {
     state.mode = 'setup';
     state.route = 'setup';
     state.conflict = null;
@@ -3617,17 +3496,12 @@
       if (row) { row.remove(); }
     },
     saveToken: saveToken,
-    saveConn: saveConn,
-    testConn: testConn,
-    clearToken: clearToken,
+    showSetup: showSetup,
     startDemo: startDemo,
     openOffline: openOffline,
     retryBoot: boot,
     retrySync: retrySync,
     resolveConflict: resolveConflict,
-    exportJSON: exportJSON,
-    importJSON: importJSON,
-    resetSeed: resetSeed,
     exportCSV: exportCSV,
     copyTemplate: function (idx) {
       var tpl = (state.data.waTemplates || [])[idx];
