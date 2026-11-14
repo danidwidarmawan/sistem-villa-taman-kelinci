@@ -613,6 +613,7 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 .menu-item summary { cursor: pointer; font-size: 0.95rem; }
 .menu-body { padding-top: 0.6rem; font-size: 0.92rem; }
 .menu-body p { margin: 0 0 0.6rem; }
+.menu-body p.wa-text { white-space: pre-wrap; }
 
 .peak-row { align-items: flex-end; border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem; margin-bottom: 0.6rem; background: #fff; }
 .peak-row .field { margin-bottom: 0; }

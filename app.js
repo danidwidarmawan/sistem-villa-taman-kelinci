@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.16.1-wa11-kapasitas';
+  var APP_VERSION = '1.17.0-bold-wa';
 
   var LS = {
     data: 'vtk_data',
@@ -162,6 +162,14 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  /* Tampilkan teks template WA: escape HTML dulu, lalu ubah penanda
+   * bold WhatsApp *...* menjadi <strong>. Penanda yang tidak
+   * berpasangan dibiarkan apa adanya. Teks yang disalin tetap mentah
+   * (dengan *) agar WhatsApp merender bold saat ditempel. */
+  function renderWaText(s) {
+    return esc(s).replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
   }
 
   function toast(msg, kind) {
@@ -2980,7 +2988,7 @@
 
     var waHTML = (state.data.waTemplates || []).map(function (tpl, i) {
       return '<details class="menu-item"><summary><strong>' + esc(tpl.id) + ' — ' + esc(tpl.title) + '</strong></summary>' +
-        '<div class="menu-body"><p>' + esc(tpl.text) + '</p><p class="hint">' + esc(tpl.note || '') + '</p>' +
+        '<div class="menu-body"><p class="wa-text">' + renderWaText(tpl.text) + '</p><p class="hint">' + esc(tpl.note || '') + '</p>' +
         '<button type="button" class="btn btn-small" onclick="VTK.copyTemplate(' + i + ')">Salin teks</button></div></details>';
     }).join('');
 
