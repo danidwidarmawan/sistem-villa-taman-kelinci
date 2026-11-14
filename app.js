@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.19.0-tarif-peak-125-15';
+  var APP_VERSION = '1.20.0-nomor-urut-template';
 
   var LS = {
     data: 'vtk_data',
@@ -713,19 +713,18 @@
     });
   }
 
-  /* Tambahkan template WA baru dari seed ke data yang sedang dimuat (mis.
-   * WA-16 untuk Jumat terblokir) — hanya MENAMBAH yang ID-nya belum ada,
-   * tidak pernah menimpa template yang sudah ada (lihat
-   * L.mergeWaTemplates). Data live lama otomatis mendapat template baru
-   * tanpa edit manual. Hasil merge disimpan ke cache lokal dan ikut
-   * ter-push saat commit berikutnya; tidak ada push otomatis di sini.
-   * Gagal memuat seed (offline) diabaikan diam-diam. Mengembalikan
-   * Promise jumlah template yang ditambahkan. */
+  /* Selaraskan template WA dengan seed (lihat L.mergeWaTemplates):
+   * struktur mengikuti seed, teks live dipertahankan berdasarkan judul
+   * (nomor rekening template booking tidak tertimpa). Hasil yang berubah
+   * disimpan ke cache lokal dan ikut ter-push saat commit berikutnya;
+   * tidak ada push otomatis di sini. Gagal memuat seed (offline)
+   * diabaikan diam-diam. Mengembalikan Promise jumlah template yang
+   * ditambahkan. */
   function mergeDefaultTemplates() {
     if (!state.data || state.mode === 'demo') { return Promise.resolve(0); }
     return fetchSeed().then(function (seed) {
       var m = L.mergeWaTemplates(state.data.waTemplates, seed.waTemplates);
-      if (m.added > 0) {
+      if (m.changed) {
         state.data.waTemplates = m.list;
         saveCache();
         /* Jangan me-render ulang saat form sedang diisi. */

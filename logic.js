@@ -1097,25 +1097,47 @@
 
   /* ---------------- Merge template WA default (V4) ---------------- */
 
-  /* Gabung template WA default (dari seed) ke daftar saat ini: hanya
-   * MENAMBAH template yang ID-nya belum ada; tidak pernah menimpa atau
-   * menghapus template yang sudah ada. Mengembalikan
-   * { list, added } — list adalah daftar baru (bila ada penambahan) atau
-   * daftar asli bila tidak ada perubahan. Dipakai saat data dimuat, agar
-   * data lama tetap mendapat template baru (mis. WA-16) tanpa edit manual. */
+  /* Selaraskan template WA dengan seed: hasil SELALU mengikuti struktur
+   * seed (urutan, ID, judul, catatan); TEKS template dipertahankan dari
+   * data live bila JUDULNYA cocok — teks live berbeda dari seed hanya di
+   * nomor rekening template booking, dan itulah yang harus dipertahankan.
+   * Template yang judulnya tidak ada di seed dibuang; template baru dari
+   * seed ditambahkan dengan teks seed. Pencocokan memakai judul (bukan
+   * ID) agar penomoran ulang ID tetap aman: data lama dengan nomor lama
+   * otomatis mengikuti nomor baru tanpa duplikat. Tanpa defaults, daftar
+   * dikembalikan apa adanya. Mengembalikan { list, added, changed } —
+   * added = jumlah template baru dari seed; changed = daftar hasil
+   * berbeda dari daftar saat ini. */
   function mergeWaTemplates(current, defaults) {
-    var list = Array.isArray(current) ? current.slice() : [];
-    var ids = {};
-    list.forEach(function (t) { if (t && t.id) { ids[t.id] = true; } });
-    var added = 0;
-    (defaults || []).forEach(function (t) {
-      if (t && t.id && !ids[t.id]) {
-        ids[t.id] = true;
-        list.push(t);
-        added++;
-      }
+    var cur = Array.isArray(current) ? current : [];
+    if (!defaults || !defaults.length) {
+      return { list: cur.slice(), added: 0, changed: false };
+    }
+    var byTitle = {};
+    cur.forEach(function (t) {
+      if (t && t.title && !byTitle[t.title]) { byTitle[t.title] = t; }
     });
-    return { list: list, added: added };
+    var added = 0;
+    var list = defaults.map(function (d) {
+      if (!d || !d.id) { return d; }
+      var c = d.title && byTitle[d.title];
+      if (c && typeof c.text === 'string') {
+        return { id: d.id, title: d.title, text: c.text, note: d.note };
+      }
+      added++;
+      return d;
+    });
+    var changed = added > 0 || list.length !== cur.length;
+    if (!changed) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id !== cur[i].id || list[i].title !== cur[i].title ||
+            list[i].text !== cur[i].text || list[i].note !== cur[i].note) {
+          changed = true;
+          break;
+        }
+      }
+    }
+    return { list: list, added: added, changed: changed };
   }
 
   function deepClone(obj) {
