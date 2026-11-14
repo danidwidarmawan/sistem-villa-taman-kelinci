@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.14.0-penting-saja';
+  var APP_VERSION = '1.15.0-template-wa';
 
   var LS = {
     data: 'vtk_data',

@@ -208,9 +208,9 @@
   "waTemplates": [
     {
       "id": "WA-01",
-      "title": "Balasan pertanyaan",
-      "text": "Halo Kak {Nama}, terima kasih sudah menghubungi Villa Taman Kelinci. Untuk kami cek ketersediaan, boleh informasikan tanggal check-in, tanggal check-out, jumlah tamu, dan rencana berangkat dari Jakarta jam berapa?",
-      "note": "Catat sebagai Lead baru dan isi sumber lead."
+      "title": "Sambutan & minta data (chat pertama)",
+      "text": "🐰 Selamat Datang di Villa Taman Kelinci! 🌿\n\nTerima kasih telah menghubungi kami! 😊\n\nUntuk informasi harga dan ketersediaan villa, mohon lengkapi data berikut:\n\n👤 Nama Pemesan:\n🏢 Kategori Tamu: (Keluarga/Kantor/Komunitas/Lainnya)\n📅 Check-in:\n📅 Check-out:\n👥 Jumlah Tamu:\n🎉 Keperluan Acara:\n📱 Sumber Informasi: (Google/Instagram/TikTok/Teman/Lainnya)\n\nSilakan copy, isi, dan kirim kembali format di atas.\n\nAdmin kami akan segera membantu Anda. Terima kasih! 🌿",
+      "note": "Auto-reply chat pertama (teks pemilik). Catat sebagai Lead baru dan isi sumber lead."
     },
     {
       "id": "WA-02",
@@ -226,9 +226,9 @@
     },
     {
       "id": "WA-04",
-      "title": "Instruksi DP & penguncian tanggal",
-      "text": "Halo Kak {Nama}, total booking untuk {Tanggal Check-in} sampai {Tanggal Check-out} adalah {Total Booking}. DP 50% sebesar {Nominal DP}. Tanggal baru kami kunci setelah DP masuk dan terverifikasi. Sisa pelunasan {Sisa Tagihan} wajib lunas maksimal H-3, yaitu {Tanggal Jatuh Tempo}.",
-      "note": "Hitung DP tepat 50% dari total booking; jangan menahan tanggal sebelum pembayaran terverifikasi."
+      "title": "Instruksi booking & pembayaran",
+      "text": "Halo! 👋\nTerima kasih telah menghubungi Villa Taman Kelinci Cisarua Bogor 🐇\n\nUntuk membantu proses pemesanan, mohon informasikan beberapa data berikut ya:\n\n- Nama tamu:\n- No. telepon:\n- Tanggal check-in:\n- Tanggal check-out:\n- Jumlah tamu (dewasa & anak):\n- Estimasi jam kedatangan:\n- Paket catering:\n- Jumlah extra bed (jika perlu):\n\nCatatan:\n\n💳 Pembayaran Villa\nTransfer DP dan pelunasan villa ke rekening:\nBank Mandiri\nNo. Rekening: [nomor rekening villa]\na.n. Dani Dwi Darmawan\n\n🍽️ Pembayaran Catering, Extra Bed & Kamar VIP\nUntuk pembayaran catering, extra bed & kamar VIP mohon dilakukan ke rekening yang berbeda dari pembayaran villa, yaitu:\nBank BCA\nNo. Rekening: [nomor rekening katering]\na.n. Dani Dwi Darmawan\n\n⚠️ Mohon diperhatikan agar pembayaran villa dan catering tidak ditransfer ke rekening yang sama, ya.\n\n- Booking dianggap fix setelah melakukan pembayaran DP sebesar Rp2.500.000.\n- Pembayaran yang telah dilakukan, baik DP maupun pelunasan, bersifat NON-REFUNDABLE (tidak dapat dikembalikan) apabila terjadi pembatalan dari pihak penyewa dengan alasan apa pun.\n- Pelunasan villa maksimal H-3 sebelum tanggal check-in (belum termasuk biaya tambahan lainnya, jika ada).\n- Menu catering dapat dilihat melalui katalog.\n- Harga extra bed Rp50.000/bed.\n- Maksimal check-out pukul 12.00 WIB.\n- Dengan melakukan pembayaran, penyewa dianggap telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan reservasi Villa Taman Kelinci.\n\n📍 Lokasi Villa Taman Kelinci:\nhttps://bit.ly/LokasiVillaTamanKelinci\n\nSilakan balas pesan ini dengan format di atas. Setelah data kami terima, tim Villa Taman Kelinci akan membantu mengecek dan memproses pemesanan Anda.\n\nTerima kasih 😊\nVilla Taman Kelinci Cisarua Bogor 🐇",
+      "note": "DP flat Rp2.500.000 sesuai balasan pemilik. Aplikasi menghitung DP 50% dari biaya menginap - selisih ini perlu keputusan pemilik. Nomor rekening asli hanya ada di data live (privat), bukan di seed."
     },
     {
       "id": "WA-05",
@@ -268,33 +268,21 @@
     },
     {
       "id": "WA-11",
-      "title": "Ajakan kunjungan ulang",
-      "text": "Halo Kak {Nama}, terima kasih pernah menginap di Villa Taman Kelinci. Kami sedang memiliki {Penawaran}. Jika Kakak bersedia menerima info ini dan ingin cek tanggal, balas pesan ini ya.",
-      "note": "Kirim hanya bila Izin Promo WA = Ya."
+      "title": "Informasi kapasitas",
+      "text": "Villa Taman Kelinci memiliki kapasitas ideal hingga 30 orang agar tamu tetap nyaman selama menginap.\n\nVilla memiliki total 8 kamar, yang terdiri dari:\n- 6 kamar keluarga, ukuran kasur king size. masing-masing sudah dilengkapi dengan kamar mandi dalam.\n- 2 kamar barak, ukuran kasur single bed dengan total kasur 8 + 10 single bed. Letak kamar mandi  tidak jauh dari kamar barak.\n\nApabila jumlah rombongan lebih dari 30 orang, villa masih dapat menampung hingga maksimal sekitar 80 orang, dengan tambahan tempat tidur berupa extra bed serta penggunaan 4 kamar VIP.",
+      "note": "Kapasitas ideal 30 orang, maksimal sekitar 80 dengan extra bed + 4 kamar VIP."
     },
     {
       "id": "WA-12",
       "title": "Informasi harga",
-      "text": "Tarif Villa Taman Kelinci mulai 2026 adalah Rp5.500.000 untuk weekday dan Rp7.500.000 untuk weekend. Tarif peak Natal 24–27 Desember 2026 Rp10.000.000/malam dan Tahun Baru 29 Desember 2026–1 Januari 2027 Rp12.000.000/malam, minimum 2 malam. Extra bed Rp50.000/bed. Kamar VIP Rp850.000/kamar bila sekaligus menyewa villa, atau Rp1.000.000/kamar untuk sewa VIP saja. DP 50% untuk semua booking; tanggal terkunci setelah DP terverifikasi dan sisa pembayaran lunas maksimal H-3.",
-      "note": "Pada periode peak, paket company/keluarga tidak berlaku. Jika tamu membatalkan, DP hangus; reschedule maksimal 1x dengan pemberitahuan lebih awal."
+      "text": "Harga menginap di Villa Taman Kelinci:\n\n💰 Weekday: Rp5.500.000/malam\n💰 Weekend: Rp7.500.000/malam\n\nHarga tersebut sudah termasuk penggunaan fasilitas villa, berupa:\n📺 Smart TV\n📶 Wi-Fi\n🎬 Netflix\n🎤 Karaoke\n🎱 Billiard\n🏊 Kolam renang\n🍳 Dapur & peralatan masak\n🔥 BBQ/grill (exclude arang)\n🚗 Area parkir yang luas\n\nUntuk penggunaan kamar VIP, extra bed (jika diperlukan), dan catering, belum termasuk dalam harga villa dan akan dikenakan biaya tambahan sesuai kebutuhan.\n\n📌 Harga peak season: Natal 24–27 Desember 2026 Rp10.000.000/malam, Tahun Baru 29 Desember 2026–1 Januari 2027 Rp12.000.000/malam (minimal 2 malam).",
+      "note": "Teks pemilik + baris peak ditambahkan (info penting untuk tamu Desember); tarif peak tidak berlaku paket."
     },
     {
       "id": "WA-13",
       "title": "Penawaran katering",
       "text": "Halo Kak {Nama}, kami menyediakan katering tanpa minimum pax. Harga per orang untuk 1x / 2x / paket lengkap: Hemat 1 Rp32.000 / Rp60.000 / Rp80.000; Hemat 2 Rp36.000 / Rp68.000 / Rp90.000; Paket A Rp40.000 / Rp75.000 / Rp100.000; Paket B Rp46.000 / Rp86.000 / Rp115.000; Paket C Rp50.000 / Rp94.000 / Rp125.000. Boleh informasikan jumlah peserta, paket, pilihan 1x/2x/lengkap, waktu makan yang dipilih, serta alergi atau kebutuhan diet khusus?",
       "note": "Tidak ada minimum pax. Untuk pesanan parsial, pastikan waktu makan dan menu dipilih jelas; harga 1x/2x sudah mengandung premium dibanding paket lengkap."
-    },
-    {
-      "id": "WA-14",
-      "title": "Penawaran paket company",
-      "text": "Halo Kak {Nama}, untuk gathering {Jumlah Pax} orang tersedia paket 2D1N mulai dari {Harga per Pax}/pax, sudah termasuk villa utuh, {Jenis Makan} Paket {Menu}, Smart TV, Wi-Fi, Netflix, karaoke, billiard, kolam renang, dapur, BBQ/grill tanpa arang, dan parkir luas. Early check-in gratis dapat diberikan bila malam H-1 kosong.",
-      "note": "Gunakan harga dari kalkulator Paket Segmen. Minimum rekomendasi company 25 pax; di atas 30 pax tambahkan extra bed/VIP melalui quotation khusus."
-    },
-    {
-      "id": "WA-15",
-      "title": "Penawaran paket keluarga",
-      "text": "Halo Kak {Nama}, untuk acara keluarga {Jumlah Pax} orang tersedia paket 2D1N total {Total Paket}, sudah termasuk villa utuh, {Jenis Makan} Paket {Menu}, Smart TV, Wi-Fi, Netflix, karaoke, billiard, kolam renang, dapur, BBQ/grill tanpa arang, dan parkir luas. Early check-in gratis dapat diberikan bila malam H-1 kosong.",
-      "note": "Gunakan total dari kalkulator Paket Segmen. Untuk lebih dari 30 pax, tambahkan extra bed/VIP melalui quotation khusus."
     },
     {
       "id": "WA-16",
