@@ -36,14 +36,14 @@
         "name": "Natal",
         "start": "2026-12-24",
         "end": "2026-12-27",
-        "rate": 10000000,
+        "rate": 12500000,
         "minNights": 2
       },
       {
         "name": "Tahun Baru",
         "start": "2026-12-29",
         "end": "2027-01-01",
-        "rate": 12000000,
+        "rate": 15000000,
         "minNights": 2
       }
     ],

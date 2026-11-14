@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.18.0-alur-template-wa';
+  var APP_VERSION = '1.19.0-tarif-peak-125-15';
 
   var LS = {
     data: 'vtk_data',
