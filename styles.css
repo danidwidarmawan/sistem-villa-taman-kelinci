@@ -510,8 +510,6 @@ fieldset.field { border: 1px solid var(--border); border-radius: 8px; padding: 0
 .sw.peak { background: var(--brand-200); }
 .sw.weekend { background: #f4f1ea; }
 .sw.today { background: #fff; border: 2px solid var(--brand-700); }
-.sw.over-ideal { background: #fff; border: 2px solid var(--amber); }
-.sw.over-max { background: var(--red-soft); border: 2px solid var(--red); }
 
 /* ---------- Operasional (Fase 2) ---------- */
 

@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.22.0-tampilan-lebih-lebar';
+  var APP_VERSION = '1.23.0-hapus-legenda-kapasitas';
 
   var LS = {
     data: 'vtk_data',
@@ -2316,8 +2316,7 @@
       '</div></section>' +
       '<section class="card"><div class="cal-grid">' + grid + '</div>' +
       '<p class="hint legend"><span class="sw occupied"></span> Terisi &nbsp; <span class="sw checkin"></span> Check-in &nbsp; <span class="sw checkout"></span> Check-out &nbsp; <span class="sw blocked"></span> Terblokir &nbsp; <span class="sw peak"></span> Peak &nbsp; <span class="sw holiday"></span> Tanggal merah &nbsp; ' +
-      '<span class="sw weekend"></span> Weekend &nbsp; <span class="sw today"></span> Hari ini &nbsp; ' +
-      '<span class="sw over-ideal"></span> Di atas kapasitas ideal &nbsp; <span class="sw over-max"></span> Melebihi maksimum</p></section>' +
+      '<span class="sw weekend"></span> Weekend &nbsp; <span class="sw today"></span> Hari ini</p></section>' +
       detail +
       '<section class="card"><h2>Reservasi bulan ini</h2><ul class="simple-list">' + monthList + '</ul></section>';
   }
