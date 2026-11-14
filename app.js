@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.27.0-donut-tamu-teratas';
+  var APP_VERSION = '1.28.0-tooltip-instan';
 
   var LS = {
     data: 'vtk_data',

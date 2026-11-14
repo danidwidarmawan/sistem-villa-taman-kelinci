@@ -354,6 +354,10 @@ a.brand-mini:hover { opacity: 0.85; }
 .donut-legend li:last-child { border-bottom: none; }
 .donut-legend .dl-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .donut-legend .dl-pct { color: var(--muted); font-size: 0.8rem; margin-left: auto; flex-shrink: 0; }
+
+/* Tooltip chart kustom (v1.28.0): muncul seketika saat hover, mengikuti
+ * kursor; posisinya diatur via inline style oleh charts.js. */
+.chart-tip-box { position: fixed; z-index: 200; pointer-events: none; background: #292524; color: #fff; font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.6rem; border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); max-width: 280px; }
 .donut-legend .dl-val { font-weight: 700; flex-shrink: 0; }
 
 /* Kalender mini dashboard */

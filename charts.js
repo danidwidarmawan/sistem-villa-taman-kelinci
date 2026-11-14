@@ -89,6 +89,53 @@
     return '<div class="chart-empty"><p>' + esc(msg) + '</p></div>';
   }
 
+  /* Tooltip kustom (v1.28.0): <title> bawaan browser munculnya lambat
+   * (jedanya dikendalikan browser, tidak bisa diubah) — tooltip ini
+   * muncul SEKETIKA saat hover. Elemen dengan class `chart-tip` +
+   * atribut data-tip (teks, di-escape HTML) memicu tooltip lewat satu
+   * listener delegasi di document (dipasang sekali, saat chart pertama
+   * dirender). Teks dibaca lewat getAttribute (sudah ter-decode) dan
+   * dipasang sebagai textContent — aman dari karakter khusus di label. */
+  var tipEl = null;
+  var tipBound = false;
+  function moveTip(ev) {
+    var x = ev.clientX + 14;
+    var y = ev.clientY + 14;
+    var w = tipEl.offsetWidth || 0;
+    var h = tipEl.offsetHeight || 0;
+    var vw = (typeof window !== 'undefined' ? window.innerWidth : 0) || 0;
+    var vh = (typeof window !== 'undefined' ? window.innerHeight : 0) || 0;
+    if (vw && x + w > vw - 8) { x = Math.max(8, ev.clientX - w - 14); }
+    if (vh && y + h > vh - 8) { y = Math.max(8, ev.clientY - h - 14); }
+    tipEl.style.left = x + 'px';
+    tipEl.style.top = y + 'px';
+  }
+  function ensureTip() {
+    if (tipBound || typeof document === 'undefined') { return; }
+    tipBound = true;
+    tipEl = document.createElement('div');
+    tipEl.className = 'chart-tip-box';
+    tipEl.style.display = 'none';
+    document.body.appendChild(tipEl);
+    document.addEventListener('mouseover', function (ev) {
+      var t = ev.target && ev.target.closest ? ev.target.closest('.chart-tip') : null;
+      if (!t) { return; }
+      tipEl.textContent = t.getAttribute('data-tip') || '';
+      tipEl.style.display = 'block';
+      moveTip(ev);
+    });
+    document.addEventListener('mousemove', function (ev) {
+      if (tipEl.style.display === 'block') { moveTip(ev); }
+    });
+    document.addEventListener('mouseout', function (ev) {
+      var t = ev.target && ev.target.closest ? ev.target.closest('.chart-tip') : null;
+      if (!t) { return; }
+      var to = ev.relatedTarget;
+      if (to && t.contains(to)) { return; }
+      tipEl.style.display = 'none';
+    });
+  }
+
   function legendHTML(items) {
     var parts = items.map(function (it) {
       return '<span class="lg"><i style="background:' + esc(it.color) + '"></i>' + esc(it.label) + '</span>';
@@ -105,6 +152,7 @@
 
   function cashflowChart(points, opts) {
     opts = opts || {};
+    ensureTip();
     var list = points || [];
     var hasData = list.some(function (p) { return (+p.masuk || 0) > 0 || (+p.keluar || 0) > 0; });
     if (!list.length || !hasData) {
@@ -152,7 +200,7 @@
         if (b.v <= 0) { return; }
         var bh = (b.v / top) * plotH;
         var by = mT + plotH - bh;
-        s += '<g><title>' + esc(p.label) + ' — ' + b.name + ' ' + esc(fmtShort(b.v)) + '</title>' +
+        s += '<g class="chart-tip" data-tip="' + esc(p.label + ' — ' + b.name + ' ' + fmtShort(b.v)) + '">' +
           '<rect x="' + b.x.toFixed(1) + '" y="' + by.toFixed(1) + '" width="' + barW.toFixed(1) +
           '" height="' + Math.max(bh, 2).toFixed(1) + '" rx="3" fill="' + b.color + '" /></g>';
         s += '<text x="' + (b.x + barW / 2).toFixed(1) + '" y="' + (by - 6).toFixed(1) +
@@ -245,6 +293,7 @@
 
   function hBarChart(items, opts) {
     opts = opts || {};
+    ensureTip();
     var list = items || [];
     var maxVal = 0;
     list.forEach(function (it) { maxVal = Math.max(maxVal, +it.value || 0); });
@@ -271,7 +320,7 @@
       s += '<rect x="' + barX + '" y="' + (yMid - 10).toFixed(1) + '" width="' + barMaxW + '" height="20" rx="3" fill="' + C.track + '" />';
       if (v > 0) {
         var barColor = multi ? HBAR_COLORS[i % HBAR_COLORS.length] : color;
-        s += '<g><title>' + esc(it.label) + ' — ' + esc(fmtShort(v)) + '</title>' +
+        s += '<g class="chart-tip" data-tip="' + esc(it.label + ' — ' + fmtShort(v)) + '">' +
           '<rect x="' + barX + '" y="' + (yMid - 10).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="20" rx="3" fill="' + barColor + '" /></g>';
       }
       s += '<text x="' + (barX + bw + 8).toFixed(1) + '" y="' + (yMid + 4).toFixed(1) + '" font-size="12" font-weight="600" fill="' + C.ink + '">' +
@@ -288,6 +337,7 @@
 
   function donutChart(items, opts) {
     opts = opts || {};
+    ensureTip();
     var list = (items || []).filter(function (it) { return (+it.value || 0) > 0; });
     var total = (typeof opts.total === 'number') ? opts.total :
       list.reduce(function (s, it) { return s + (+it.value || 0); }, 0);
@@ -311,7 +361,7 @@
       var len = Math.max(0, frac * circ - gap);
       var color = DONUT_COLORS[i % DONUT_COLORS.length];
       var pctLabel = Math.round(frac * 100) + '%';
-      s += '<g><title>' + esc(it.label) + ' — ' + esc(fmtShort(it.value)) + ' (' + pctLabel + ')</title>' +
+      s += '<g class="chart-tip" data-tip="' + esc(it.label + ' — ' + fmtShort(it.value) + ' (' + pctLabel + ')') + '">' +
         '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + color +
         '" stroke-width="34" stroke-dasharray="' + len.toFixed(1) + ' ' + (circ - len).toFixed(1) +
         '" stroke-dashoffset="' + (-offset).toFixed(1) +
