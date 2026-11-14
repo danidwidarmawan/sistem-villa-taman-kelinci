@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.25.0-riwayat-tamu';
+  var APP_VERSION = '1.26.0-ringkasan-tamu-dashboard';
 
   var LS = {
     data: 'vtk_data',
@@ -530,7 +530,7 @@
   }
 
   function renderNav() {
-    /* Mobile (bilah bawah): tetap datar, 8 item. */
+    /* Mobile (bilah bawah): tetap datar, 9 item. */
     var flat = NAV.map(function (n) {
       var active = state.route === n.route ? ' active' : '';
       return '<a href="#/' + n.route + '" class="nav-item' + active + '" data-route="' + n.route + '">' +
@@ -1069,6 +1069,21 @@
         ' (' + c.nights + ' malam, ' + L.fmtNum(r.pax) + ' tamu) ' + resStatusBadge(r.status) + '</li>';
     }).join('') : '<li class="muted">Belum ada check-in mendatang.</li>';
     var nextCheckinsCardHTML = '<div class="card"><h2>Check-in berikutnya</h2><ul class="simple-list">' + nextRows + '</ul></div>';
+    /* Tamu setia (v1.26.0): ringkasan loyalitas di dashboard — 3 tamu
+     * dengan spend terbesar + total. Klik nama -> detail tamu di halaman
+     * Tamu; "Lihat semua" -> halaman Tamu. */
+    var guests = L.guestStats(state.data);
+    var guestRows = guests.slice(0, 3).map(function (x) {
+      return '<li><a href="javascript:void(0)" onclick="VTK.goTamuDetail(\'' + encodeURIComponent(x.key).replace(/'/g, '%27') + '\')">' + esc(x.name) + '</a> — ' + x.stays + 'x menginap · ' + L.fmtRp(x.spend) + '</li>';
+    }).join('') || '<li class="muted">Belum ada tamu yang selesai menginap.</li>';
+    var totalGuestStays = guests.reduce(function (a, x) { return a + x.stays; }, 0);
+    var totalGuestSpend = guests.reduce(function (a, x) { return a + x.spend; }, 0);
+    var guestsCardHTML = '<div class="card"><h2>Tamu setia</h2><ul class="simple-list">' + guestRows + '</ul>' +
+      (guests.length
+        ? '<p class="muted">' + guests.length + ' tamu · ' + totalGuestStays + ' menginap · total spend ' + L.fmtRp(totalGuestSpend) + '</p>' +
+          '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'tamu\')">Lihat semua</button></div>'
+        : '') +
+      '</div>';
     /* Transaksi terakhir PINDAH ke rel kanan v1.13.0 (sebelumnya selebar
      * penuh di bawah layout): rel jadi hampir setinggi kolom utama dan
      * halaman berakhir rapi di ujung layout. */
@@ -1084,10 +1099,10 @@
 
     html += '</div>'; /* Tutup .dash-main */
 
-    /* Rel kanan v1.14.0: kalender mini -> Perlu tindakan -> Check-in
-     * berikutnya -> Transaksi terakhir. Target pindah ke kolom utama;
-     * Biaya tetap pindah ke Pengaturan; kartu outlook 30 hari dihapus
-     * v1.10.0 (isinya duplikat kalender). */
+    /* Rel kanan v1.26.0: kalender mini -> Perlu tindakan -> Check-in
+     * berikutnya -> Tamu setia -> Transaksi terakhir. Target pindah ke
+     * kolom utama; Biaya tetap pindah ke Pengaturan; kartu outlook 30
+     * hari dihapus v1.10.0 (isinya duplikat kalender). */
     html += '<aside class="dash-rail">' +
       '<div class="card mini-cal-card"><div class="mini-cal-head">' +
       '<button type="button" class="btn btn-small btn-ghost mini-cal-nav" aria-label="Bulan sebelumnya" onclick="VTK.miniCalNav(-1)">‹</button>' +
@@ -1099,6 +1114,7 @@
       '</div>' +
       actionsCardHTML +
       nextCheckinsCardHTML +
+      guestsCardHTML +
       txCardHTML +
       '</aside></div>'; /* Tutup .dash-rail + .dash-layout */
 
@@ -3440,6 +3456,8 @@
      * spasi/tanda baca) lalu di-decode di sini. */
     tamuDetail: function (key) { state.tamuGuest = decodeURIComponent(key || ''); renderView(); window.scrollTo(0, 0); },
     tamuList: function () { state.tamuGuest = null; renderView(); },
+    /* Dari kartu Tamu setia di dashboard: buka detail tamu di halaman Tamu. */
+    goTamuDetail: function (key) { state.tamuGuest = decodeURIComponent(key || ''); go('tamu'); },
     openTxForm: function (id, prefill) {
       state.form = { module: 'tx', id: id || null, prefill: prefill || null };
       renderView();
