@@ -213,16 +213,28 @@
       "note": "Auto-reply chat pertama (teks pemilik). Catat sebagai Lead baru dan isi sumber lead."
     },
     {
-      "id": "WA-02",
-      "title": "Penawaran + info early check-in",
-      "text": "Halo Kak {Nama}, *Villa Taman Kelinci tersedia untuk {Tanggal Check-in} sampai {Tanggal Check-out}.* *Total untuk {Jumlah Malam} malam adalah {Total}.* Rencana berangkat jam berapa dari Jakarta? *Kalau mau kejar one-way dan tiba jam 6–7 pagi, bisa langsung masuk kamar gratis selama malam sebelumnya kosong.* Saat ini malam sebelumnya masih kosong, jadi kemungkinan besar bisa. Konfirmasi final kami berikan H-1.",
-      "note": "Gunakan hanya setelah kalender menunjukkan malam H-1 masih kosong. Ini informasi kemungkinan, bukan konfirmasi final."
+      "id": "WA-11",
+      "title": "Informasi kapasitas",
+      "text": "*Villa Taman Kelinci memiliki kapasitas ideal hingga 30 orang agar tamu tetap nyaman selama menginap.*\n\n*Apabila jumlah rombongan lebih dari 30 orang, villa masih dapat menampung hingga maksimal sekitar 80 orang, dengan tambahan tempat tidur berupa extra bed serta penggunaan 4 kamar VIP.*\n\nVilla memiliki total 8 kamar, yang terdiri dari:\n- 6 kamar keluarga, ukuran kasur king size. masing-masing sudah dilengkapi dengan kamar mandi dalam.\n- 2 kamar barak, ukuran kasur single bed dengan total kasur 8 + 10 single bed. Letak kamar mandi  tidak jauh dari kamar barak.",
+      "note": "Kapasitas ideal 30 orang, maksimal sekitar 80 dengan extra bed + 4 kamar VIP."
     },
     {
-      "id": "WA-03",
-      "title": "Jika H-1 belum pasti",
-      "text": "Halo Kak {Nama}, untuk early check-in pukul {Jam Kedatangan}, kami usahakan maksimal. Saat ini malam sebelumnya masih berpotensi terisi, jadi *kami kabari kepastian paling lambat H-1.* *Jika malam sebelumnya kosong, early check-in kami berikan gratis.*",
-      "note": "Gunakan bila malam H-1 belum aman untuk dijanjikan; jangan menjawab “tidak bisa” bila masih ada kemungkinan."
+      "id": "WA-12",
+      "title": "Informasi harga",
+      "text": "Harga menginap di Villa Taman Kelinci:\n\n*💰 Weekday: Rp5.500.000/malam*\n*💰 Weekend: Rp7.500.000/malam*\n\nHarga tersebut sudah termasuk penggunaan fasilitas villa, berupa:\n📺 Smart TV\n📶 Wi-Fi\n🎬 Netflix\n🎤 Karaoke\n🎱 Billiard\n🏊 Kolam renang\n🍳 Dapur & peralatan masak\n🔥 BBQ/grill (exclude arang)\n🚗 Area parkir yang luas\n\nUntuk penggunaan kamar VIP, extra bed (jika diperlukan), dan catering, belum termasuk dalam harga villa dan akan dikenakan biaya tambahan sesuai kebutuhan.\n\n*📌 Harga peak season: Natal 24–27 Desember 2026 Rp12.500.000/malam, Tahun Baru 29 Desember 2026–1 Januari 2027 Rp15.000.000/malam (minimal 2 malam).*",
+      "note": "Teks pemilik + baris peak ditambahkan (info penting untuk tamu Desember); tarif peak tidak berlaku paket."
+    },
+    {
+      "id": "WA-17",
+      "title": "Tanggal yang diminta sudah terisi",
+      "text": "Halo Kak {Nama}, mohon maaf, *Villa Taman Kelinci sudah terisi untuk {Tanggal Check-in} sampai {Tanggal Check-out}.* *Sebagai alternatif, kami bisa bantu cekkan tanggal lain, misalnya {Tanggal Alternatif} atau weekday lainnya.* Boleh kami bantu carikan tanggal pengganti yang cocok?",
+      "note": "Kirim saat tanggal yang diminta tamu sudah terbooking; tawarkan tanggal alternatif."
+    },
+    {
+      "id": "WA-16",
+      "title": "Jumat tidak tersedia (Sabtu early check-in)",
+      "text": "Halo Kak {Nama}, mohon maaf, *Villa Taman Kelinci tidak tersedia untuk check-in {Tanggal Jumat}.* Malam Sabtu ({Tanggal Sabtu}) sudah terisi dan tamu tersebut early check-in pukul 07.00 pagi, jadi villa harus sudah kosong sejak Jumat malam. *Sebagai alternatif, kami bisa tawarkan {Tanggal Alternatif} atau weekday lainnya.* Boleh kami bantu cekkan tanggal lain?",
+      "note": "Gunakan bila tamu minta Jumat padahal Sabtu sudah terisi dengan early check-in. Tawarkan weekend lain atau weekday sebagai alternatif."
     },
     {
       "id": "WA-04",
@@ -251,44 +263,14 @@
     {
       "id": "WA-08",
       "title": "Pengingat sebelum datang",
-      "text": "Halo Kak {Nama}, kami menantikan kedatangan Kakak di Villa Taman Kelinci pada {Tanggal Check-in}. *Waktu check-in {Jam Check-in}.* Mohon informasikan perkiraan waktu tiba dan baca petunjuk akses yang kami kirimkan.",
+      "text": "Halo Kak {Nama}, kami menantikan kedatangan Kakak di Villa Taman Kelinci pada {Tanggal Check-in}. *Waktu check-in {Jam Check-in}.* Semoga perjalanan Kakak lancar dan sampai dengan selamat. Sampai jumpa di Villa Taman Kelinci! 😊",
       "note": "Isi jam dan petunjuk akses resmi."
-    },
-    {
-      "id": "WA-09",
-      "title": "Konfirmasi promo early check-in",
-      "text": "Halo Kak {Nama}, karena Villa Taman Kelinci terverifikasi kosong pada malam sebelumnya, *early check-in pukul {Jam Kedatangan} dapat kami berikan gratis untuk booking {Booking ID}.* *Promo ini sudah dikonfirmasi final.*",
-      "note": "Kirim H-1 hanya setelah status H-1 Kosong Terverifikasi di Reservasi."
     },
     {
       "id": "WA-10",
       "title": "Permintaan ulasan",
       "text": "Terima kasih sudah menginap di Villa Taman Kelinci, Kak {Nama}. Kami senang menerima masukan tentang pengalaman Kakak. *Jika berkenan, mohon tinggalkan ulasan melalui {Tautan Ulasan}.*",
       "note": "Catat status permintaan ulasan di Tamu & Ulasan."
-    },
-    {
-      "id": "WA-11",
-      "title": "Informasi kapasitas",
-      "text": "*Villa Taman Kelinci memiliki kapasitas ideal hingga 30 orang agar tamu tetap nyaman selama menginap.*\n\n*Apabila jumlah rombongan lebih dari 30 orang, villa masih dapat menampung hingga maksimal sekitar 80 orang, dengan tambahan tempat tidur berupa extra bed serta penggunaan 4 kamar VIP.*\n\nVilla memiliki total 8 kamar, yang terdiri dari:\n- 6 kamar keluarga, ukuran kasur king size. masing-masing sudah dilengkapi dengan kamar mandi dalam.\n- 2 kamar barak, ukuran kasur single bed dengan total kasur 8 + 10 single bed. Letak kamar mandi  tidak jauh dari kamar barak.",
-      "note": "Kapasitas ideal 30 orang, maksimal sekitar 80 dengan extra bed + 4 kamar VIP."
-    },
-    {
-      "id": "WA-12",
-      "title": "Informasi harga",
-      "text": "Harga menginap di Villa Taman Kelinci:\n\n*💰 Weekday: Rp5.500.000/malam*\n*💰 Weekend: Rp7.500.000/malam*\n\nHarga tersebut sudah termasuk penggunaan fasilitas villa, berupa:\n📺 Smart TV\n📶 Wi-Fi\n🎬 Netflix\n🎤 Karaoke\n🎱 Billiard\n🏊 Kolam renang\n🍳 Dapur & peralatan masak\n🔥 BBQ/grill (exclude arang)\n🚗 Area parkir yang luas\n\nUntuk penggunaan kamar VIP, extra bed (jika diperlukan), dan catering, belum termasuk dalam harga villa dan akan dikenakan biaya tambahan sesuai kebutuhan.\n\n*📌 Harga peak season: Natal 24–27 Desember 2026 Rp10.000.000/malam, Tahun Baru 29 Desember 2026–1 Januari 2027 Rp12.000.000/malam (minimal 2 malam).*",
-      "note": "Teks pemilik + baris peak ditambahkan (info penting untuk tamu Desember); tarif peak tidak berlaku paket."
-    },
-    {
-      "id": "WA-13",
-      "title": "Penawaran katering",
-      "text": "Halo Kak {Nama}, kami menyediakan katering *tanpa minimum pax*. Harga per orang untuk 1x / 2x / paket lengkap: Hemat 1 Rp32.000 / Rp60.000 / Rp80.000; Hemat 2 Rp36.000 / Rp68.000 / Rp90.000; Paket A Rp40.000 / Rp75.000 / Rp100.000; Paket B Rp46.000 / Rp86.000 / Rp115.000; Paket C Rp50.000 / Rp94.000 / Rp125.000. Boleh informasikan jumlah peserta, paket, pilihan 1x/2x/lengkap, waktu makan yang dipilih, serta alergi atau kebutuhan diet khusus?",
-      "note": "Tidak ada minimum pax. Untuk pesanan parsial, pastikan waktu makan dan menu dipilih jelas; harga 1x/2x sudah mengandung premium dibanding paket lengkap."
-    },
-    {
-      "id": "WA-16",
-      "title": "Jumat tidak tersedia (Sabtu early check-in)",
-      "text": "Halo Kak {Nama}, mohon maaf, *Villa Taman Kelinci tidak tersedia untuk check-in {Tanggal Jumat}.* Malam Sabtu ({Tanggal Sabtu}) sudah terisi dan tamu tersebut early check-in pukul 07.00 pagi, jadi villa harus sudah kosong sejak Jumat malam. *Sebagai alternatif, kami bisa tawarkan {Tanggal Alternatif} atau weekday lainnya.* Boleh kami bantu cekkan tanggal lain?",
-      "note": "Gunakan bila tamu minta Jumat padahal Sabtu sudah terisi dengan early check-in. Tawarkan weekend lain atau weekday sebagai alternatif."
     }
   ],
   "operationalCosts": {
