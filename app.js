@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.21.0-hapus-pengaturan-koneksi-data';
+  var APP_VERSION = '1.22.0-tampilan-lebih-lebar';
 
   var LS = {
     data: 'vtk_data',
