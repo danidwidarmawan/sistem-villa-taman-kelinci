@@ -529,6 +529,25 @@
     });
   }
 
+  /* Donut spend tamu (v1.27.0): N teratas + irisan "Lainnya" dari sisanya.
+   * `guests` = hasil guestStats (sudah terurut spend terbanyak dulu).
+   * Mengembalikan [{ label, value }] untuk VTKCharts.donutChart —
+   * label tamu membawa jumlah menginap ("Budi Santoso (2x)") agar
+   * sinyal loyalitas tetap terlihat di legenda donut. */
+  function guestDonutItems(guests, topN) {
+    var list = guests || [];
+    var n = topN || 3;
+    var top = list.slice(0, n).map(function (g) {
+      return { label: g.name + ' (' + g.stays + 'x)', value: g.spend };
+    });
+    if (list.length > n) {
+      var rest = list.slice(n);
+      var restSpend = rest.reduce(function (a, g) { return a + g.spend; }, 0);
+      top.push({ label: 'Lainnya (' + rest.length + ' tamu)', value: restSpend });
+    }
+    return top;
+  }
+
   /* ---------------- ID ---------------- */
 
   /* ID berikutnya format XX-YYYYMM-NNN, dari nomor terbesar di bulan itu + 1. */
@@ -1271,6 +1290,7 @@
     mergeWaTemplates: mergeWaTemplates,
     capacityLevel: capacityLevel,
     guestStats: guestStats,
+    guestDonutItems: guestDonutItems,
     nextId: nextId,
     fixedMonthlyCost: fixedMonthlyCost,
     breakevenNights: breakevenNights,

@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.26.0-ringkasan-tamu-dashboard';
+  var APP_VERSION = '1.27.0-donut-tamu-teratas';
 
   var LS = {
     data: 'vtk_data',
@@ -1069,16 +1069,17 @@
         ' (' + c.nights + ' malam, ' + L.fmtNum(r.pax) + ' tamu) ' + resStatusBadge(r.status) + '</li>';
     }).join('') : '<li class="muted">Belum ada check-in mendatang.</li>';
     var nextCheckinsCardHTML = '<div class="card"><h2>Check-in berikutnya</h2><ul class="simple-list">' + nextRows + '</ul></div>';
-    /* Tamu setia (v1.26.0): ringkasan loyalitas di dashboard — 3 tamu
-     * dengan spend terbesar + total. Klik nama -> detail tamu di halaman
-     * Tamu; "Lihat semua" -> halaman Tamu. */
+    /* Tamu Teratas (v1.26.0; jadi donut v1.27.0): ringkasan loyalitas di
+     * dashboard — donut pangsa spend 3 tamu teratas (+ "Lainnya") dengan
+     * total spend di tengah. Legenda membawa jumlah menginap tiap tamu.
+     * Donut dipilih karena muat di kartu rel yang sempit (batang
+     * horizontal diskalakan jadi terlalu kecil); "Lihat semua" -> halaman
+     * Tamu untuk detail tiap tamu. */
     var guests = L.guestStats(state.data);
-    var guestRows = guests.slice(0, 3).map(function (x) {
-      return '<li><a href="javascript:void(0)" onclick="VTK.goTamuDetail(\'' + encodeURIComponent(x.key).replace(/'/g, '%27') + '\')">' + esc(x.name) + '</a> — ' + x.stays + 'x menginap · ' + L.fmtRp(x.spend) + '</li>';
-    }).join('') || '<li class="muted">Belum ada tamu yang selesai menginap.</li>';
     var totalGuestStays = guests.reduce(function (a, x) { return a + x.stays; }, 0);
     var totalGuestSpend = guests.reduce(function (a, x) { return a + x.spend; }, 0);
-    var guestsCardHTML = '<div class="card"><h2>Tamu setia</h2><ul class="simple-list">' + guestRows + '</ul>' +
+    var guestsCardHTML = '<div class="card"><h2>Tamu Teratas</h2>' +
+      VTKCharts.donutChart(L.guestDonutItems(guests, 3), { total: totalGuestSpend, totalLabel: 'Total spend', emptyMsg: 'Belum ada tamu yang selesai menginap.', ariaLabel: 'Donut pangsa spend tamu teratas.' }) +
       (guests.length
         ? '<p class="muted">' + guests.length + ' tamu · ' + totalGuestStays + ' menginap · total spend ' + L.fmtRp(totalGuestSpend) + '</p>' +
           '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.go(\'tamu\')">Lihat semua</button></div>'
@@ -1099,8 +1100,8 @@
 
     html += '</div>'; /* Tutup .dash-main */
 
-    /* Rel kanan v1.26.0: kalender mini -> Perlu tindakan -> Check-in
-     * berikutnya -> Tamu setia -> Transaksi terakhir. Target pindah ke
+    /* Rel kanan v1.27.0: kalender mini -> Perlu tindakan -> Check-in
+     * berikutnya -> Tamu Teratas -> Transaksi terakhir. Target pindah ke
      * kolom utama; Biaya tetap pindah ke Pengaturan; kartu outlook 30
      * hari dihapus v1.10.0 (isinya duplikat kalender). */
     html += '<aside class="dash-rail">' +
@@ -3456,8 +3457,6 @@
      * spasi/tanda baca) lalu di-decode di sini. */
     tamuDetail: function (key) { state.tamuGuest = decodeURIComponent(key || ''); renderView(); window.scrollTo(0, 0); },
     tamuList: function () { state.tamuGuest = null; renderView(); },
-    /* Dari kartu Tamu setia di dashboard: buka detail tamu di halaman Tamu. */
-    goTamuDetail: function (key) { state.tamuGuest = decodeURIComponent(key || ''); go('tamu'); },
     openTxForm: function (id, prefill) {
       state.form = { module: 'tx', id: id || null, prefill: prefill || null };
       renderView();
