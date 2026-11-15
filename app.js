@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.29.0-tooltip-kalender';
+  var APP_VERSION = '1.30.0-forecast-12-bulan';
 
   var LS = {
     data: 'vtk_data',
@@ -1023,6 +1023,26 @@
         : '<p class="empty">Belum ada booking bulan ini.</p>' +
           '<div class="card-foot"><button type="button" class="btn btn-small btn-primary" onclick="VTK.openResForm()">Tambah reservasi</button></div>') +
       '</div>';
+
+    /* Forecast 12 bulan (v1.30.0): proyeksi vs realisasi per bulan,
+     * 12 bulan ke depan dari bulan berjalan — tidak mengikuti pemilih
+     * bulan dashboard, forecast selalu ke depan dari hari ini. */
+    var fc = L.monthlyForecast(state.data, L.currentMonthKey(), 12);
+    var fcHint = fc.runRateMonths > 0
+      ? 'Forecast = booking yang sudah masuk + proyeksi tambahan (rata-rata ' + String(fc.runRate).replace('.', ',') + ' malam/bulan dari riwayat ' + L.fmtNum(fc.runRateNights) + ' malam dalam ' + fc.runRateMonths + ' bulan). Aktual = nilai menginap yang sudah Selesai. Garis putus-putus = target bulanan ' + L.fmtRp(fc.target) + '.'
+      : 'Belum ada riwayat menginap yang Selesai — forecast hanya dari booking yang sudah masuk. Aktual = nilai menginap yang sudah Selesai. Garis putus-putus = target bulanan ' + L.fmtRp(fc.target) + '.';
+    var fcRows = fc.months.map(function (m) {
+      return '<tr><td data-label="Bulan">' + esc(m.label) + '</td>' +
+        '<td data-label="Terbooking">' + L.fmtRp(m.bookedRevenue) + ' (' + L.fmtNum(m.bookedNights) + ' malam)</td>' +
+        '<td data-label="Proyeksi">' + L.fmtRp(m.expectedRevenue) + ' (' + String(m.expectedNights).replace('.', ',') + ' malam)</td>' +
+        '<td data-label="Forecast"><strong>' + L.fmtRp(m.forecast) + '</strong></td>' +
+        '<td data-label="Aktual">' + L.fmtRp(m.actual) + '</td></tr>';
+    }).join('');
+    html += '<section class="card chart-card forecast-card"><h2>Forecast 12 bulan</h2>' +
+      '<p class="hint">' + fcHint + '</p>' +
+      VTKCharts.forecastChart(fc.months, { target: fc.target, ariaLabel: 'Grafik forecast vs aktual 12 bulan ke depan.' }) +
+      '<div class="table-wrap"><table class="tbl"><thead><tr><th>Bulan</th><th>Terbooking</th><th>Proyeksi</th><th>Forecast</th><th>Aktual</th></tr></thead>' +
+      '<tbody>' + fcRows + '</tbody></table></div></section>';
 
     /* Perlu tindakan (rel kanan). */
     var a = d.actions;

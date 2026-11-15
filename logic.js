@@ -893,6 +893,142 @@
     });
   }
 
+  /* Tarif rata-rata satu malam dalam bulan `monthKey` (rata-rata nightRate
+   * seluruh hari dalam bulan — sudah termasuk weekend & peak), dibulatkan
+   * ke rupiah terdekat. Dipakai proyeksi forecast. */
+  function blendedMonthlyRate(monthKey, settings) {
+    var y = +String(monthKey).slice(0, 4);
+    var m = +String(monthKey).slice(5, 7) - 1;
+    if (!y || m < 0 || m > 11) { return 0; }
+    var dim = daysInMonth(y, m);
+    if (!dim) { return 0; }
+    var sum = 0;
+    for (var d = 1; d <= dim; d++) {
+      sum += nightRate(monthKey + '-' + pad2(d), settings);
+    }
+    return Math.round(sum / dim);
+  }
+
+  /* Kunci bulan ke depan: [startMonthKey, +1, +2, ...] sebanyak `count`. */
+  function monthKeysFrom(startMonthKey, count) {
+    var y = +String(startMonthKey).slice(0, 4);
+    var m = +String(startMonthKey).slice(5, 7) - 1;
+    if (!y || m < 0 || m > 11) { return []; }
+    var keys = [];
+    for (var i = 0; i < count; i++) {
+      var yy = y + Math.floor((m + i) / 12);
+      var mm = (m + i) % 12;
+      keys.push(yy + '-' + pad2(mm + 1));
+    }
+    return keys;
+  }
+
+  /* Forecast bulanan (v1.30.0): proyeksi pendapatan per bulan vs realisasi.
+   *
+   * MODEL (transparan, berbasis data yang ada):
+   * - Terbooking (pasti): nilai reservasi AKTIF (bukan Dibatalkan),
+   *   dialokasikan PER MALAM ke bulan tempat malam itu terjadi
+   *   (menginap yang melintasi bulan dibagi); extra/diskon dialokasikan
+   *   ke bulan check-in (satu kali, bukan per malam).
+   * - Aktual: alokasi yang sama tapi HANYA reservasi 'Selesai' — basis
+   *   yang sama dengan forecast agar apel-dengan-apel. BUKAN pembayaran
+   *   terverifikasi (pelunasan lama tidak tercatat lengkap).
+   * - Proyeksi tambahan: run-rate = rata-rata malam Selesai per bulan
+   *   (total malam Selesai / jumlah bulan yang punya ≥1 malam Selesai);
+   *   malam proyeksi = min(run-rate, sisa malam kosong bulan itu);
+   *   nilainya = malam proyeksi × tarif rata-rata bulan itu
+   *   (blendedMonthlyRate — sudah termasuk peak). Tanpa riwayat
+   *   Selesai, proyeksi = 0 (forecast = terbooking saja).
+   * - Forecast = Terbooking + Proyeksi.
+   *
+   * Mengembalikan { months: [{ monthKey, label, shortLabel, days,
+   *   bookedNights, bookedRevenue, expectedNights, expectedRevenue,
+   *   forecast, actual, actualNights }], runRate, runRateMonths,
+   *   runRateNights, target }. */
+  function monthlyForecast(data, startMonthKey, count) {
+    var d = data || {};
+    var settings = d.settings || {};
+    var resList = d.reservations || [];
+    var keys = monthKeysFrom(startMonthKey, count || 12);
+    var map = {};
+    keys.forEach(function (k) {
+      var y = +k.slice(0, 4);
+      var m = +k.slice(5, 7) - 1;
+      map[k] = {
+        monthKey: k, label: monthLabel(k), shortLabel: monthShortLabel(k),
+        days: daysInMonth(y, m),
+        bookedNights: 0, bookedRevenue: 0,
+        expectedNights: 0, expectedRevenue: 0,
+        forecast: 0, actual: 0, actualNights: 0
+      };
+    });
+    /* Alokasi per malam (clipping seperti nightsInMonth). */
+    function allocate(r, toActual) {
+      if (!r || r.status === 'Dibatalkan') { return; }
+      if (toActual && r.status !== 'Selesai') { return; }
+      if (!isISODate(r.checkin) || !isISODate(r.checkout)) { return; }
+      var rate = +r.ratePerNight || 0;
+      keys.forEach(function (k) {
+        var y = +k.slice(0, 4);
+        var m = +k.slice(5, 7) - 1;
+        var monthStart = k + '-01';
+        var nextStart = toISODate(new Date(y, m + 1, 1));
+        var s = r.checkin < monthStart ? monthStart : r.checkin;
+        var e = r.checkout > nextStart ? nextStart : r.checkout;
+        var n = diffDays(s, e);
+        if (n <= 0) { return; }
+        if (toActual) {
+          map[k].actual += n * rate;
+          map[k].actualNights += n;
+        } else {
+          map[k].bookedRevenue += n * rate;
+          map[k].bookedNights += n;
+        }
+      });
+      /* Extra/diskon: satu kali, ke bulan check-in. */
+      var extra = (+r.extraCost || 0) - (+r.discount || 0);
+      var ck = (r.checkin || '').slice(0, 7);
+      if (extra !== 0 && map[ck]) {
+        if (toActual) { map[ck].actual += extra; }
+        else { map[ck].bookedRevenue += extra; }
+      }
+    }
+    resList.forEach(function (r) { allocate(r, false); });
+    resList.forEach(function (r) { allocate(r, true); });
+    /* Run-rate dari riwayat Selesai (semua bulan, bukan hanya jendela). */
+    var doneNights = 0;
+    var doneMonths = {};
+    resList.forEach(function (r) {
+      if (!r || r.status !== 'Selesai') { return; }
+      if (!isISODate(r.checkin) || !isISODate(r.checkout)) { return; }
+      var n = nightsBetween(r.checkin, r.checkout);
+      if (n <= 0) { return; }
+      doneNights += n;
+      for (var i = 0; i < n; i++) {
+        doneMonths[addDaysISO(r.checkin, i).slice(0, 7)] = true;
+      }
+    });
+    var doneMonthCount = Object.keys(doneMonths).length;
+    var runRate = doneMonthCount ? doneNights / doneMonthCount : 0;
+    /* Proyeksi + forecast per bulan. */
+    var months = keys.map(function (k) {
+      var p = map[k];
+      var remaining = Math.max(0, p.days - p.bookedNights);
+      var expN = Math.min(runRate, remaining);
+      p.expectedNights = Math.round(expN * 10) / 10;
+      p.expectedRevenue = Math.round(expN * blendedMonthlyRate(k, settings));
+      p.forecast = p.bookedRevenue + p.expectedRevenue;
+      return p;
+    });
+    return {
+      months: months,
+      runRate: Math.round(runRate * 10) / 10,
+      runRateMonths: doneMonthCount,
+      runRateNights: doneNights,
+      target: +settings.monthlyTarget || 0
+    };
+  }
+
   /* Total per kategori untuk satu jenis transaksi ('Masuk'/'Keluar'),
    * bulan `monthKey` (null/'' = semua bulan), hanya Terverifikasi.
    * Mengembalikan [{ category, total }] urut terbesar dulu; kategori
@@ -1256,6 +1392,8 @@
     monthKeysEndingAt: monthKeysEndingAt,
     monthShortLabel: monthShortLabel,
     monthlyCashflow: monthlyCashflow,
+    blendedMonthlyRate: blendedMonthlyRate,
+    monthlyForecast: monthlyForecast,
     monthlyOccupancy: monthlyOccupancy,
     nightsInMonth: nightsInMonth,
     categoryTotals: categoryTotals,

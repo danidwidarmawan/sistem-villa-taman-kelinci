@@ -387,6 +387,75 @@
     return '<div class="chart-wrap donut-wrap">' + s + legend + '</div>';
   }
 
+  /* ---------------- Batang berkelompok: forecast vs aktual ----------------
+   * v1.30.0. rows: [{ shortLabel, label, forecast, actual, bookedRevenue,
+   * expectedRevenue }] (12 bulan). opts: { target, emptyMsg, ariaLabel }.
+   * Dua batang per bulan (Forecast tosca, Aktual oranye) + garis acuan
+   * target (putus-putus). Nilai persis ada di tooltip & tabel di bawah. */
+  function forecastChart(rows, opts) {
+    opts = opts || {};
+    ensureTip();
+    var list = rows || [];
+    var target = +opts.target || 0;
+    var maxVal = target;
+    list.forEach(function (r) {
+      maxVal = Math.max(maxVal, +r.forecast || 0, +r.actual || 0);
+    });
+    if (!list.length || maxVal <= 0) {
+      return emptyHTML(opts.emptyMsg || 'Belum ada data forecast.');
+    }
+    var step = niceStep(maxVal / 4);
+    var top = step * 4;
+    var H = 270;
+    var mL = 66, mR = 12, mT = 30, mB = 30;
+    var plotW = W - mL - mR;
+    var plotH = H - mT - mB;
+    var n = list.length;
+    var groupW = plotW / n;
+    var barW = Math.min(22, groupW * 0.32);
+    var gap = 3;
+    var y = function (v) { return mT + plotH - (v / top) * plotH; };
+    var s = svgOpen(H, opts.ariaLabel || 'Grafik forecast vs aktual per bulan.');
+    for (var t = 0; t <= 4; t++) {
+      var val = step * t;
+      var yy = y(val);
+      s += '<line x1="' + mL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + yy.toFixed(1) +
+        '" stroke="#e2e8f0" stroke-width="1" />';
+      s += '<text x="' + (mL - 6) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + C.muted + '">' +
+        esc(fmtShort(val)) + '</text>';
+    }
+    /* Garis acuan target bulanan (putus-putus). */
+    if (target > 0) {
+      var ty = y(target);
+      s += '<line x1="' + mL + '" y1="' + ty.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + ty.toFixed(1) +
+        '" stroke="' + C.amber + '" stroke-width="1.5" stroke-dasharray="6 4" />';
+      s += '<text x="' + (W - mR) + '" y="' + (ty - 6).toFixed(1) + '" text-anchor="end" font-size="11" font-weight="700" fill="' + C.amber + '">Target ' + esc(fmtShort(target)) + '</text>';
+    }
+    list.forEach(function (r, i) {
+      var gx = mL + i * groupW;
+      var totalW = barW * 2 + gap;
+      var x0 = gx + (groupW - totalW) / 2;
+      var bars = [
+        { v: +r.forecast || 0, x: x0, color: C.teal, tip: r.label + ' — Forecast ' + fmtShort(r.forecast) + ' (Pasti ' + fmtShort(r.bookedRevenue) + ' + Proyeksi ' + fmtShort(r.expectedRevenue) + ')' },
+        { v: +r.actual || 0, x: x0 + barW + gap, color: C.orange, tip: r.label + ' — Aktual ' + fmtShort(r.actual) }
+      ];
+      bars.forEach(function (b) {
+        if (b.v <= 0) { return; }
+        var bh = (b.v / top) * plotH;
+        var by = mT + plotH - bh;
+        s += '<g class="chart-tip" data-tip="' + esc(b.tip) + '">' +
+          '<rect x="' + b.x.toFixed(1) + '" y="' + by.toFixed(1) + '" width="' + barW.toFixed(1) +
+          '" height="' + Math.max(bh, 2).toFixed(1) + '" rx="3" fill="' + b.color + '" /></g>';
+      });
+      s += '<text x="' + (gx + groupW / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + C.muted + '">' +
+        esc(r.shortLabel) + '</text>';
+    });
+    s += '</svg>';
+    return '<div class="chart-wrap">' +
+      legendHTML([{ color: C.teal, label: 'Forecast' }, { color: C.orange, label: 'Aktual' }]) +
+      s + '</div>';
+  }
+
   return {
     COLORS: C,
     DONUT_COLORS: DONUT_COLORS,
@@ -394,6 +463,7 @@
     occupancyChart: occupancyChart,
     hBarChart: hBarChart,
     donutChart: donutChart,
+    forecastChart: forecastChart,
     /* Dipanggil app.js saat boot (v1.29.0) agar elemen non-chart
      * (sel kalender) juga memakai tooltip instan. */
     bindTips: ensureTip
