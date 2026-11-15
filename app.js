@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.32.0-garis-maksimum';
+  var APP_VERSION = '1.33.0-font-tabel-kecil';
 
   var LS = {
     data: 'vtk_data',

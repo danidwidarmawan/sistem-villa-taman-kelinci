@@ -392,8 +392,9 @@ a.brand-mini:hover { opacity: 0.85; }
 .tbl tr.clickable { cursor: pointer; }
 .tbl tr.clickable:hover { background: var(--brand-50); }
 .tbl td.empty { text-align: center; padding: 1.5rem; }
-/* v1.32.0: tabel forecast ringkas — angka pendek + baris rapat. */
-.forecast-card .tbl { font-size: 0.8rem; }
+/* v1.33.0: tabel forecast ringkas — angka pendek + baris rapat. */
+.forecast-card .tbl { font-size: 0.7rem; }
+.forecast-card .tbl th { font-size: 0.7rem; }
 .forecast-card .tbl th, .forecast-card .tbl td { padding: 0.25rem 0.4rem; }
 .tbl input[type="number"] { width: 110px; }
 
