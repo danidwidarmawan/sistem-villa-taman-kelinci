@@ -450,74 +450,28 @@
       s += '<text x="' + (gx + groupW / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + C.muted + '">' +
         esc(r.shortLabel) + '</text>';
     });
-    s += '</svg>';
-    return '<div class="chart-wrap">' +
-      legendHTML([{ color: C.teal, label: 'Forecast' }, { color: C.orange, label: 'Aktual' }]) +
-      s + '</div>';
-  }
-
-  /* ---------------- Garis: tren forecast 12 bulan ----------------
-   * v1.31.0. rows/opts sama dengan forecastChart. Garis Forecast (tosca)
-   * + titik per bulan; Aktual hanya sebagai TITIK di bulan yang sudah
-   * punya realisasi (jendela forecast ke depan — bulan mendatang belum
-   * punya aktual, jadi garis Aktual tidak digambar agar tidak menyesatkan
-   * turun ke nol); garis acuan target putus-putus. */
-  function forecastLineChart(rows, opts) {
-    opts = opts || {};
-    ensureTip();
-    var list = rows || [];
-    var target = +opts.target || 0;
-    var maxVal = target;
-    list.forEach(function (r) {
-      maxVal = Math.max(maxVal, +r.forecast || 0, +r.actual || 0);
-    });
-    if (!list.length || maxVal <= 0) {
-      return emptyHTML(opts.emptyMsg || 'Belum ada data forecast.');
-    }
-    var step = niceStep(maxVal / 4);
-    var top = step * 4;
-    var H = 240;
-    var mL = 66, mR = 12, mT = 30, mB = 30;
-    var plotW = W - mL - mR;
-    var plotH = H - mT - mB;
-    var n = list.length;
-    var groupW = plotW / n;
-    var y = function (v) { return mT + plotH - (v / top) * plotH; };
-    var x = function (i) { return mL + i * groupW + groupW / 2; };
-    var s = svgOpen(H, opts.ariaLabel || 'Grafik garis tren forecast 12 bulan.');
-    for (var t = 0; t <= 4; t++) {
-      var val = step * t;
-      var yy = y(val);
-      s += '<line x1="' + mL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + yy.toFixed(1) +
-        '" stroke="#e2e8f0" stroke-width="1" />';
-      s += '<text x="' + (mL - 6) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + C.muted + '">' +
-        esc(fmtShort(val)) + '</text>';
-    }
-    if (target > 0) {
-      var ty = y(target);
-      s += '<line x1="' + mL + '" y1="' + ty.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + ty.toFixed(1) +
-        '" stroke="' + C.amber + '" stroke-width="1.5" stroke-dasharray="6 4" />';
-      s += '<text x="' + (W - mR) + '" y="' + (ty - 6).toFixed(1) + '" text-anchor="end" font-size="11" font-weight="700" fill="' + C.amber + '">Target ' + esc(fmtShort(target)) + '</text>';
-    }
-    /* Garis Forecast (semua 12 bulan). */
-    var pts = list.map(function (r, i) {
-      return x(i).toFixed(1) + ',' + y(+r.forecast || 0).toFixed(1);
-    }).join(' ');
-    s += '<polyline points="' + pts + '" fill="none" stroke="' + C.teal + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />';
+    /* Garis maksimum (v1.32.0): menghubungkan nilai tertinggi tiap bulan —
+     * titik di tengah atas batang tertinggi (praktisnya selalu Forecast,
+     * karena Forecast >= Aktual). Digambar setelah batang agar di atas.
+     * Titik bulan bernilai 0 tidak digambar (garisnya tetap turun ke 0). */
+    var maxPts = [];
     list.forEach(function (r, i) {
-      var cx = x(i);
-      s += '<g class="chart-tip" data-tip="' + esc(r.label + ' — Forecast ' + fmtShort(r.forecast) + ' (Pasti ' + fmtShort(r.bookedRevenue) + ' + Proyeksi ' + fmtShort(r.expectedRevenue) + ')') + '">' +
-        '<circle cx="' + cx.toFixed(1) + '" cy="' + y(+r.forecast || 0).toFixed(1) + '" r="4" fill="' + C.teal + '" stroke="#fff" stroke-width="1.5" /></g>';
-      if ((+r.actual || 0) > 0) {
-        s += '<g class="chart-tip" data-tip="' + esc(r.label + ' — Aktual ' + fmtShort(r.actual)) + '">' +
-          '<circle cx="' + cx.toFixed(1) + '" cy="' + y(+r.actual || 0).toFixed(1) + '" r="4.5" fill="' + C.orange + '" stroke="#fff" stroke-width="1.5" /></g>';
-      }
-      s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + C.muted + '">' +
-        esc(r.shortLabel) + '</text>';
+      var gx = mL + i * groupW;
+      var totalW = barW * 2 + gap;
+      var x0 = gx + (groupW - totalW) / 2;
+      var mx = Math.max(+r.forecast || 0, +r.actual || 0);
+      maxPts.push({ x: x0 + barW / 2, y: y(mx), label: r.label, max: mx });
+    });
+    s += '<polyline points="' + maxPts.map(function (p) { return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ') +
+      '" fill="none" stroke="' + C.navy + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />';
+    maxPts.forEach(function (p) {
+      if (p.max <= 0) { return; }
+      s += '<g class="chart-tip" data-tip="' + esc(p.label + ' — Maksimum ' + fmtShort(p.max)) + '">' +
+        '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="' + C.navy + '" stroke="#fff" stroke-width="1.5" /></g>';
     });
     s += '</svg>';
     return '<div class="chart-wrap">' +
-      legendHTML([{ color: C.teal, label: 'Forecast' }, { color: C.orange, label: 'Aktual' }]) +
+      legendHTML([{ color: C.teal, label: 'Forecast' }, { color: C.orange, label: 'Aktual' }, { color: C.navy, label: 'Maksimum' }]) +
       s + '</div>';
   }
 
@@ -529,7 +483,6 @@
     hBarChart: hBarChart,
     donutChart: donutChart,
     forecastChart: forecastChart,
-    forecastLineChart: forecastLineChart,
     /* Dipanggil app.js saat boot (v1.29.0) agar elemen non-chart
      * (sel kalender) juga memakai tooltip instan. */
     bindTips: ensureTip

@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.31.0-forecast-line-chart';
+  var APP_VERSION = '1.32.0-garis-maksimum';
 
   var LS = {
     data: 'vtk_data',
@@ -1031,22 +1031,19 @@
     var fcHint = fc.runRateMonths > 0
       ? 'Forecast = booking yang sudah masuk + proyeksi tambahan (rata-rata ' + String(fc.runRate).replace('.', ',') + ' malam/bulan dari riwayat ' + L.fmtNum(fc.runRateNights) + ' malam dalam ' + fc.runRateMonths + ' bulan). Aktual = nilai menginap yang sudah Selesai. Garis putus-putus = target bulanan ' + L.fmtRp(fc.target) + '.'
       : 'Belum ada riwayat menginap yang Selesai — forecast hanya dari booking yang sudah masuk. Aktual = nilai menginap yang sudah Selesai. Garis putus-putus = target bulanan ' + L.fmtRp(fc.target) + '.';
-    fcHint += ' Angka di tabel disingkat (contoh: Rp 30,7jt); arahkan kursor ke angka untuk nilai persisnya.';
-    /* Tabel ringkas (v1.31.0): angka pendek + tooltip instan berisi nilai
-     * persis di tiap sel rupiah. */
+    fcHint += ' Angka di tabel disingkat (contoh: Rp 30,7jt); arahkan kursor ke angka untuk nilai persis dan jumlah malamnya.';
+    /* Tabel ringkas (v1.32.0): angka pendek saja di sel — jumlah malam
+     * pindah ke tooltip bersama nilai persis. */
     var fcRows = fc.months.map(function (m) {
       return '<tr><td data-label="Bulan">' + esc(m.label) + '</td>' +
-        '<td data-label="Terbooking" class="chart-tip" data-tip="' + esc(L.fmtRp(m.bookedRevenue)) + '">' + L.fmtRpShort(m.bookedRevenue) + ' (' + L.fmtNum(m.bookedNights) + ' malam)</td>' +
-        '<td data-label="Proyeksi" class="chart-tip" data-tip="' + esc(L.fmtRp(m.expectedRevenue)) + '">' + L.fmtRpShort(m.expectedRevenue) + ' (' + String(m.expectedNights).replace('.', ',') + ' malam)</td>' +
+        '<td data-label="Terbooking" class="chart-tip" data-tip="' + esc(L.fmtRp(m.bookedRevenue) + ' · ' + L.fmtNum(m.bookedNights) + ' malam') + '">' + L.fmtRpShort(m.bookedRevenue) + '</td>' +
+        '<td data-label="Proyeksi" class="chart-tip" data-tip="' + esc(L.fmtRp(m.expectedRevenue) + ' · ' + String(m.expectedNights).replace('.', ',') + ' malam') + '">' + L.fmtRpShort(m.expectedRevenue) + '</td>' +
         '<td data-label="Forecast" class="chart-tip" data-tip="' + esc(L.fmtRp(m.forecast)) + '"><strong>' + L.fmtRpShort(m.forecast) + '</strong></td>' +
         '<td data-label="Aktual" class="chart-tip" data-tip="' + esc(L.fmtRp(m.actual)) + '">' + L.fmtRpShort(m.actual) + '</td></tr>';
     }).join('');
     html += '<section class="card chart-card forecast-card"><h2>Forecast 12 bulan</h2>' +
       '<p class="hint">' + fcHint + '</p>' +
-      '<h3>Perbandingan per bulan</h3>' +
       VTKCharts.forecastChart(fc.months, { target: fc.target, ariaLabel: 'Grafik forecast vs aktual 12 bulan ke depan.' }) +
-      '<h3>Tren 12 bulan</h3>' +
-      VTKCharts.forecastLineChart(fc.months, { target: fc.target, ariaLabel: 'Grafik garis tren forecast 12 bulan ke depan.' }) +
       '<div class="table-wrap"><table class="tbl"><thead><tr><th>Bulan</th><th>Terbooking</th><th>Proyeksi</th><th>Forecast</th><th>Aktual</th></tr></thead>' +
       '<tbody>' + fcRows + '</tbody></table></div></section>';
 
