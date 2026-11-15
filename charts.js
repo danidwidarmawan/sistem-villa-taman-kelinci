@@ -421,7 +421,7 @@
       var yy = y(val);
       s += '<line x1="' + mL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + yy.toFixed(1) +
         '" stroke="#e2e8f0" stroke-width="1" />';
-      s += '<text x="' + (mL - 6) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="' + C.muted + '">' +
+      s += '<text x="' + (mL - 6) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="9" fill="' + C.muted + '">' +
         esc(fmtShort(val)) + '</text>';
     }
     /* Garis acuan target bulanan (putus-putus). */
@@ -429,7 +429,7 @@
       var ty = y(target);
       s += '<line x1="' + mL + '" y1="' + ty.toFixed(1) + '" x2="' + (W - mR) + '" y2="' + ty.toFixed(1) +
         '" stroke="' + C.amber + '" stroke-width="1.5" stroke-dasharray="6 4" />';
-      s += '<text x="' + (W - mR) + '" y="' + (ty - 6).toFixed(1) + '" text-anchor="end" font-size="11" font-weight="700" fill="' + C.amber + '">Target ' + esc(fmtShort(target)) + '</text>';
+      s += '<text x="' + (W - mR) + '" y="' + (ty - 6).toFixed(1) + '" text-anchor="end" font-size="9" font-weight="700" fill="' + C.amber + '">Target ' + esc(fmtShort(target)) + '</text>';
     }
     list.forEach(function (r, i) {
       var gx = mL + i * groupW;
@@ -447,7 +447,7 @@
           '<rect x="' + b.x.toFixed(1) + '" y="' + by.toFixed(1) + '" width="' + barW.toFixed(1) +
           '" height="' + Math.max(bh, 2).toFixed(1) + '" rx="3" fill="' + b.color + '" /></g>';
       });
-      s += '<text x="' + (gx + groupW / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + C.muted + '">' +
+      s += '<text x="' + (gx + groupW / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="9" fill="' + C.muted + '">' +
         esc(r.shortLabel) + '</text>';
     });
     /* Garis maksimum (v1.32.0): menghubungkan nilai tertinggi tiap bulan —
