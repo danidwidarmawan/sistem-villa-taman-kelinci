@@ -392,12 +392,12 @@ a.brand-mini:hover { opacity: 0.85; }
 .tbl tr.clickable { cursor: pointer; }
 .tbl tr.clickable:hover { background: var(--brand-50); }
 .tbl td.empty { text-align: center; padding: 1.5rem; }
-/* v1.35.0: font tabel forecast kembali ke default (aturan font-size
+/* v1.36.0: font tabel forecast kembali ke default (aturan font-size
  * v1.31.0-v1.34.0 dihapus atas koreksi pemilik — yang dimaksud kecil
  * adalah font di chart, bukan tabel). Padding rapat tetap dipertahankan.
  * Legenda chart forecast dikecilkan. */
 .forecast-card .tbl th, .forecast-card .tbl td { padding: 0.25rem 0.4rem; }
-.forecast-card .chart-legend { font-size: 0.75rem; }
+.forecast-card .chart-legend { font-size: 0.65rem; }
 .tbl input[type="number"] { width: 110px; }
 
 /* ---------- Form ---------- */
