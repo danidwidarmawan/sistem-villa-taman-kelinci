@@ -168,6 +168,14 @@
     return d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear();
   }
 
+  /* Tanggal lengkap ("21 November 2026") — dipakai kwitansi agar sama
+   * dengan format Excel ("DP Villa tanggal 20 - 21 Desember 2025"). */
+  function fmtDateFull(iso) {
+    var d = parseISO(iso);
+    if (!d) { return '—'; }
+    return d.getDate() + ' ' + MONTHS_FULL[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
   function fmtDateTime(isoDT) {
     if (typeof isoDT !== 'string' || !isoDT) { return '—'; }
     var datePart = isoDT.slice(0, 10);
@@ -277,7 +285,7 @@
     for (var i = 0; i < n; i++) {
       var p = peakForNight(addDaysISO(checkin, i), settings);
       if (p && n < (+p.minNights || 1)) {
-        return { peak: p, nights: n, minNights: +p.minNights || 1 };
+  return { peak: p, nights: n, minNights: +p.minNights || 1 };
       }
     }
     return null;
@@ -1349,6 +1357,166 @@
     return JSON.parse(JSON.stringify(obj));
   }
 
+  /* ---------------- Kwitansi (v1.37.0) ---------------- */
+
+  /* Terbilang: angka -> kata bahasa Indonesia. Port dari macro VBA di
+   * Kwitansi.xlsm (Module1: Terbilang/Isi/Ratusan). Huruf kecil, tanpa
+   * spasi di ujung ("enam juta", "seribu", "nol"). Desimal memakai
+   * "koma", negatif diawali "minus". */
+  var TERBILANG_SATUAN = ['nol', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan'];
+  var TERBILANG_IMBUHAN = ['', '', ' puluh', ' ratus'];
+  var TERBILANG_AKHIRAN = ['', '', ' ribu', ' juta', ' milyar', ' triliun', ' biliun', ' ziliun'];
+
+  function terbilangRatusan(cData) {
+    var cHuruf = '';
+    for (var nCount = cData.length; nCount >= 1; nCount--) {
+      var dataDepan = parseInt(cData.charAt(0), 10) || 0;
+      var sisaData = cData.slice(1);
+      if (dataDepan !== 0) {
+        if (nCount === 2 && parseInt(cData, 10) > 10 && parseInt(cData, 10) < 20) {
+          var sisaVal = parseInt(sisaData, 10) || 0;
+          cHuruf += (sisaVal === 1 ? ' se' : ' ' + TERBILANG_SATUAN[sisaVal]);
+          cHuruf += (sisaVal === 1 ? '' : ' ') + 'belas';
+          break; /* GoTo Keluar di VBA */
+        } else {
+          var se = (dataDepan === 1 && nCount !== 1);
+          cHuruf += se ? ' se' : ' ' + TERBILANG_SATUAN[dataDepan];
+          cHuruf += se ? TERBILANG_IMBUHAN[nCount].replace(/^\s+/, '') : TERBILANG_IMBUHAN[nCount];
+        }
+      }
+      cData = sisaData;
+    }
+    return cHuruf;
+  }
+
+  function terbilangIsi(cAngka) {
+    var cHuruf = '';
+    var nLenData = Math.floor(cAngka.length / 3) + (cAngka.length % 3 === 0 ? 0 : 1);
+    for (var nCount = nLenData; nCount >= 1; nCount--) {
+      var take = cAngka.length - 3 * (nCount - 1);
+      var cData = cAngka.slice(0, take > 0 ? take : 1);
+      if (parseInt(cData, 10) !== 0) {
+        var satuRibu = (nCount === 2 && parseInt(cData, 10) === 1);
+        cHuruf += satuRibu ? ' se' : terbilangRatusan(cData);
+        cHuruf += satuRibu ? TERBILANG_AKHIRAN[nCount].replace(/^\s+/, '') : TERBILANG_AKHIRAN[nCount];
+        cHuruf = cHuruf.replace(/se ribu/g, 'seribu');
+      }
+      cAngka = nCount > 1 ? cAngka.slice(-3 * (nCount - 1)) : '';
+    }
+    return cHuruf;
+  }
+
+  function terbilang(n) {
+    if (n === null || n === undefined || isNaN(+n)) { return ''; }
+    var num = +n;
+    if (Math.abs(num) >= 1e21) { return String(num); }
+    var cHuruf = '';
+    var cNumber = String(num < 0 ? num * -1 : num).trim();
+    if (num < 0) { cHuruf = ' minus'; }
+    var nPosDecs = cNumber.indexOf('.');
+    var cFullNumber = nPosDecs === -1 ? cNumber : cNumber.slice(0, nPosDecs);
+    var cDecsNumber = nPosDecs === -1 ? '' : cNumber.slice(nPosDecs + 1);
+    if (parseInt(cFullNumber, 10) !== 0) {
+      cHuruf += terbilangIsi(cFullNumber);
+    } else {
+      cHuruf = ' nol';
+    }
+    if (cDecsNumber !== '' && parseInt(cDecsNumber, 10) !== 0) {
+      cHuruf += ' koma' + terbilangIsi(cDecsNumber);
+    }
+    return cHuruf.trim();
+  }
+
+  /* "Enam Juta Rupiah" — PROPER(terbilang) & " Rupiah" seperti sel G14
+   * di sheet Kuitansi. */
+  function terbilangRupiah(n) {
+    var words = terbilang(n);
+    if (!words) { return ''; }
+    return words.split(' ').map(function (w) {
+      return w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+    }).join(' ') + ' Rupiah';
+  }
+
+  var ROMAN_MONTHS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+
+  /* Nomor kwitansi berikutnya: NNN/VTK/ROMAWI/TAHUN (format Excel
+   * 001/VTK/XII/2025) — urutan per bulan+tahun. */
+  function nextReceiptNumber(receipts, dateISO) {
+    var now = new Date();
+    var y = +(String(dateISO || '').slice(0, 4)) || now.getFullYear();
+    var m = +(String(dateISO || '').slice(5, 7)) || (now.getMonth() + 1);
+    if (m < 1 || m > 12) { m = 1; }
+    var roman = ROMAN_MONTHS[m - 1];
+    var max = 0;
+    (receipts || []).forEach(function (rc) {
+      if (!rc || typeof rc.number !== 'string') { return; }
+      var mm = /^(\d+)\/VTK\/([IVX]+)\/(\d{4})$/.exec(rc.number.trim());
+      if (mm && mm[2] === roman && +mm[3] === y) { max = Math.max(max, +mm[1]); }
+    });
+    return pad3(max + 1) + '/VTK/' + roman + '/' + y;
+  }
+
+  /* Total rincian item kwitansi (qty x harga per baris). */
+  function receiptItemsTotal(items) {
+    var total = 0;
+    (items || []).forEach(function (it) {
+      total += (+it.qty || 0) * (+it.price || 0);
+    });
+    return total;
+  }
+
+  /* Draf kwitansi dari reservasi: nama tamu, jumlah (yang sudah dibayar
+   * terverifikasi; bila belum ada pembayaran, total booking), keterangan
+   * DP / pelunasan / pembayaran + tanggal menginap, rincian item, dan
+   * nomor berikutnya. Dipakai form kwitansi saat memilih reservasi. */
+  function receiptFromReservation(data, reservationId) {
+    var d = data || {};
+    var r = null;
+    (d.reservations || []).forEach(function (x) { if (x && x.id === reservationId) { r = x; } });
+    if (!r) { return null; }
+    var calc = reservationCalc(r, d.transactions || [], d.settings || {});
+    var paid = calc.paid;
+    var isPartial = paid > 0 && paid < calc.total;
+    var amount = paid > 0 ? paid : calc.total;
+    var range = fmtDateFull(r.checkin) + ' - ' + fmtDateFull(r.checkout);
+    var kind = isPartial ? 'DP Villa tanggal ' : (paid > 0 ? 'Pelunasan Villa tanggal ' : 'Pembayaran Villa tanggal ');
+    var items;
+    if (isPartial) {
+      items = [{ desc: 'DP Villa', qty: 1, price: amount }];
+    } else {
+      items = [{ desc: 'Sewa Villa (' + calc.nights + ' malam)', qty: 1, price: calc.nights * (+r.ratePerNight || 0) }];
+      var bd = extraCostBreakdown(r, d.settings || {});
+      if (bd.extraBedCost > 0) {
+        items.push({ desc: 'Extra bed (' + fmtNum(r.extraBeds) + ' bed)', qty: 1, price: bd.extraBedCost });
+      }
+      if (bd.vipCost > 0) {
+        items.push({ desc: 'Kamar VIP (' + fmtNum(r.vipRooms) + ' kamar x ' + calc.nights + ' malam)', qty: 1, price: bd.vipCost });
+      }
+      /* Jaga-jaga: extraCost tersimpan bisa melebihi rincian (data lama)
+       * — selisihnya ditampung agar total rincian = total booking. */
+      var extraStored = +r.extraCost || 0;
+      if (extraStored > bd.total) {
+        items.push({ desc: 'Biaya tambahan', qty: 1, price: extraStored - bd.total });
+      }
+      if (+r.discount) {
+        items.push({ desc: 'Diskon', qty: 1, price: -(+r.discount) });
+      }
+    }
+    return {
+      reservationId: r.id,
+      guestName: r.guestName || '',
+      amount: amount,
+      forPayment: kind + range,
+      city: 'Bogor',
+      date: todayISO(),
+      receiver: 'Manajemen Villa Taman Kelinci',
+      checkin: r.checkin || '',
+      checkout: r.checkout || '',
+      items: items,
+      number: nextReceiptNumber(d.receipts || [], todayISO())
+    };
+  }
+
   return {
     MONTHS_SHORT: MONTHS_SHORT,
     MONTHS_FULL: MONTHS_FULL,
@@ -1382,6 +1550,7 @@
     daysInMonth: daysInMonth,
     monthLabel: monthLabel,
     fmtDate: fmtDate,
+    fmtDateFull: fmtDateFull,
     fmtDateTime: fmtDateTime,
     fmtSyncTime: fmtSyncTime,
     fmtTimeHM: fmtTimeHM,
@@ -1435,6 +1604,11 @@
     calendarCells: calendarCells,
     computeDashboard: computeDashboard,
     validateData: validateData,
-    deepClone: deepClone
+    deepClone: deepClone,
+    terbilang: terbilang,
+    terbilangRupiah: terbilangRupiah,
+    nextReceiptNumber: nextReceiptNumber,
+    receiptItemsTotal: receiptItemsTotal,
+    receiptFromReservation: receiptFromReservation
   };
 });
