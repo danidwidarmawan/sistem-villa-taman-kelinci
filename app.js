@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.43.0-satu-jenis-preset-rincian';
+  var APP_VERSION = '1.44.0-untuk-pembayaran-manual';
 
   var LS = {
     data: 'vtk_data',
@@ -1966,20 +1966,16 @@
     var items = (v.items || []).map(function (it) { return receiptItemRowHTML(it); }).join('');
     var itemsTotal = L.receiptItemsTotal(v.items || []);
     /* Checkbox Untuk Pembayaran (v1.42.0): bisa beberapa pilihan.
-     * Baru: default 'Pembayaran DP Villa' tercetang. Nilai lama yang
-     * tidak ada di daftar tetap tampil sebagai checkbox "(lama)" agar
-     * bisa dipertahankan atau dihapus (uncheck). */
+     * Baru: default 'Pembayaran DP Villa' tercetang. Nilai lama
+     * yang tidak ada di daftar masuk ke field isi manual (v1.44.0)
+     * agar tetap bisa diubah atau dihapus. */
     var payments = L.receiptPayments(v.forPayment);
     if (!payments.length) { payments = ['Pembayaran DP Villa']; }
     var fpBoxes = L.RECEIPT_PAYMENTS.map(function (p) {
       return '<label class="checkbox"><input type="checkbox" name="forPayment" value="' + esc(p) + '"' +
         (payments.indexOf(p) !== -1 ? ' checked' : '') + ' /> ' + esc(p) + '</label>';
     }).join('');
-    payments.forEach(function (p) {
-      if (L.RECEIPT_PAYMENTS.indexOf(p) === -1) {
-        fpBoxes += '<label class="checkbox"><input type="checkbox" name="forPayment" value="' + esc(p) + '" checked /> ' + esc(p) + ' (lama)</label>';
-      }
-    });
+    var fpManual = payments.filter(function (p) { return L.RECEIPT_PAYMENTS.indexOf(p) === -1; }).join(', ');
     var title = isNew ? 'Kwitansi baru' : 'Ubah kwitansi ' + esc(rc.number);
     /* Checkbox preset rincian (v1.43.0) — harga katering tampil di label. */
     var rSettings = (state.data && state.data.settings) || {};
@@ -2008,7 +2004,8 @@
       '</div>' +
       '<div class="form-row">' +
       '<div class="field field-grow"><span>Untuk Pembayaran</span><div class="checkbox-row">' + fpBoxes + '</div>' +
-      '<span class="hint">Bisa pilih lebih dari satu — misalnya Catering + Extra Bed dalam satu kwitansi.</span></div>' +
+      '<input type="text" name="forPaymentManual" value="' + esc(fpManual) + '" placeholder="Atau isi manual di sini…" />' +
+      '<span class="hint">Bisa pilih lebih dari satu — misalnya Catering + Extra Bed dalam satu kwitansi. Isian manual dipisahkan dengan koma bila lebih dari satu.</span></div>' +
       '</div>' +
       '<div class="form-row">' +
       '<label class="field"><span>Kota</span><input type="text" name="city" value="' + esc(v.city || 'Bogor') + '" /></label>' +
@@ -2041,13 +2038,20 @@
       if (!desc && !qty && !price) { return; }
       items.push({ desc: desc, qty: qty, price: price });
     });
+    /* Untuk Pembayaran = checkbox tercetang + isian manual (v1.44.0;
+     * manual dipisah koma, duplikat dengan checkbox dibuang). */
+    var fp = fd.getAll('forPayment');
+    (fd.get('forPaymentManual') || '').split(',').forEach(function (p) {
+      p = p.trim();
+      if (p && fp.indexOf(p) === -1) { fp.push(p); }
+    });
     return {
       id: fd.get('id') || '',
       number: (fd.get('number') || '').trim(),
       reservationId: fd.get('reservationId') || '',
       guestName: (fd.get('guestName') || '').trim(),
       amount: parseFloat(fd.get('amount')) || 0,
-      forPayment: fd.getAll('forPayment'),
+      forPayment: fp,
       city: (fd.get('city') || '').trim(),
       date: fd.get('date') || '',
       receiver: (fd.get('receiver') || '').trim(),
@@ -2063,7 +2067,7 @@
     var errors = [];
     if (!v.number) { errors.push('Nomor kwitansi wajib diisi.'); }
     if (!v.guestName) { errors.push('Nama penerima ("Sudah terima dari") wajib diisi.'); }
-    if (!v.forPayment || !v.forPayment.length) { errors.push('Pilih minimal satu "Untuk Pembayaran".'); }
+    if (!v.forPayment || !v.forPayment.length) { errors.push('Pilih atau isi minimal satu "Untuk Pembayaran".'); }
     if (!(v.amount > 0)) { errors.push('Jumlah harus lebih dari 0.'); }
     if (!L.isISODate(v.date)) { errors.push('Tanggal kwitansi wajib diisi.'); }
     var dupe = receipts().some(function (rc) { return rc.number === v.number && rc.id !== v.id; });
@@ -3852,6 +3856,8 @@
       set('amount', d.amount);
       var fpBoxes = form.querySelectorAll('input[name="forPayment"]');
       Array.prototype.forEach.call(fpBoxes, function (cb) { cb.checked = (d.forPayment || []).indexOf(cb.value) !== -1; });
+      var fpMan = form.querySelector('[name="forPaymentManual"]');
+      if (fpMan) { fpMan.value = ''; }
       set('checkin', d.checkin);
       set('checkout', d.checkout);
       var wrap = $('rc-items');
