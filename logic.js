@@ -1545,6 +1545,16 @@
     return 'Pembayaran ' + parts.slice(0, -1).join(', ') + ' & ' + parts[parts.length - 1];
   }
 
+  /* Sisa pelunasan villa: total sewa villa (malam x tarif - diskon)
+   * dikurangi pembayaran villa terverifikasi (v1.45.0, untuk preset
+   * rincian "Pelunasan Villa"). */
+  function villaBalance(res, transactions, settings) {
+    if (!res) { return 0; }
+    var calc = reservationCalc(res, transactions || [], settings || {});
+    var villaTotal = Math.max(0, calc.nights * (+res.ratePerNight || 0) - (+res.discount || 0));
+    return Math.max(0, villaTotal - paidForBookingSplit(res.id, transactions || []).villa);
+  }
+
   /* Draf kwitansi dari reservasi (v1.43.0: SATU jenis kwitansi —
    * pembedaan villa/katering dihapus atas permintaan pemilik; yang
    * berubah hanya isinya). Jumlah = seluruh pembayaran terverifikasi
@@ -1716,6 +1726,7 @@
     receiptPayments: receiptPayments,
     receiptPaymentsText: receiptPaymentsText,
     paidForBookingSplit: paidForBookingSplit,
-    receiptFromReservation: receiptFromReservation
+    receiptFromReservation: receiptFromReservation,
+    villaBalance: villaBalance,
   };
 });

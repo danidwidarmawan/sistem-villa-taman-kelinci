@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.44.0-untuk-pembayaran-manual';
+  var APP_VERSION = '1.45.0-pelunasan-villa-preset';
 
   var LS = {
     data: 'vtk_data',
@@ -1852,6 +1852,7 @@
    * yang dipilih (0 bila isi manual). */
   var RECEIPT_PRESETS = [
     { key: 'dp-villa', label: 'DP Villa' },
+    { key: 'pelunasan-villa', label: 'Pelunasan Villa' },
     { key: 'catering:Hemat 1', label: 'Catering: Paket Hemat 1' },
     { key: 'catering:Hemat 2', label: 'Catering: Paket Hemat 2' },
     { key: 'catering:Paket A', label: 'Catering: Paket A' },
@@ -1879,6 +1880,10 @@
       var dp = 0;
       if (res) { dp = L.reservationCalc(res, state.data.transactions || [], settings).dpAmount; }
       return { desc: desc, qty: 1, price: dp };
+    }
+    if (preset === 'pelunasan-villa') {
+      var pel = res ? L.villaBalance(res, state.data.transactions || [], settings) : 0;
+      return { desc: desc, qty: 1, price: pel };
     }
     if (preset === 'catering:custom') { return { desc: desc, qty: 1, price: 0 }; }
     return { desc: desc, qty: res ? (+res.pax || 1) : 1,
