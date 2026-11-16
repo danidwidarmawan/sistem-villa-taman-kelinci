@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.39.0-urutan-kwitansi';
+  var APP_VERSION = '1.40.0-format-kwitansi-standar';
 
   var LS = {
     data: 'vtk_data',
@@ -1924,7 +1924,7 @@
     var rc = f.id ? receiptById(f.id) : null;
     var v = rc || f.prefill || {};
     var isNew = !rc;
-    var number = v.number || L.nextReceiptNumber(receipts(), L.todayISO(), (state.data.meta || {}).receiptCounter);
+    var number = v.number || L.nextReceiptNumber(receipts(), L.todayISO());
     var resOpts = (state.data.reservations || []).filter(function (r) { return r.status !== 'Dibatalkan'; })
       .slice().sort(function (a, b) { return (b.checkin || '').localeCompare(a.checkin || ''); })
       .map(function (r) {
@@ -2027,10 +2027,6 @@
       var existing = receiptById(v.id);
       if (existing) { Object.assign(existing, touch(v)); }
     }
-    /* Catat nomor yang dipakai ke counter (v1.39.0) agar tidak pernah
-     * dipakai ulang — walau kwitansinya nanti dihapus. */
-    if (!state.data.meta) { state.data.meta = {}; }
-    state.data.meta.receiptCounter = L.receiptCounterUpdate(state.data.meta.receiptCounter, v.number);
     commit().then(function () {
       toast('Kwitansi ' + v.number + ' disimpan.');
       state.form = null;
@@ -2065,10 +2061,12 @@
 
   /* Format klasik — meniru sheet Kuitansi: kop + judul, nomor dalam
    * kotak, terbilang dalam kotak, kotak Jumlah Rp, tanda tangan. */
-  /* Satu format kwitansi (v1.38.0; format klasik dihapus atas permintaan
-   * Dani): kop villa + jenis kwitansi + meta + rincian + TOTAL +
-   * terbilang dalam kotak "Banyaknya uang" di bawah TOTAL + tanda tangan.
-   * Bila rincian kosong, satu baris dibuat dari keterangan & jumlah. */
+  /* Satu format kwitansi (v1.38.0; v1.40.0 disusun ulang mengikuti
+   * urutan standar kwitansi pada umumnya — seperti sheet Kuitansi
+   * Excel: Nomor -> Sudah Terima Dari -> Banyaknya Uang (terbilang)
+   * -> Untuk Pembayaran -> Tanggal Menginap -> Rincian -> TOTAL ->
+   * tanda tangan. Tanggal kwitansi hanya di baris tanda tangan
+   * (kota, tanggal), sesuai format umum. */
   function receiptDocHTML(rc) {
     var h = receiptHeader();
     var items = (rc.items && rc.items.length) ? rc.items : [{ desc: rc.forPayment, qty: 1, price: rc.amount }];
@@ -2086,18 +2084,19 @@
       '<div class="receipt-title-block"><div class="receipt-title">KUITANSI</div>' +
       '<div class="receipt-subtitle">' + esc(RECEIPT_KINDS[receiptKindOf(rc)].sub) + '</div></div>' +
       '</div>' +
-      '<div class="receipt-meta">' +
-      '<div><span class="receipt-meta-label">Kepada:</span> <strong>' + esc(rc.guestName) + '</strong></div>' +
-      '<div><span class="receipt-meta-label">No. Kwitansi:</span> ' + esc(rc.number) + '</div>' +
-      '<div><span class="receipt-meta-label">Tanggal Kwitansi:</span> ' + L.fmtDateFull(rc.date) + '</div>' +
-      (rc.checkin ? '<div><span class="receipt-meta-label">Tanggal Check-in:</span> ' + L.fmtDateFull(rc.checkin) + '</div>' : '') +
-      (rc.checkout ? '<div><span class="receipt-meta-label">Tanggal Check-out:</span> ' + L.fmtDateFull(rc.checkout) + '</div>' : '') +
-      '</div>' +
+      '<div class="receipt-row"><span class="receipt-label">Nomor</span><span class="receipt-colon">:</span>' +
+      '<span class="receipt-number">' + esc(rc.number) + '</span></div>' +
+      '<div class="receipt-row"><span class="receipt-label">Sudah Terima Dari</span><span class="receipt-colon">:</span>' +
+      '<span class="receipt-value receipt-underline">' + esc(rc.guestName) + '</span></div>' +
+      '<div class="receipt-row receipt-words-row"><span class="receipt-label">Banyaknya Uang</span><span class="receipt-colon">:</span>' +
+      '<span class="receipt-value receipt-words">' + esc(L.terbilangRupiah(rc.amount)) + '</span></div>' +
+      '<div class="receipt-row"><span class="receipt-label">Untuk Pembayaran</span><span class="receipt-colon">:</span>' +
+      '<span class="receipt-value">' + esc(rc.forPayment) + '</span></div>' +
+      (rc.checkin ? '<div class="receipt-row"><span class="receipt-label">Tanggal Menginap</span><span class="receipt-colon">:</span>' +
+      '<span class="receipt-value">' + L.fmtDateFull(rc.checkin) + (rc.checkout ? ' - ' + L.fmtDateFull(rc.checkout) : '') + '</span></div>' : '') +
       '<table class="tbl receipt-items"><thead><tr><th>No.</th><th>Deskripsi</th><th class="num">Kuantitas</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
       '<div class="receipt-total-row"><span>TOTAL</span><strong>' + L.fmtRp(total) + '</strong></div>' +
-      '<div class="receipt-row receipt-words-row"><span class="receipt-label">Banyaknya uang</span><span class="receipt-colon">:</span>' +
-      '<span class="receipt-value receipt-words">' + esc(L.terbilangRupiah(rc.amount)) + '</span></div>' +
       receiptSignHTML(rc) +
       '</div>';
   }

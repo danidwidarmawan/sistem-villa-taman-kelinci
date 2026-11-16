@@ -1001,14 +1001,14 @@ input[type="password"], select, textarea {
 .receipt-label { flex: 0 0 9.5rem; }
 .receipt-colon { flex: 0 0 auto; }
 .receipt-value { flex: 1 1 auto; font-weight: 600; min-width: 0; }
+.receipt-underline { border-bottom: 1px solid #111827; }
 .receipt-words { border: 1px solid #111827; padding: 0.4rem 0.6rem; }
 .receipt-words-row { margin-top: 0.75rem; align-items: flex-start; }
+.receipt-number { border: 1px solid #111827; padding: 0.15rem 0.6rem; font-weight: 600; }
 .receipt-sign { text-align: right; margin-top: 1.25rem; }
 .receipt-sign-place { display: inline-block; border-bottom: 1px solid #111827; padding-bottom: 0.1rem; }
 .receipt-sign-space { height: 3rem; }
 .receipt-sign-name { display: inline-block; border-bottom: 1px solid #111827; padding-bottom: 0.1rem; }
-.receipt-meta { margin-bottom: 1rem; line-height: 1.7; }
-.receipt-meta-label { display: inline-block; min-width: 9.5rem; }
 .receipt-items { margin-bottom: 0; }
 .receipt-total-row { display: flex; justify-content: space-between; border-top: 2px solid #1f2937; padding: 0.5rem 0; font-size: 1.05rem; margin-top: 0.25rem; }
 

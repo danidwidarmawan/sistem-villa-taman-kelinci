@@ -1452,15 +1452,12 @@
     return { seq: +mm[1], month: month, year: +mm[3] };
   }
 
-  /* Nomor kwitansi berikutnya (v1.39.0: urutan baik & benar).
-   * Format tetap NNN/VTK/ROMAWI/TAHUN, tapi urutan BERKESINAMBUNGAN
-   * PER TAHUN (bukan dihitung ulang tiap bulan — v1.37.0 membuat dua
-   * kwitansi sama-sama 001 di bulan berbeda). counterByYear =
-   * { "2026": 1 } dari meta.receiptCounter: nomor terakhir yang
-   * pernah dipakai per tahun, tersimpan walau kwitansinya dihapus,
-   * jadi nomor TIDAK PERNAH dipakai ulang. Urutan = max(terbesar
-   * yang masih ada di tahun itu, counter) + 1. */
-  function nextReceiptNumber(receipts, dateISO, counterByYear) {
+  /* Nomor kwitansi berikutnya: format NNN/VTK/ROMAWI/TAHUN, urutan
+   * dihitung ulang PER BULAN (v1.37.0; v1.39.0 sempat mengubahnya
+   * jadi per tahun + counter persisten, DIBATALKAN di v1.40.0 karena
+   * pemilik bilang hitung ulang per bulan tidak apa-apa — yang dia
+   * maksud "urutan" adalah susunan field format kwitansi). */
+  function nextReceiptNumber(receipts, dateISO) {
     var now = new Date();
     var y = +(String(dateISO || '').slice(0, 4)) || now.getFullYear();
     var m = +(String(dateISO || '').slice(5, 7)) || (now.getMonth() + 1);
@@ -1470,29 +1467,9 @@
     (receipts || []).forEach(function (rc) {
       if (!rc) { return; }
       var p = parseReceiptNumber(rc.number);
-      if (p && p.year === y) { max = Math.max(max, p.seq); }
+      if (p && p.month === m && p.year === y) { max = Math.max(max, p.seq); }
     });
-    if (counterByYear && typeof counterByYear === 'object') {
-      max = Math.max(max, +counterByYear[y] || 0, +counterByYear[String(y)] || 0);
-    }
     return pad3(max + 1) + '/VTK/' + roman + '/' + y;
-  }
-
-  /* Perbarui counter penomoran dari sebuah nomor kwitansi: kembalikan
-   * objek counter baru (salinan) dengan tahun nomor itu = max(lama,
-   * seq nomor). Nomor berformat salah diabaikan. Dipakai saat simpan
-   * kwitansi (v1.39.0). */
-  function receiptCounterUpdate(counterByYear, num) {
-    var out = {};
-    if (counterByYear && typeof counterByYear === 'object') {
-      Object.keys(counterByYear).forEach(function (k) { out[k] = +counterByYear[k] || 0; });
-    }
-    var p = parseReceiptNumber(num);
-    if (p) {
-      var y = String(p.year);
-      out[y] = Math.max(out[y] || 0, p.seq);
-    }
-    return out;
   }
 
   /* Total rincian item kwitansi (qty x harga per baris). */
@@ -1549,7 +1526,7 @@
       receiver: 'Manajemen Villa Taman Kelinci',
       checkin: r.checkin || '',
       checkout: r.checkout || '',
-      number: nextReceiptNumber(d.receipts || [], todayISO(), (d.meta || {}).receiptCounter)
+      number: nextReceiptNumber(d.receipts || [], todayISO())
     };
     if (kind === 'villa') {
       var villaTotal = Math.max(0, calc.nights * (+r.ratePerNight || 0) - (+r.discount || 0));
@@ -1697,7 +1674,6 @@
     terbilangRupiah: terbilangRupiah,
     nextReceiptNumber: nextReceiptNumber,
     parseReceiptNumber: parseReceiptNumber,
-    receiptCounterUpdate: receiptCounterUpdate,
     receiptItemsTotal: receiptItemsTotal,
     paidForBookingSplit: paidForBookingSplit,
     receiptFromReservation: receiptFromReservation
