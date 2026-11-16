@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.45.0-pelunasan-villa-preset';
+  var APP_VERSION = '1.45.1-koreksi-alamat-rw08';
 
   var LS = {
     data: 'vtk_data',
@@ -1913,7 +1913,7 @@
     var s = state.data.settings || {};
     return {
       name: s.propertyName || 'Villa Taman Kelinci',
-      address: s.address || 'Kavling 67, Kampung Cidokom 5, RT. 01/RW. 07, Kopo, Kec. Cisarua, Kabupaten Bogor, Jawa Barat 16750',
+      address: s.address || 'Kavling 67, Kampung Cidokom 5, RT. 01/RW. 08, Kopo, Kec. Cisarua, Kabupaten Bogor, Jawa Barat 16750',
       phone: s.phone || '0821-1512-0072',
       email: s.email || 'villatamankelinci.official@gmail.com'
     };
