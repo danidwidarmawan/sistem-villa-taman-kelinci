@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.45.1-koreksi-alamat-rw08';
+  var APP_VERSION = '1.46.0-kalender-ke-reservasi';
 
   var LS = {
     data: 'vtk_data',
@@ -128,7 +128,7 @@
     tamuGuest: null, /* kunci tamu di halaman detail Tamu (null = daftar) */
     receiptId: null, /* kwitansi yang sedang ditampilkan (null = daftar) */
     filters: {
-      res: { status: '', month: '', q: '' },
+      res: { status: '', month: '', q: '', date: '' },
       tx: { month: L.currentMonthKey(), type: '', category: '', status: '', account: '' },
       lead: { status: '', source: '', q: '' },
       tamu: { q: '' },
@@ -1261,9 +1261,14 @@
 
   function reservationsViewHTML() {
     var f = state.filters.res;
+    /* v1.46.0: filter tanggal menginap — hanya reservasi yang menginap
+     * pada malam tanggal itu (definisi yang sama dengan sel "terisi"
+     * di kalender; hari check-out bukan malam menginap). */
+    var onDate = f.date ? L.reservationsOnDate(state.data, f.date) : null;
     var list = reservationsSorted().filter(function (r) {
       if (f.status && r.status !== f.status) { return false; }
       if (f.month && (r.checkin || '').slice(0, 7) !== f.month) { return false; }
+      if (onDate && onDate.indexOf(r) === -1) { return false; }
       if (f.q) {
         var q = f.q.toLowerCase();
         if (!((r.guestName || '').toLowerCase().indexOf(q) !== -1 ||
@@ -1296,9 +1301,11 @@
       '<label class="field"><span>Status</span><select onchange="VTK.setFilter(\'res\',\'status\',this.value)">' +
       '<option value="">Semua</option>' + optList(L.RES_STATUSES, f.status) + '</select></label>' +
       '<label class="field"><span>Bulan check-in</span><input type="month" value="' + esc(f.month) + '" onchange="VTK.setFilter(\'res\',\'month\',this.value)" /></label>' +
+      '<label class="field"><span>Tanggal menginap</span><input type="date" value="' + esc(f.date) + '" onchange="VTK.setFilter(\'res\',\'date\',this.value)" /></label>' +
       '<label class="field field-grow"><span>Cari nama / Booking ID</span>' +
       '<input type="search" value="' + esc(f.q) + '" placeholder="cth: Budi / BK-202611-001" oninput="VTK.setFilter(\'res\',\'q\',this.value)" /></label>' +
       '<button type="button" class="btn btn-small" onclick="VTK.exportCSV(\'reservasi\')">Unduh CSV</button>' +
+      (f.date ? '<p class="hint">Menampilkan reservasi yang menginap pada ' + L.fmtDate(f.date) + ' — kosongkan tanggal untuk melihat semua.</p>' : '') +
       '</section>' +
       '<section class="card"><div class="table-wrap"><table class="tbl"><thead><tr>' +
       '<th>Booking ID</th><th>Tamu</th><th>Check-in</th><th>Check-out</th><th>Malam</th><th>Tamu (pax)</th>' +
@@ -3759,6 +3766,14 @@
     }
   }
 
+  /* v1.46.0: dari kalender — buka Daftar Reservasi difilter tanggal
+   * menginap itu. Filter lain direset agar hasilnya tidak tersembunyi
+   * di balik filter status/bulan/cari yang masih aktif. */
+  function goResForDate(iso) {
+    state.filters.res = { status: '', month: '', q: '', date: iso };
+    go('reservasi');
+  }
+
   /* ---------------- API global (dipakai handler inline) ---------------- */
 
   window.VTK = {
@@ -3997,9 +4012,18 @@
       state.calSelected = L.todayISO();
       renderView();
     },
-    calDayClick: function (iso) { state.calSelected = iso; renderView(); },
-    /* Dari kalender mini dashboard: buka Kalender pada bulan & hari itu. */
+    calDayClick: function (iso) {
+      /* v1.46.0: hari yang terisi langsung membuka Daftar Reservasi
+       * difilter tanggal itu; hari lain tetap menampilkan detail hari. */
+      if (L.reservationsOnDate(state.data, iso).length) { goResForDate(iso); return; }
+      state.calSelected = iso; renderView();
+    },
+    goResForDate: goResForDate,
+    /* Dari kalender mini dashboard: hari terisi langsung ke Daftar
+     * Reservasi difilter tanggal itu (v1.46.0); hari lain tetap buka
+     * Kalender pada bulan & hari itu. */
     miniCalGo: function (iso) {
+      if (L.reservationsOnDate(state.data, iso).length) { goResForDate(iso); return; }
       var d = L.parseISO(iso);
       if (d) {
         state.calYear = d.getFullYear();

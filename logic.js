@@ -646,6 +646,19 @@
     return cells;
   }
 
+  /* Reservasi aktif yang menginap pada malam tanggal iso (checkin <= iso <
+   * checkout) — definisi yang sama dengan sel "terisi" di kalender.
+   * Dipakai klik hari terisi di kalender (v1.46.0) dan filter tanggal
+   * di Daftar Reservasi. Hari check-out BUKAN malam menginap: tamu yang
+   * check-out pada iso tidak termasuk. */
+  function reservationsOnDate(data, iso) {
+    if (!isISODate(iso)) { return []; }
+    return (data.reservations || []).filter(function (r) {
+      return r.status !== 'Dibatalkan' && isISODate(r.checkin) && isISODate(r.checkout) &&
+        iso >= r.checkin && iso < r.checkout;
+    });
+  }
+
   /* ---------------- Dashboard ---------------- */
 
   function inMonth(iso, monthKey) {
@@ -1714,6 +1727,7 @@
     fixedMonthlyCost: fixedMonthlyCost,
     breakevenNights: breakevenNights,
     calendarCells: calendarCells,
+    reservationsOnDate: reservationsOnDate,
     computeDashboard: computeDashboard,
     validateData: validateData,
     deepClone: deepClone,
