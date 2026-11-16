@@ -659,6 +659,185 @@
     });
   }
 
+  /* ---------------- Sinkron Google Calendar (v1.47.0, satu arah) ---------------- */
+
+  /* Nama kalender booking di akun Google villa — dicari di daftar
+   * kalender akun saat sinkron. */
+  var GCAL_CALENDAR_NAME = 'JADWAL BOOKING VILLA';
+
+  function normGuestName(name) {
+    return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  /* Angka rupiah dari teks bebas: "2,5jt" -> 2500000, "2.500.000" ->
+   * 2500000, "500rb" -> 500000. Sufiks jt/juta dan rb/ribu memakai koma
+   * sebagai desimal; tanpa sufiks, titik/koma dianggap pemisah ribuan. */
+  function parseRupiahAmount(numStr, suffix) {
+    var s = String(numStr || '').trim();
+    if (!s) { return 0; }
+    var suf = String(suffix || '').toLowerCase();
+    if (suf === 'jt' || suf === 'juta' || suf === 'rb' || suf === 'ribu') {
+      var v = parseFloat(s.replace(',', '.'));
+      if (isNaN(v)) { return 0; }
+      return Math.round(v * (suf === 'jt' || suf === 'juta' ? 1000000 : 1000));
+    }
+    var n = parseInt(s.replace(/[.,\s]/g, ''), 10);
+    return isNaN(n) ? 0 : n;
+  }
+
+  /* Jumlah tamu dari teks bebas: "Jumlah tamu: 50", "50 pax",
+   * "Sekitar 30 orang". 0 bila tidak disebut. */
+  function parsePaxText(text) {
+    var t = text || '';
+    var m = /(\d{1,3})\s*(?:pax|orang|peserta)/i.exec(t);
+    if (!m) { m = /(?:jumlah\s*tamu|jml\s*tamu|tamu)\s*:?\s*(\d{1,3})/i.exec(t); }
+    if (!m) { return 0; }
+    var n = parseInt(m[1], 10);
+    return (isNaN(n) || n > 200) ? 0 : n;
+  }
+
+  /* Jam kedatangan dari teks bebas: "ETA 08.00", "early check-in
+   * 07:00", "jam 7 pagi". '' bila tidak disebut. */
+  function parseEtaText(text) {
+    var t = text || '';
+    var m = /(?:ETA|early\s*check[\s-]*in|check[\s-]*in|tiba|datang|jam)\s*:?\s*(\d{1,2})[.:](\d{2})/i.exec(t);
+    if (m) {
+      var h = parseInt(m[1], 10);
+      var min = parseInt(m[2], 10);
+      if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
+        return pad2(h) + ':' + pad2(min);
+      }
+      return '';
+    }
+    var pagi = /jam\s*(\d{1,2})\s*pagi/i.exec(t);
+    if (pagi) {
+      var hp = parseInt(pagi[1], 10);
+      if (hp >= 1 && hp <= 11) { return pad2(hp) + ':00'; }
+    }
+    return '';
+  }
+
+  /* Nomor WA/HP Indonesia dari teks bebas ("085155179899",
+   * "+62 815-5179-8899"). '' bila tidak ada. */
+  function parseWaText(text) {
+    var m = /(\+62[\d\s-]{9,14}|08[\d\s-]{8,12})/.exec(text || '');
+    if (!m) { return ''; }
+    var num = m[1].replace(/[\s-]/g, '');
+    var digits = num.replace(/\D/g, '');
+    if (num.charAt(0) === '+') {
+      return (digits.length >= 11 && digits.length <= 14) ? num : '';
+    }
+    return (digits.length >= 10 && digits.length <= 13) ? num : '';
+  }
+
+  /* Satu event Google Calendar -> { reservation, dp }, atau null bila
+   * event itu bukan menginap (dibatalkan, tanpa nama, atau 0 malam).
+   * Event seharian memakai start.date/end.date (end eksklusif, sama
+   * seperti konvensi reservasi); event berjam memakai tanggal dari
+   * start/end.dateTime. Reservation belum punya id (diisi saat impor).
+   * Pemetaan yang sama dengan impor satu-kali 13 Nov 2026: booking
+   * lama -> 'Selesai', akan datang -> 'Menunggu DP', sumber WhatsApp. */
+  function parseGcalEvent(ev, settings, todayISO) {
+    if (!ev || typeof ev !== 'object' || ev.status === 'cancelled') { return null; }
+    var guestName = (ev.summary || '').trim();
+    if (!guestName) { return null; }
+    var start = ev.start || {};
+    var end = ev.end || {};
+    var checkin = start.date || (start.dateTime || '').slice(0, 10);
+    var checkout = end.date || (end.dateTime || '').slice(0, 10);
+    if (!isISODate(checkin)) { return null; }
+    if (!isISODate(checkout)) { checkout = addDaysISO(checkin, 1); }
+    if (checkout <= checkin) { return null; }
+    var rate = suggestedRate(checkin, checkout, settings);
+    if (rate === null) { return null; }
+    var desc = (ev.description || '').trim();
+    var pax = parsePaxText(desc) || parsePaxText(guestName);
+    var eta = parseEtaText(desc);
+    var checkinTime = (settings && settings.checkinTime) || '14:00';
+    var early = (eta !== '' && eta < checkinTime) || /early\s*check[\s-]*in/i.test(desc);
+    var dpMatch = /\bDP\s*(?:Rp\.?\s*)?([\d.,]+)\s*(jt|juta|rb|ribu)?/i.exec(desc);
+    var dp = dpMatch ? parseRupiahAmount(dpMatch[1], dpMatch[2]) : 0;
+    var bookingDate = (ev.created || '').slice(0, 10);
+    if (!isISODate(bookingDate)) { bookingDate = todayISO; }
+    var note = 'Diimpor dari Google Calendar (JADWAL BOOKING VILLA).' +
+      (desc ? ' Catatan kalender: ' + desc.slice(0, 300) : '') +
+      (pax === 0 ? ' Jumlah tamu tidak tercatat di kalender.' : '');
+    return {
+      reservation: {
+        bookingDate: bookingDate,
+        checkin: checkin,
+        checkout: checkout,
+        guestName: guestName,
+        wa: parseWaText(desc),
+        pax: pax,
+        vipRooms: 0,
+        extraBeds: 0,
+        source: 'WhatsApp',
+        status: checkout <= todayISO ? 'Selesai' : 'Menunggu DP',
+        ratePerNight: rate,
+        extraCost: 0,
+        discount: 0,
+        leadId: '',
+        specialRequest: '',
+        internalNote: note,
+        promoEarlyCheckin: early ? 'Ya' : 'Tidak',
+        agreedCheckinTime: eta,
+        h1Confirmation: '',
+        h1EmptyVerified: 'Belum',
+        promoHelped: 'Tidak Ditanya',
+        promoDirectCost: 0,
+        googleEventId: ev.id || ''
+      },
+      dp: dp
+    };
+  }
+
+  /* Cocokkan daftar event kalender dengan reservasi yang sudah ada.
+   * "Sudah ada" bila googleEventId cocok ATAU nama tamu + tanggal
+   * check-in cocok (check-out tidak dipakai: event kalender lama
+   * mencakup 2 hari sementara reservasi dikoreksi jadi 1 malam).
+   * Mengembalikan { matches, skipped } — matches diurutkan check-in;
+   * tiap match: { eventId, reservation, dp, status ('baru' /
+   * 'sudah-ada'), existingId, existingCheckout, checkoutDiffers }. */
+  function matchGcalEvents(events, data, todayISO) {
+    var reservations = (data && data.reservations) || [];
+    var settings = (data && data.settings) || {};
+    var byEventId = {};
+    var byNameDate = {};
+    reservations.forEach(function (r) {
+      if (r.googleEventId) { byEventId[r.googleEventId] = r; }
+      if (r.guestName && r.checkin) {
+        var key = normGuestName(r.guestName) + '|' + r.checkin;
+        if (!byNameDate[key]) { byNameDate[key] = r; }
+      }
+    });
+    var matches = [];
+    var skipped = 0;
+    (events || []).forEach(function (ev) {
+      var parsed = parseGcalEvent(ev, settings, todayISO);
+      if (!parsed) { skipped++; return; }
+      var existing = null;
+      if (ev.id && byEventId[ev.id]) { existing = byEventId[ev.id]; }
+      if (!existing) {
+        existing = byNameDate[normGuestName(parsed.reservation.guestName) + '|' + parsed.reservation.checkin] || null;
+      }
+      matches.push({
+        eventId: ev.id || '',
+        reservation: parsed.reservation,
+        dp: parsed.dp,
+        status: existing ? 'sudah-ada' : 'baru',
+        existingId: existing ? existing.id : '',
+        existingCheckout: existing ? existing.checkout : '',
+        checkoutDiffers: !!(existing && existing.checkout !== parsed.reservation.checkout)
+      });
+    });
+    matches.sort(function (a, b) {
+      return a.reservation.checkin < b.reservation.checkin ? -1 :
+        (a.reservation.checkin > b.reservation.checkin ? 1 : 0);
+    });
+    return { matches: matches, skipped: skipped };
+  }
+
   /* ---------------- Dashboard ---------------- */
 
   function inMonth(iso, monthKey) {
@@ -1728,6 +1907,9 @@
     breakevenNights: breakevenNights,
     calendarCells: calendarCells,
     reservationsOnDate: reservationsOnDate,
+    parseGcalEvent: parseGcalEvent,
+    matchGcalEvents: matchGcalEvents,
+    GCAL_CALENDAR_NAME: GCAL_CALENDAR_NAME,
     computeDashboard: computeDashboard,
     validateData: validateData,
     deepClone: deepClone,

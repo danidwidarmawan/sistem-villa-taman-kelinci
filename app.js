@@ -21,7 +21,16 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.46.0-kalender-ke-reservasi';
+  var APP_VERSION = '1.47.0-sinkron-google-calendar';
+
+  /* Sinkron Google Calendar satu arah (v1.47.0): hanya BACA kalender
+   * (scope calendar.readonly) — reservasi di web app tidak pernah
+   * ditulis balik ke Google. Token akses hanya disimpan di memori
+   * (tidak pernah di localStorage) dan berlaku ~1 jam. */
+  var GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+  var GCAL_API = 'https://www.googleapis.com/calendar/v3';
+  var gcalToken = '';
+  var gcalTokenExp = 0;
 
   var LS = {
     data: 'vtk_data',
@@ -76,6 +85,7 @@
       { route: 'pengaturan', label: 'Periode Peak', section: 'set-peak', icon: 'calendar' },
       { route: 'pengaturan', label: 'Harga Katering', section: 'set-katering', icon: 'utensils' },
       { route: 'pengaturan', label: 'Target & Rekening', section: 'set-target', icon: 'target' },
+      { route: 'pengaturan', label: 'Google Calendar', section: 'set-gcal', icon: 'calendar' },
       { route: 'pengaturan', label: 'Template WhatsApp', section: 'set-wa', icon: 'receipt' }
     ]}
   ];
@@ -127,6 +137,14 @@
     calSelected: null,
     tamuGuest: null, /* kunci tamu di halaman detail Tamu (null = daftar) */
     receiptId: null, /* kwitansi yang sedang ditampilkan (null = daftar) */
+    /* Hasil sinkron Google Calendar di halaman Reservasi: null = belum
+     * sinkron; sesudahnya daftar match (baru/sudah-ada) + jumlah event
+     * yang dilewati (bukan menginap). Bertahan saat pindah rute sampai
+     * diimpor atau ditutup. */
+    gcalMatches: null,
+    gcalSkipped: 0,
+    gcalLoading: false,
+    gcalError: '',
     filters: {
       res: { status: '', month: '', q: '', date: '' },
       tx: { month: L.currentMonthKey(), type: '', category: '', status: '', account: '' },
@@ -1296,6 +1314,7 @@
 
     return '<section class="page-head"><h1>Reservasi</h1>' +
       '<div class="page-head-actions"><a class="btn" href="form-tamu.html" target="_blank" rel="noopener">Form tamu (link untuk tamu)</a>' +
+      '<button type="button" class="btn" onclick="VTK.gcalSync()">Sinkronkan Google Calendar</button>' +
       '<button type="button" class="btn btn-primary" onclick="VTK.openResForm()">+ Tambah reservasi</button></div></section>' +
       '<section class="filters card">' +
       '<label class="field"><span>Status</span><select onchange="VTK.setFilter(\'res\',\'status\',this.value)">' +
@@ -1307,6 +1326,7 @@
       '<button type="button" class="btn btn-small" onclick="VTK.exportCSV(\'reservasi\')">Unduh CSV</button>' +
       (f.date ? '<p class="hint">Menampilkan reservasi yang menginap pada ' + L.fmtDate(f.date) + ' — kosongkan tanggal untuk melihat semua.</p>' : '') +
       '</section>' +
+      gcalPanelHTML() +
       '<section class="card"><div class="table-wrap"><table class="tbl"><thead><tr>' +
       '<th>Booking ID</th><th>Tamu</th><th>Check-in</th><th>Check-out</th><th>Malam</th><th>Tamu (pax)</th>' +
       '<th>Total</th><th>Terbayar</th><th>Sisa</th><th>Status Bayar</th><th>Status</th></tr></thead>' +
@@ -3504,6 +3524,11 @@
       '<label class="field"><span>Label rekening katering &amp; extra bed</span><input type="text" name="accountLabelKatering" value="' + esc(labels.katering) + '" /></label>' +
       '</div>' +
       '<p class="hint">Pembayaran katering &amp; extra bed masuk rekening terpisah dari pembayaran villa. Label di atas hanya nama tampilan; rekening yang dipilih di tiap transaksi tetap tersimpan.</p>' +
+      '<h2 id="set-gcal">Google Calendar</h2>' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Client ID Google (OAuth)</span><input type="text" name="googleClientId" value="' + esc(s.googleClientId || '') + '" placeholder="123456789012-abcdefghij.apps.googleusercontent.com" /></label>' +
+      '</div>' +
+      '<p class="hint">Dibutuhkan tombol "Sinkronkan Google Calendar" di halaman Reservasi. Client ID dibuat sekali di Google Cloud Console (gratis) dengan origin https://danidwidarmawan.github.io — sinkron hanya membaca kalender "JADWAL BOOKING VILLA", tidak mengubah isinya.</p>' +
       saveStatusHTML() +
       '<div class="form-actions"><button type="submit" class="btn btn-primary">Simpan pengaturan</button></div>' +
       '</form>' +
@@ -3535,6 +3560,7 @@
     s.address = (fd.get('address') || '').trim();
     s.phone = (fd.get('phone') || '').trim();
     s.email = (fd.get('email') || '').trim();
+    s.googleClientId = (fd.get('googleClientId') || '').trim();
     s.tariffs = {
       weekday2026: num('weekday2026', s.tariffs.weekday2026),
       weekend2026: num('weekend2026', s.tariffs.weekend2026),
@@ -3772,6 +3798,243 @@
   function goResForDate(iso) {
     state.filters.res = { status: '', month: '', q: '', date: iso };
     go('reservasi');
+  }
+
+  /* ---------------- Sinkron Google Calendar (v1.47.0, satu arah) ---------------- */
+
+  /* Client ID OAuth dari Pengaturan (bukan rahasia — identifier publik
+   * Google; disimpan di settings agar berlaku di semua perangkat). */
+  function gcalClientId() {
+    var s = state.data && state.data.settings;
+    return (s && s.googleClientId || '').trim();
+  }
+
+  /* Token akses Google (disimpan di memori saja). Pakai ulang bila
+   * masih berlaku; bila tidak, minta token baru lewat GIS — pengguna
+   * yang sudah pernah memberi izin tidak diminta login lagi. */
+  function gcalGetToken(cid) {
+    return new Promise(function (resolve, reject) {
+      if (gcalToken && Date.now() < gcalTokenExp - 60000) { resolve(gcalToken); return; }
+      var client;
+      try {
+        client = window.google.accounts.oauth2.initTokenClient({
+          client_id: cid,
+          scope: GCAL_SCOPE,
+          callback: function (resp) {
+            if (resp && resp.access_token) {
+              gcalToken = resp.access_token;
+              gcalTokenExp = Date.now() + (resp.expires_in || 3600) * 1000;
+              resolve(gcalToken);
+            } else {
+              reject(new Error((resp && resp.error_description) || (resp && resp.error) || 'Login Google dibatalkan.'));
+            }
+          }
+        });
+      } catch (e) { reject(e); return; }
+      try { client.requestAccessToken({ prompt: '' }); } catch (e) { reject(e); }
+    });
+  }
+
+  function gcalApi(path, token) {
+    return fetch(GCAL_API + path, { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (resp) {
+        if (!resp.ok) {
+          return resp.json().catch(function () { return null; }).then(function (j) {
+            var msg = (j && j.error && j.error.message) || ('Google Calendar error (' + resp.status + ')');
+            throw new Error(msg);
+          });
+        }
+        return resp.json();
+      });
+  }
+
+  function gcalSync() {
+    var cid = gcalClientId();
+    if (!cid) {
+      toast('Isi Client ID Google di Pengaturan dulu.');
+      state.settingsSection = 'set-gcal';
+      state.pendingScroll = 'set-gcal';
+      go('pengaturan');
+      return;
+    }
+    if (typeof window.google === 'undefined' || !window.google.accounts || !window.google.accounts.oauth2) {
+      state.gcalError = 'Pustaka login Google belum termuat. Periksa koneksi internet lalu coba lagi.';
+      state.gcalMatches = null;
+      renderView();
+      return;
+    }
+    state.gcalLoading = true;
+    state.gcalError = '';
+    state.gcalMatches = null;
+    renderView();
+    var token = '';
+    gcalGetToken(cid)
+      .then(function (t) {
+        token = t;
+        return gcalApi('/users/me/calendarList', token);
+      })
+      .then(function (list) {
+        var cal = null;
+        (list.items || []).forEach(function (c) {
+          if (c.summary === L.GCAL_CALENDAR_NAME) { cal = c; }
+        });
+        if (!cal) {
+          throw new Error('Kalender "' + L.GCAL_CALENDAR_NAME + '" tidak ditemukan di akun Google ini.');
+        }
+        var now = new Date();
+        var min = new Date(now.getTime() - 90 * 86400000).toISOString();
+        var max = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate()).toISOString();
+        var q = '?singleEvents=true&orderBy=startTime&maxResults=250' +
+          '&timeMin=' + encodeURIComponent(min) + '&timeMax=' + encodeURIComponent(max);
+        return gcalApi('/calendars/' + encodeURIComponent(cal.id) + '/events' + q, token);
+      })
+      .then(function (ev) {
+        var res = L.matchGcalEvents(ev.items || [], state.data, L.todayISO());
+        res.matches.forEach(function (m) { m.selected = (m.status === 'baru'); });
+        state.gcalLoading = false;
+        state.gcalMatches = res.matches;
+        state.gcalSkipped = res.skipped;
+        renderView();
+      })
+      .catch(function (err) {
+        /* Token kedaluwarsa di tengah jalan: hapus agar klik berikutnya
+         * login ulang, bukan mengulang 401 yang sama. */
+        if (err && /401/.test(err.message || '')) { gcalToken = ''; gcalTokenExp = 0; }
+        state.gcalLoading = false;
+        state.gcalError = (err && err.message) || 'Gagal sinkron dengan Google Calendar.';
+        renderView();
+      });
+  }
+
+  /* Panel hasil sinkron di halaman Reservasi: daftar booking kalender
+   * dengan label Baru/Sudah ada + centang impor. */
+  function gcalPanelHTML() {
+    if (state.gcalLoading) {
+      return '<section class="card"><p>Menyinkronkan dengan Google Calendar…</p></section>';
+    }
+    if (state.gcalError) {
+      return '<section class="card"><p><strong>Sinkron gagal:</strong> ' + esc(state.gcalError) + '</p>' +
+        '<p><button type="button" class="btn btn-small" onclick="VTK.gcalSync()">Coba lagi</button> ' +
+        '<button type="button" class="btn btn-small" onclick="VTK.gcalClose()">Tutup</button></p></section>';
+    }
+    var matches = state.gcalMatches;
+    if (!matches) { return ''; }
+    var baruCount = matches.filter(function (m) { return m.status === 'baru'; }).length;
+    var selectedCount = matches.filter(function (m) { return m.selected && m.status === 'baru'; }).length;
+    var rows = matches.map(function (m, i) {
+      var r = m.reservation;
+      var nights = L.nightsBetween(r.checkin, r.checkout);
+      var isBaru = m.status === 'baru';
+      var statusCell = isBaru
+        ? '<span class="badge ok">Baru</span>'
+        : '<span class="badge muted">Sudah ada</span>' +
+          (m.checkoutDiffers
+            ? '<br /><span class="hint">Check-out di kalender ' + L.fmtDate(r.checkout) +
+              ', di web app ' + L.fmtDate(m.existingCheckout) + '.</span>'
+            : '');
+      return '<tr><td data-label="Impor"><input type="checkbox"' +
+        (isBaru ? ' onchange="VTK.gcalToggle(' + i + ', this.checked)"' : ' disabled') +
+        (m.selected && isBaru ? ' checked' : '') + ' /></td>' +
+        '<td data-label="Tamu">' + esc(r.guestName) +
+        (r.agreedCheckinTime ? '<br /><span class="hint">ETA ' + esc(r.agreedCheckinTime) + '</span>' : '') + '</td>' +
+        '<td data-label="Check-in">' + L.fmtDate(r.checkin) + '</td>' +
+        '<td data-label="Check-out">' + L.fmtDate(r.checkout) + '</td>' +
+        '<td data-label="Malam">' + nights + '</td>' +
+        '<td data-label="Tamu (pax)">' + (r.pax > 0 ? L.fmtNum(r.pax) : '—') + '</td>' +
+        '<td data-label="DP">' + (m.dp > 0 ? L.fmtRp(m.dp) : '—') + '</td>' +
+        '<td data-label="Status">' + statusCell + '</td></tr>';
+    }).join('');
+    return '<section class="card"><h2>Hasil sinkron Google Calendar</h2>' +
+      '<p class="hint">' + matches.length + ' booking ditemukan di kalender "' + esc(L.GCAL_CALENDAR_NAME) + '"' +
+      ' (' + baruCount + ' baru)' +
+      (state.gcalSkipped > 0 ? ' — ' + state.gcalSkipped + ' event dilewati (bukan menginap / tanpa nama tamu).' : '') +
+      ' Centang booking baru yang mau diimpor; yang "Sudah ada" tidak diimpor lagi.</p>' +
+      '<div class="table-wrap"><table class="tbl"><thead><tr>' +
+      '<th>Impor</th><th>Tamu</th><th>Check-in</th><th>Check-out</th><th>Malam</th><th>Tamu (pax)</th><th>DP</th><th>Status</th>' +
+      '</tr></thead><tbody>' + (rows || '<tr><td colspan="8" class="empty">Tidak ada booking di kalender pada periode ini.</td></tr>') +
+      '</tbody></table></div>' +
+      '<div class="form-actions"><button type="button" class="btn btn-primary" onclick="VTK.gcalImportSelected()"' +
+      (selectedCount === 0 ? ' disabled' : '') + '>Impor yang dipilih (' + selectedCount + ')</button> ' +
+      '<button type="button" class="btn" onclick="VTK.gcalClose()">Tutup</button></div></section>';
+  }
+
+  function gcalToggle(idx, checked) {
+    if (state.gcalMatches && state.gcalMatches[idx]) {
+      state.gcalMatches[idx].selected = !!checked;
+      renderView();
+    }
+  }
+
+  function gcalClose() {
+    state.gcalMatches = null;
+    state.gcalSkipped = 0;
+    state.gcalError = '';
+    renderView();
+  }
+
+  /* Impor booking baru yang dicentang: jadi reservasi (ID BK berurutan
+   * per tanggal booking) + transaksi DP Belum Dicek bila DP tercatat di
+   * kalender. Booking yang bentrok tanggal dengan reservasi yang sudah
+   * ada dilewati agar tidak duplikat. */
+  function gcalImportSelected() {
+    var matches = state.gcalMatches || [];
+    var sel = matches.filter(function (m) { return m.selected && m.status === 'baru'; });
+    if (!sel.length) { toast('Tidak ada booking baru yang dipilih.'); return; }
+    sel.sort(function (a, b) {
+      return a.reservation.checkin < b.reservation.checkin ? -1 : 1;
+    });
+    var reservations = state.data.reservations;
+    var transactions = state.data.transactions;
+    var imported = 0;
+    var skippedOverlap = 0;
+    var dpCount = 0;
+    sel.forEach(function (m) {
+      var r = m.reservation;
+      var overlap = reservations.some(function (x) {
+        return x.status !== 'Dibatalkan' && r.checkin < x.checkout && x.checkin < r.checkout;
+      });
+      if (overlap) { skippedOverlap++; return; }
+      r.id = L.nextId('BK', reservations, r.bookingDate);
+      touch(r);
+      reservations.push(r);
+      imported++;
+      if (m.dp > 0) {
+        var t = {
+          id: L.nextId('TRX', transactions, r.bookingDate),
+          date: r.bookingDate,
+          type: 'Masuk',
+          category: 'Pembayaran Tamu',
+          account: 'villa',
+          bookingId: r.id,
+          description: 'DP - ' + r.guestName + ' (diimpor dari Google Calendar)',
+          method: 'Lainnya',
+          amount: m.dp,
+          month: r.bookingDate.slice(0, 7),
+          pic: '',
+          verifyStatus: 'Belum Dicek',
+          proof: '',
+          note: 'Jumlah DP sesuai catatan kalender. Mohon verifikasi penerimaan & tanggalnya.'
+        };
+        touch(t);
+        transactions.push(t);
+        dpCount++;
+      }
+    });
+    state.data.meta = state.data.meta || {};
+    state.data.meta.lastGcalSync = {
+      date: L.todayISO(),
+      imported: imported,
+      skippedOverlap: skippedOverlap
+    };
+    state.gcalMatches = null;
+    state.gcalSkipped = 0;
+    commit().then(function () {
+      var msg = imported + ' reservasi diimpor dari Google Calendar' +
+        (dpCount > 0 ? ' (' + dpCount + ' DP Belum Dicek)' : '') +
+        (skippedOverlap > 0 ? '. ' + skippedOverlap + ' dilewati karena bentrok tanggal.' : '');
+      toast(msg);
+      renderView();
+    });
   }
 
   /* ---------------- API global (dipakai handler inline) ---------------- */
@@ -4019,6 +4282,11 @@
       state.calSelected = iso; renderView();
     },
     goResForDate: goResForDate,
+    /* Sinkron Google Calendar satu arah (v1.47.0). */
+    gcalSync: gcalSync,
+    gcalToggle: gcalToggle,
+    gcalImportSelected: gcalImportSelected,
+    gcalClose: gcalClose,
     /* Dari kalender mini dashboard: hari terisi langsung ke Daftar
      * Reservasi difilter tanggal itu (v1.46.0); hari lain tetap buka
      * Kalender pada bulan & hari itu. */
