@@ -1505,15 +1505,30 @@
    * bagian yang ada). */
   var RECEIPT_PAYMENTS = ['Pembayaran DP Villa', 'Pembayaran Catering', 'Pembayaran Kamar VIP', 'Pembayaran Extra Bed', 'Pembayaran Pelunasan Villa'];
 
+  /* Urutan kanonis "Untuk Pembayaran" untuk tampilan (v1.43.0):
+   * villa dulu (DP, Pelunasan), lalu extra sesuai urutan dropdown.
+   * Urutan checkbox di form mengikuti RECEIPT_PAYMENTS, jadi tanpa
+   * ini urutan tampil bisa terbalik setelah simpan. */
+  var RECEIPT_PAYMENT_ORDER = ['Pembayaran DP Villa', 'Pembayaran Pelunasan Villa', 'Pembayaran Catering', 'Pembayaran Kamar VIP', 'Pembayaran Extra Bed'];
+
   /* Normalisasi "Untuk Pembayaran" (v1.42.0: disimpan sebagai array
    * karena bisa beberapa pilihan). Menerima array (v1.42.0+), string
-   * lama (v1.37.0–v1.41.0), atau kosong -> []. */
+   * lama (v1.37.0–v1.41.0), atau kosong -> []. Hasil selalu dalam
+   * urutan kanonis; nilai tak dikenal (lama) tetap di akhir. */
   function receiptPayments(forPayment) {
+    var list;
     if (Array.isArray(forPayment)) {
-      return forPayment.filter(function (p) { return typeof p === 'string' && p; });
+      list = forPayment.filter(function (p) { return typeof p === 'string' && p; });
+    } else if (typeof forPayment === 'string' && forPayment) {
+      list = [forPayment];
+    } else {
+      return [];
     }
-    if (typeof forPayment === 'string' && forPayment) { return [forPayment]; }
-    return [];
+    return list.slice().sort(function (a, b) {
+      var ia = RECEIPT_PAYMENT_ORDER.indexOf(a);
+      var ib = RECEIPT_PAYMENT_ORDER.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
   }
 
   /* Teks tampil "Untuk Pembayaran" (v1.42.0): satu pilihan tampil
@@ -1530,21 +1545,17 @@
     return 'Pembayaran ' + parts.slice(0, -1).join(', ') + ' & ' + parts[parts.length - 1];
   }
 
-  /* Draf kwitansi dari reservasi (v1.38.0: dua jenis; v1.41.0:
-   * keterangan = salah satu RECEIPT_PAYMENTS, tanpa tanggal —
-   * tanggal menginap tampil di baris tersendiri di cetak).
-   * kind 'villa' (default): DP & pelunasan sewa villa — jumlah =
-   * terbayar 'Pembayaran Tamu' terverifikasi (atau total villa bila
-   * belum ada); keterangan 'Pembayaran DP Villa' bila sebagian,
-   * 'Pembayaran Pelunasan Villa' bila lunas/penuh; rincian = sewa
-   * villa (+ diskon).
-   * kind 'katering': pembayaran katering, extra bed & kamar VIP —
-   * jumlah = terbayar 'Pembayaran Extra Bed' + 'Pendapatan Katering'
-   * terverifikasi (atau total extra bila belum ada); keterangan =
-   * SEMUA bagian yang ada (v1.42.0, dalam urutan dropdown); rincian =
-   * extra bed + VIP + katering. */
-  function receiptFromReservation(data, reservationId, kind) {
-    kind = kind === 'katering' ? 'katering' : 'villa';
+  /* Draf kwitansi dari reservasi (v1.43.0: SATU jenis kwitansi —
+   * pembedaan villa/katering dihapus atas permintaan pemilik; yang
+   * berubah hanya isinya). Jumlah = seluruh pembayaran terverifikasi
+   * booking itu (villa + extra); bila belum ada, total booking.
+   * Keterangan = semua yang dibayar: villa sebagian -> DP Villa,
+   * villa lunas -> Pelunasan Villa, plus bagian extra yang ada bila
+   * extra ikut dibayar (atau belum ada pembayaran sama sekali).
+   * Rincian: pembayaran sebagian -> satu baris gabungan; lunas/belum
+   * bayar -> rincian lengkap (sewa villa + diskon + extra bed + VIP
+   * + katering). */
+  function receiptFromReservation(data, reservationId) {
     var d = data || {};
     var r = null;
     (d.reservations || []).forEach(function (x) { if (x && x.id === reservationId) { r = x; } });
@@ -1552,8 +1563,19 @@
     var settings = d.settings || {};
     var calc = reservationCalc(r, d.transactions || [], settings);
     var split = paidForBookingSplit(r.id, d.transactions || []);
+    var bd = extraCostBreakdown(r, settings);
+    var katPax = (r.cateringPax !== '' && r.cateringPax > 0) ? r.cateringPax : (r.pax || 0);
+    var katCalc = r.cateringPackage
+      ? cateringOrderCalc(settings, r.cateringPackage, r.cateringMeals || 'Full', katPax)
+      : { pricePerPax: 0, pax: 0, total: 0 };
+    /* Jaga-jaga: extraCost tersimpan bisa melebihi rincian (data lama). */
+    var extraStored = +r.extraCost || 0;
+    var extraDiff = Math.max(0, extraStored - bd.total);
+    var villaTotal = Math.max(0, calc.nights * (+r.ratePerNight || 0) - (+r.discount || 0));
+    var extraTotal = bd.total + extraDiff + katCalc.total;
+    var total = villaTotal + extraTotal;
+    var paid = split.villa + split.extra;
     var draft = {
-      kind: kind,
       reservationId: r.id,
       guestName: r.guestName || '',
       city: 'Bogor',
@@ -1563,42 +1585,24 @@
       checkout: r.checkout || '',
       number: nextReceiptNumber(d.receipts || [], todayISO())
     };
-    if (kind === 'villa') {
-      var villaTotal = Math.max(0, calc.nights * (+r.ratePerNight || 0) - (+r.discount || 0));
-      var paid = split.villa;
-      var isPartial = paid > 0 && paid < villaTotal;
-      draft.amount = paid > 0 ? paid : villaTotal;
-      draft.forPayment = isPartial ? ['Pembayaran DP Villa'] : ['Pembayaran Pelunasan Villa'];
-      draft.items = isPartial
-        ? [{ desc: 'DP Villa', qty: 1, price: draft.amount }]
-        : [{ desc: 'Sewa Villa (' + calc.nights + ' malam)', qty: 1, price: calc.nights * (+r.ratePerNight || 0) }]
-          .concat(+r.discount ? [{ desc: 'Diskon', qty: 1, price: -(+r.discount) }] : []);
-      return draft;
+    draft.amount = paid > 0 ? paid : total;
+    var fp = [];
+    if (split.villa > 0) {
+      fp.push(split.villa < villaTotal ? 'Pembayaran DP Villa' : 'Pembayaran Pelunasan Villa');
+    } else if (paid === 0) {
+      fp.push('Pembayaran Pelunasan Villa');
     }
-    /* kind 'katering': extra bed + VIP + katering. */
-    var bd = extraCostBreakdown(r, settings);
-    var katPax = (r.cateringPax !== '' && r.cateringPax > 0) ? r.cateringPax : (r.pax || 0);
-    var katCalc = r.cateringPackage
-      ? cateringOrderCalc(settings, r.cateringPackage, r.cateringMeals || 'Full', katPax)
-      : { pricePerPax: 0, pax: 0, total: 0 };
-    /* Jaga-jaga: extraCost tersimpan bisa melebihi rincian (data lama). */
-    var extraStored = +r.extraCost || 0;
-    var extraDiff = Math.max(0, extraStored - bd.total);
-    var extraTotal = bd.total + extraDiff + katCalc.total;
-    var paidExtra = split.extra;
-    var isPartialExtra = paidExtra > 0 && paidExtra < extraTotal;
-    /* Keterangan = SEMUA bagian yang ada (v1.42.0: multi-pilihan),
-     * dalam urutan dropdown. */
-    var partLabels = [];
-    if (katCalc.total > 0) { partLabels.push('Pembayaran Catering'); }
-    if (bd.vipCost > 0) { partLabels.push('Pembayaran Kamar VIP'); }
-    if (bd.extraBedCost > 0) { partLabels.push('Pembayaran Extra Bed'); }
-    draft.amount = paidExtra > 0 ? paidExtra : extraTotal;
-    draft.forPayment = partLabels.length ? partLabels : ['Pembayaran Catering'];
-    if (isPartialExtra) {
-      draft.items = [{ desc: receiptPaymentsText(draft.forPayment), qty: 1, price: draft.amount }];
+    var extraParts = [];
+    if (katCalc.total > 0) { extraParts.push('Pembayaran Catering'); }
+    if (bd.vipCost > 0) { extraParts.push('Pembayaran Kamar VIP'); }
+    if (bd.extraBedCost > 0) { extraParts.push('Pembayaran Extra Bed'); }
+    if (split.extra > 0 || paid === 0) { fp = fp.concat(extraParts); }
+    draft.forPayment = fp;
+    if (paid > 0 && paid < total) {
+      draft.items = [{ desc: receiptPaymentsText(fp), qty: 1, price: draft.amount }];
     } else {
-      draft.items = [];
+      draft.items = [{ desc: 'Sewa Villa (' + calc.nights + ' malam)', qty: 1, price: calc.nights * (+r.ratePerNight || 0) }]
+        .concat(+r.discount ? [{ desc: 'Diskon', qty: 1, price: -(+r.discount) }] : []);
       if (bd.extraBedCost > 0) {
         draft.items.push({ desc: 'Extra bed (' + fmtNum(r.extraBeds) + ' bed)', qty: 1, price: bd.extraBedCost });
       }

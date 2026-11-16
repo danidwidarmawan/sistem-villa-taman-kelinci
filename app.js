@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.42.0-untuk-pembayaran-multi';
+  var APP_VERSION = '1.43.0-satu-jenis-preset-rincian';
 
   var LS = {
     data: 'vtk_data',
@@ -1846,11 +1846,44 @@
 
   /* Jenis kwitansi: 'villa' = DP & pelunasan sewa villa (Rekening Villa);
    * 'katering' = katering, extra bed & kamar VIP (Rekening Katering). */
-  var RECEIPT_KINDS = {
-    villa: { short: 'Villa', full: 'Kwitansi Villa (DP & Pelunasan)' },
-    katering: { short: 'Katering & Extra Bed', full: 'Kwitansi Katering, Extra Bed & Kamar VIP' }
-  };
-  function receiptKindOf(rc) { return rc && rc.kind === 'katering' ? 'katering' : 'villa'; }
+  /* Preset rincian cepat (v1.43.0): centang = tambah baris, hapus
+   * centang = hapus barisnya. Harga katering = harga paket penuh
+   * per pax dari Pengaturan; DP Villa = 30% biaya menginap reservasi
+   * yang dipilih (0 bila isi manual). */
+  var RECEIPT_PRESETS = [
+    { key: 'dp-villa', label: 'DP Villa' },
+    { key: 'catering:Hemat 1', label: 'Catering: Paket Hemat 1' },
+    { key: 'catering:Hemat 2', label: 'Catering: Paket Hemat 2' },
+    { key: 'catering:Paket A', label: 'Catering: Paket A' },
+    { key: 'catering:Paket B', label: 'Catering: Paket B' },
+    { key: 'catering:Paket C', label: 'Catering: Paket C' },
+    { key: 'catering:custom', label: 'Catering: Custom' }
+  ];
+
+  /* Baris rincian dari sebuah preset. */
+  function receiptPresetItem(preset) {
+    var settings = (state.data && state.data.settings) || {};
+    var def = null;
+    RECEIPT_PRESETS.forEach(function (p) { if (p.key === preset) { def = p; } });
+    if (!def) { return null; }
+    var form = $('receipt-form');
+    var res = null;
+    if (form) {
+      var resId = (form.querySelector('[name="reservationId"]') || {}).value || '';
+      if (resId) {
+        (state.data.reservations || []).forEach(function (r) { if (r.id === resId) { res = r; } });
+      }
+    }
+    var desc = def.label.replace('Catering: ', 'Catering ');
+    if (preset === 'dp-villa') {
+      var dp = 0;
+      if (res) { dp = L.reservationCalc(res, state.data.transactions || [], settings).dpAmount; }
+      return { desc: desc, qty: 1, price: dp };
+    }
+    if (preset === 'catering:custom') { return { desc: desc, qty: 1, price: 0 }; }
+    return { desc: desc, qty: res ? (+res.pax || 1) : 1,
+      price: L.cateringPricePerPax(settings, preset.slice('catering:'.length), 'full') };
+  }
 
   /* Kwitansi — dipindahkan dari Kwitansi.xlsm (Data Kuitansi + form
    * Kuitansi + Invoice manual (2)): bukti pembayaran untuk tamu yang
@@ -1892,7 +1925,6 @@
     var rows = list.map(function (rc) {
       return '<tr class="clickable" onclick="VTK.showReceipt(\'' + esc(rc.id) + '\')">' +
         '<td data-label="Nomor">' + esc(rc.number) + '</td>' +
-        '<td data-label="Jenis">' + esc(RECEIPT_KINDS[receiptKindOf(rc)].short) + '</td>' +
         '<td data-label="Diterima dari">' + esc(rc.guestName) + '</td>' +
         '<td data-label="Jumlah" class="num">' + L.fmtRp(rc.amount) + '</td>' +
         '<td data-label="Untuk pembayaran">' + esc(L.receiptPaymentsText(rc.forPayment)) + '</td>' +
@@ -1904,14 +1936,14 @@
       '<div class="card-head-actions"><input type="search" placeholder="Cari nomor / nama tamu…" value="' + esc(state.filters.kwitansi.q) +
       '" oninput="VTK.setFilter(\'kwitansi\',\'q\',this.value)" />' +
       '<button type="button" class="btn btn-primary" onclick="VTK.openReceiptForm()">+ Buat kwitansi</button></div></div>' +
-      (list.length ? '<div class="table-wrap"><table class="tbl"><thead><tr><th>Nomor</th><th>Jenis</th><th>Diterima dari</th><th class="num">Jumlah</th><th>Untuk pembayaran</th><th>Tanggal</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      (list.length ? '<div class="table-wrap"><table class="tbl"><thead><tr><th>Nomor</th><th>Diterima dari</th><th class="num">Jumlah</th><th>Untuk pembayaran</th><th>Tanggal</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
         : '<p class="empty">Belum ada kwitansi. Buat dari reservasi tamu yang sudah membayar, atau isi manual.</p>') +
       '</section>';
   }
 
-  function receiptItemRowHTML(it) {
+  function receiptItemRowHTML(it, preset) {
     it = it || {};
-    return '<div class="rc-item-row">' +
+    return '<div class="rc-item-row"' + (preset ? ' data-preset="' + esc(preset) + '"' : '') + '>' +
       '<input type="text" class="rc-item-desc" placeholder="Deskripsi (cth: DP Villa)" value="' + esc(it.desc || '') + '" />' +
       '<input type="number" class="rc-item-qty" min="0" step="any" placeholder="Jml" value="' + (it.qty === undefined || it.qty === null ? '' : esc(it.qty)) + '" oninput="VTK.receiptItemsRecalc()" />' +
       '<input type="number" class="rc-item-price" min="0" step="any" placeholder="Harga satuan (Rp)" value="' + (it.price === undefined || it.price === null ? '' : esc(it.price)) + '" oninput="VTK.receiptItemsRecalc()" />' +
@@ -1931,9 +1963,8 @@
         return '<option value="' + esc(r.id) + '"' + (v.reservationId === r.id ? ' selected' : '') + '>' +
           esc(r.guestName) + ' — ' + L.fmtDate(r.checkin) + ' s.d. ' + L.fmtDate(r.checkout) + ' (' + esc(r.id) + ')</option>';
       }).join('');
-    var items = (v.items || []).map(receiptItemRowHTML).join('');
+    var items = (v.items || []).map(function (it) { return receiptItemRowHTML(it); }).join('');
     var itemsTotal = L.receiptItemsTotal(v.items || []);
-    var kind = receiptKindOf(v);
     /* Checkbox Untuk Pembayaran (v1.42.0): bisa beberapa pilihan.
      * Baru: default 'Pembayaran DP Villa' tercetang. Nilai lama yang
      * tidak ada di daftar tetap tampil sebagai checkbox "(lama)" agar
@@ -1950,19 +1981,21 @@
       }
     });
     var title = isNew ? 'Kwitansi baru' : 'Ubah kwitansi ' + esc(rc.number);
+    /* Checkbox preset rincian (v1.43.0) — harga katering tampil di label. */
+    var rSettings = (state.data && state.data.settings) || {};
+    var presetBoxes = RECEIPT_PRESETS.map(function (pr) {
+      var priceHint = '';
+      if (pr.key.indexOf('catering:') === 0 && pr.key !== 'catering:custom') {
+        priceHint = ' — ' + L.fmtRp(L.cateringPricePerPax(rSettings, pr.key.slice('catering:'.length), 'full')) + '/pax';
+      }
+      return '<label class="checkbox"><input type="checkbox" data-preset="' + esc(pr.key) + '" onchange="VTK.receiptPresetToggle(this)" /> ' + esc(pr.label) + esc(priceHint) + '</label>';
+    }).join('');
     return '<section class="page-head"><h1>' + title + '</h1>' +
       '<p class="muted">Pilih reservasi untuk mengisi otomatis dari pembayaran tamu, atau isi manual.</p></section>' +
       '<form id="receipt-form" class="card card-form" onsubmit="return VTK.saveReceipt(event)">' +
       '<input type="hidden" name="id" value="' + esc(rc ? rc.id : '') + '" />' +
       '<input type="hidden" name="checkin" value="' + esc(v.checkin || '') + '" />' +
       '<input type="hidden" name="checkout" value="' + esc(v.checkout || '') + '" />' +
-      '<div class="form-row">' +
-      '<label class="field field-grow"><span>Jenis kwitansi</span><select name="kind" onchange="VTK.receiptPickKind()">' +
-      '<option value="villa"' + (kind === 'villa' ? ' selected' : '') + '>' + esc(RECEIPT_KINDS.villa.full) + '</option>' +
-      '<option value="katering"' + (kind === 'katering' ? ' selected' : '') + '>' + esc(RECEIPT_KINDS.katering.full) + '</option>' +
-      '</select>' +
-      '<span class="hint">Villa = DP &amp; pelunasan sewa (Rekening Villa). Katering = katering, extra bed &amp; kamar VIP (Rekening Katering &amp; Extra Bed). Mengganti jenis mengisi ulang form dari reservasi yang dipilih.</span></label>' +
-      '</div>' +
       '<div class="form-row">' +
       '<label class="field field-grow"><span>Dari reservasi (opsional)</span><select name="reservationId" onchange="VTK.receiptPickRes(this.value)">' +
       '<option value="">— Isi manual —</option>' + resOpts + '</select>' +
@@ -1983,6 +2016,8 @@
       '<label class="field field-grow"><span>Penerima (tanda tangan)</span><input type="text" name="receiver" value="' + esc(v.receiver || 'Manajemen Villa Taman Kelinci') + '" /></label>' +
       '</div>' +
       '<fieldset class="field"><legend>Rincian (opsional)</legend>' +
+      '<div class="checkbox-row">' + presetBoxes + '</div>' +
+      '<span class="hint">Centang untuk menambah baris rincian — harga katering terisi otomatis (harga paket penuh per pax; ubah di baris bila 1x/2x makan). Hapus centang untuk menghapus barisnya.</span>' +
       '<div id="rc-items">' + items + '</div>' +
       '<div class="rc-items-foot"><button type="button" class="btn btn-small" onclick="VTK.receiptAddItem()">+ Tambah baris</button>' +
       '<span class="muted">Total rincian: <strong id="rc-items-total">' + L.fmtRp(itemsTotal) + '</strong></span></div>' +
@@ -2009,7 +2044,6 @@
     return {
       id: fd.get('id') || '',
       number: (fd.get('number') || '').trim(),
-      kind: fd.get('kind') === 'katering' ? 'katering' : 'villa',
       reservationId: fd.get('reservationId') || '',
       guestName: (fd.get('guestName') || '').trim(),
       amount: parseFloat(fd.get('amount')) || 0,
@@ -3811,8 +3845,7 @@
       if (!reservationId) { return; }
       var form = $('receipt-form');
       if (!form) { return; }
-      var kindEl = form.querySelector('[name="kind"]');
-      var d = L.receiptFromReservation(state.data, reservationId, kindEl ? kindEl.value : 'villa');
+      var d = L.receiptFromReservation(state.data, reservationId);
       if (!d) { return; }
       var set = function (name, val) { var el = form.querySelector('[name="' + name + '"]'); if (el) { el.value = val; } };
       set('guestName', d.guestName);
@@ -3822,15 +3855,24 @@
       set('checkin', d.checkin);
       set('checkout', d.checkout);
       var wrap = $('rc-items');
-      if (wrap) { wrap.innerHTML = d.items.map(receiptItemRowHTML).join(''); }
+      if (wrap) { wrap.innerHTML = d.items.map(function (it) { return receiptItemRowHTML(it); }).join(''); }
       VTK.receiptItemsRecalc();
     },
     /* Ganti jenis kwitansi: isi ulang form dari reservasi yang dipilih. */
-    receiptPickKind: function () {
-      var form = $('receipt-form');
-      if (!form) { return; }
-      var resEl = form.querySelector('[name="reservationId"]');
-      if (resEl && resEl.value) { VTK.receiptPickRes(resEl.value); }
+    /* Centang/hapus preset rincian (v1.43.0). */
+    receiptPresetToggle: function (box) {
+      var preset = box.getAttribute('data-preset');
+      var wrap = $('rc-items');
+      if (!preset || !wrap) { return; }
+      if (box.checked) {
+        var item = receiptPresetItem(preset);
+        if (!item) { box.checked = false; return; }
+        wrap.insertAdjacentHTML('beforeend', receiptItemRowHTML(item, preset));
+      } else {
+        var rows = wrap.querySelectorAll('[data-preset="' + preset + '"]');
+        Array.prototype.forEach.call(rows, function (r) { r.remove(); });
+      }
+      VTK.receiptItemsRecalc();
     },
     receiptAddItem: function () {
       var wrap = $('rc-items');
