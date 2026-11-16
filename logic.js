@@ -1498,15 +1498,25 @@
     return { villa: villa, extra: extra };
   }
 
-  /* Draf kwitansi dari reservasi (v1.38.0: dua jenis).
+  /* Pilihan "Untuk Pembayaran" kwitansi (v1.41.0, urutan sesuai
+   * permintaan pemilik): dropdown di form; prefill memilih yang
+   * sesuai (DP sebagian -> DP Villa; lunas/penuh -> Pelunasan Villa;
+   * katering -> bagian terbesar). */
+  var RECEIPT_PAYMENTS = ['Pembayaran DP Villa', 'Pembayaran Catering', 'Pembayaran Kamar VIP', 'Pembayaran Extra Bed', 'Pembayaran Pelunasan Villa'];
+
+  /* Draf kwitansi dari reservasi (v1.38.0: dua jenis; v1.41.0:
+   * keterangan = salah satu RECEIPT_PAYMENTS, tanpa tanggal —
+   * tanggal menginap tampil di baris tersendiri di cetak).
    * kind 'villa' (default): DP & pelunasan sewa villa — jumlah =
    * terbayar 'Pembayaran Tamu' terverifikasi (atau total villa bila
-   * belum ada); keterangan DP/pelunasan/pembayaran + tanggal menginap;
-   * rincian = sewa villa (+ diskon).
+   * belum ada); keterangan 'Pembayaran DP Villa' bila sebagian,
+   * 'Pembayaran Pelunasan Villa' bila lunas/penuh; rincian = sewa
+   * villa (+ diskon).
    * kind 'katering': pembayaran katering, extra bed & kamar VIP —
    * jumlah = terbayar 'Pembayaran Extra Bed' + 'Pendapatan Katering'
-   * terverifikasi (atau total extra bila belum ada); keterangan
-   * menyebut bagian yang ada; rincian = extra bed + VIP + katering. */
+   * terverifikasi (atau total extra bila belum ada); keterangan =
+   * bagian terbesar (Catering/Extra Bed/Kamar VIP); rincian =
+   * extra bed + VIP + katering. */
   function receiptFromReservation(data, reservationId, kind) {
     kind = kind === 'katering' ? 'katering' : 'villa';
     var d = data || {};
@@ -1516,7 +1526,6 @@
     var settings = d.settings || {};
     var calc = reservationCalc(r, d.transactions || [], settings);
     var split = paidForBookingSplit(r.id, d.transactions || []);
-    var range = fmtDateFull(r.checkin) + ' - ' + fmtDateFull(r.checkout);
     var draft = {
       kind: kind,
       reservationId: r.id,
@@ -1533,7 +1542,7 @@
       var paid = split.villa;
       var isPartial = paid > 0 && paid < villaTotal;
       draft.amount = paid > 0 ? paid : villaTotal;
-      draft.forPayment = (isPartial ? 'DP Villa tanggal ' : (paid > 0 ? 'Pelunasan Villa tanggal ' : 'Pembayaran Villa tanggal ')) + range;
+      draft.forPayment = isPartial ? 'Pembayaran DP Villa' : 'Pembayaran Pelunasan Villa';
       draft.items = isPartial
         ? [{ desc: 'DP Villa', qty: 1, price: draft.amount }]
         : [{ desc: 'Sewa Villa (' + calc.nights + ' malam)', qty: 1, price: calc.nights * (+r.ratePerNight || 0) }]
@@ -1552,18 +1561,18 @@
     var extraTotal = bd.total + extraDiff + katCalc.total;
     var paidExtra = split.extra;
     var isPartialExtra = paidExtra > 0 && paidExtra < extraTotal;
-    var parts = [];
-    if (katCalc.total > 0) { parts.push('Katering'); }
-    if (bd.extraBedCost > 0) { parts.push('Extra Bed'); }
-    if (bd.vipCost > 0) { parts.push('Kamar VIP'); }
-    if (!parts.length) { parts = ['Katering', 'Extra Bed', 'Kamar VIP']; }
-    var partsText = parts.length > 1
-      ? parts.slice(0, -1).join(', ') + ' & ' + parts[parts.length - 1]
-      : parts[0];
+    /* Keterangan = bagian terbesar (v1.41.0: salah satu pilihan
+     * dropdown; seri -> urutan Catering, Extra Bed, Kamar VIP). */
+    var partOpts = [];
+    if (katCalc.total > 0) { partOpts.push({ label: 'Pembayaran Catering', amount: katCalc.total }); }
+    if (bd.extraBedCost > 0) { partOpts.push({ label: 'Pembayaran Extra Bed', amount: bd.extraBedCost }); }
+    if (bd.vipCost > 0) { partOpts.push({ label: 'Pembayaran Kamar VIP', amount: bd.vipCost }); }
+    var chosen = null;
+    partOpts.forEach(function (p) { if (!chosen || p.amount > chosen.amount) { chosen = p; } });
     draft.amount = paidExtra > 0 ? paidExtra : extraTotal;
-    draft.forPayment = 'Pembayaran ' + partsText + ' tanggal ' + range;
+    draft.forPayment = chosen ? chosen.label : 'Pembayaran Catering';
     if (isPartialExtra) {
-      draft.items = [{ desc: 'Pembayaran ' + partsText, qty: 1, price: draft.amount }];
+      draft.items = [{ desc: draft.forPayment, qty: 1, price: draft.amount }];
     } else {
       draft.items = [];
       if (bd.extraBedCost > 0) {
@@ -1675,6 +1684,7 @@
     nextReceiptNumber: nextReceiptNumber,
     parseReceiptNumber: parseReceiptNumber,
     receiptItemsTotal: receiptItemsTotal,
+    RECEIPT_PAYMENTS: RECEIPT_PAYMENTS,
     paidForBookingSplit: paidForBookingSplit,
     receiptFromReservation: receiptFromReservation
   };

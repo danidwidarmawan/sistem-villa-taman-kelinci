@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.40.0-format-kwitansi-standar';
+  var APP_VERSION = '1.41.0-dropdown-untuk-pembayaran';
 
   var LS = {
     data: 'vtk_data',
@@ -1847,8 +1847,8 @@
   /* Jenis kwitansi: 'villa' = DP & pelunasan sewa villa (Rekening Villa);
    * 'katering' = katering, extra bed & kamar VIP (Rekening Katering). */
   var RECEIPT_KINDS = {
-    villa: { short: 'Villa', full: 'Kwitansi Villa (DP & Pelunasan)', sub: 'DP & Pelunasan Sewa Villa' },
-    katering: { short: 'Katering & Extra Bed', full: 'Kwitansi Katering, Extra Bed & Kamar VIP', sub: 'Katering, Extra Bed & Kamar VIP' }
+    villa: { short: 'Villa', full: 'Kwitansi Villa (DP & Pelunasan)' },
+    katering: { short: 'Katering & Extra Bed', full: 'Kwitansi Katering, Extra Bed & Kamar VIP' }
   };
   function receiptKindOf(rc) { return rc && rc.kind === 'katering' ? 'katering' : 'villa'; }
 
@@ -1934,6 +1934,15 @@
     var items = (v.items || []).map(receiptItemRowHTML).join('');
     var itemsTotal = L.receiptItemsTotal(v.items || []);
     var kind = receiptKindOf(v);
+    /* Dropdown Untuk Pembayaran (v1.41.0): 5 pilihan pemilik. Nilai
+     * lama yang tidak ada di daftar tetap ditampilkan sebagai opsi
+     * "(lama)" agar form ubah tidak mengubahnya diam-diam. */
+    var fpOpts = L.RECEIPT_PAYMENTS.map(function (p) {
+      return '<option value="' + esc(p) + '"' + (v.forPayment === p ? ' selected' : '') + '>' + esc(p) + '</option>';
+    }).join('');
+    if (v.forPayment && L.RECEIPT_PAYMENTS.indexOf(v.forPayment) === -1) {
+      fpOpts = '<option value="' + esc(v.forPayment) + '" selected>' + esc(v.forPayment) + ' (lama)</option>' + fpOpts;
+    }
     var title = isNew ? 'Kwitansi baru' : 'Ubah kwitansi ' + esc(rc.number);
     return '<section class="page-head"><h1>' + title + '</h1>' +
       '<p class="muted">Pilih reservasi untuk mengisi otomatis dari pembayaran tamu, atau isi manual.</p></section>' +
@@ -1959,7 +1968,8 @@
       '<label class="field"><span>Banyaknya uang (Rp)</span><input type="number" name="amount" min="0" step="any" value="' + (v.amount === undefined || v.amount === null ? '' : esc(v.amount)) + '" /></label>' +
       '</div>' +
       '<div class="form-row">' +
-      '<label class="field field-grow"><span>Untuk pembayaran</span><input type="text" name="forPayment" value="' + esc(v.forPayment || '') + '" placeholder="cth: DP Villa tanggal 12 - 13 Desember 2026" /></label>' +
+      '<label class="field field-grow"><span>Untuk Pembayaran</span><select name="forPayment">' + fpOpts + '</select>' +
+      '<span class="hint">Jenis pembayaran yang dibuktikan kwitansi ini. Terisi otomatis dari reservasi &amp; pembayaran terverifikasinya.</span></label>' +
       '</div>' +
       '<div class="form-row">' +
       '<label class="field"><span>Kota</span><input type="text" name="city" value="' + esc(v.city || 'Bogor') + '" /></label>' +
@@ -2081,8 +2091,7 @@
       '<div class="receipt-head-text"><div class="receipt-name">' + esc(h.name).toUpperCase() + '</div>' +
       '<div>' + esc(h.address) + '</div>' +
       '<div>Telp: ' + esc(h.phone) + ' Email: ' + esc(h.email) + '</div></div>' +
-      '<div class="receipt-title-block"><div class="receipt-title">KUITANSI</div>' +
-      '<div class="receipt-subtitle">' + esc(RECEIPT_KINDS[receiptKindOf(rc)].sub) + '</div></div>' +
+      '<div class="receipt-title">KUITANSI</div>' +
       '</div>' +
       '<div class="receipt-row"><span class="receipt-label">Nomor</span><span class="receipt-colon">:</span>' +
       '<span class="receipt-number">' + esc(rc.number) + '</span></div>' +

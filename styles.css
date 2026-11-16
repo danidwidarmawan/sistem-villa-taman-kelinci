@@ -994,9 +994,7 @@ input[type="password"], select, textarea {
 .receipt-logo { height: 64px; width: auto; flex: 0 0 auto; }
 .receipt-head-text { flex: 1 1 auto; min-width: 0; }
 .receipt-name { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.02em; }
-.receipt-title-block { flex: 0 0 auto; text-align: right; }
-.receipt-title { font-size: 1.75rem; font-weight: 800; letter-spacing: 0.08em; }
-.receipt-subtitle { font-size: 0.85rem; font-weight: 600; color: #374151; }
+.receipt-title { font-size: 1.75rem; font-weight: 800; letter-spacing: 0.08em; flex: 0 0 auto; }
 .receipt-row { display: flex; gap: 0.25rem; margin: 0.55rem 0; align-items: baseline; }
 .receipt-label { flex: 0 0 9.5rem; }
 .receipt-colon { flex: 0 0 auto; }
