@@ -1441,7 +1441,26 @@
 
   /* Nomor kwitansi berikutnya: NNN/VTK/ROMAWI/TAHUN (format Excel
    * 001/VTK/XII/2025) — urutan per bulan+tahun. */
-  function nextReceiptNumber(receipts, dateISO) {
+  /* Urai nomor kwitansi NNN/VTK/ROMAWI/TAHUN -> { seq, month, year }
+   * atau null bila tidak cocok formatnya. Dipakai penomoran & counter. */
+  function parseReceiptNumber(num) {
+    if (typeof num !== 'string') { return null; }
+    var mm = /^(\d+)\/VTK\/([IVX]+)\/(\d{4})$/.exec(num.trim());
+    if (!mm) { return null; }
+    var month = ROMAN_MONTHS.indexOf(mm[2]) + 1;
+    if (month < 1) { return null; }
+    return { seq: +mm[1], month: month, year: +mm[3] };
+  }
+
+  /* Nomor kwitansi berikutnya (v1.39.0: urutan baik & benar).
+   * Format tetap NNN/VTK/ROMAWI/TAHUN, tapi urutan BERKESINAMBUNGAN
+   * PER TAHUN (bukan dihitung ulang tiap bulan — v1.37.0 membuat dua
+   * kwitansi sama-sama 001 di bulan berbeda). counterByYear =
+   * { "2026": 1 } dari meta.receiptCounter: nomor terakhir yang
+   * pernah dipakai per tahun, tersimpan walau kwitansinya dihapus,
+   * jadi nomor TIDAK PERNAH dipakai ulang. Urutan = max(terbesar
+   * yang masih ada di tahun itu, counter) + 1. */
+  function nextReceiptNumber(receipts, dateISO, counterByYear) {
     var now = new Date();
     var y = +(String(dateISO || '').slice(0, 4)) || now.getFullYear();
     var m = +(String(dateISO || '').slice(5, 7)) || (now.getMonth() + 1);
@@ -1449,11 +1468,31 @@
     var roman = ROMAN_MONTHS[m - 1];
     var max = 0;
     (receipts || []).forEach(function (rc) {
-      if (!rc || typeof rc.number !== 'string') { return; }
-      var mm = /^(\d+)\/VTK\/([IVX]+)\/(\d{4})$/.exec(rc.number.trim());
-      if (mm && mm[2] === roman && +mm[3] === y) { max = Math.max(max, +mm[1]); }
+      if (!rc) { return; }
+      var p = parseReceiptNumber(rc.number);
+      if (p && p.year === y) { max = Math.max(max, p.seq); }
     });
+    if (counterByYear && typeof counterByYear === 'object') {
+      max = Math.max(max, +counterByYear[y] || 0, +counterByYear[String(y)] || 0);
+    }
     return pad3(max + 1) + '/VTK/' + roman + '/' + y;
+  }
+
+  /* Perbarui counter penomoran dari sebuah nomor kwitansi: kembalikan
+   * objek counter baru (salinan) dengan tahun nomor itu = max(lama,
+   * seq nomor). Nomor berformat salah diabaikan. Dipakai saat simpan
+   * kwitansi (v1.39.0). */
+  function receiptCounterUpdate(counterByYear, num) {
+    var out = {};
+    if (counterByYear && typeof counterByYear === 'object') {
+      Object.keys(counterByYear).forEach(function (k) { out[k] = +counterByYear[k] || 0; });
+    }
+    var p = parseReceiptNumber(num);
+    if (p) {
+      var y = String(p.year);
+      out[y] = Math.max(out[y] || 0, p.seq);
+    }
+    return out;
   }
 
   /* Total rincian item kwitansi (qty x harga per baris). */
@@ -1465,56 +1504,105 @@
     return total;
   }
 
-  /* Draf kwitansi dari reservasi: nama tamu, jumlah (yang sudah dibayar
-   * terverifikasi; bila belum ada pembayaran, total booking), keterangan
-   * DP / pelunasan / pembayaran + tanggal menginap, rincian item, dan
-   * nomor berikutnya. Dipakai form kwitansi saat memilih reservasi. */
-  function receiptFromReservation(data, reservationId) {
+  /* Terbayar terverifikasi per jenis kwitansi (v1.38.0): villa =
+   * Pembayaran Tamu (dikurangi Refund Tamu, seperti paidForBooking);
+   * extra = Pembayaran Extra Bed + Pendapatan Katering yang merujuk
+   * booking ini. Dipakai draf kwitansi per jenis. */
+  function paidForBookingSplit(bookingId, transactions) {
+    var villa = 0;
+    var extra = 0;
+    if (!bookingId) { return { villa: 0, extra: 0 }; }
+    (transactions || []).forEach(function (tx) {
+      if (tx.bookingId !== bookingId || tx.verifyStatus !== 'Terverifikasi') { return; }
+      if (tx.type === 'Masuk' && tx.category === 'Pembayaran Tamu') { villa += +tx.amount || 0; }
+      if (tx.type === 'Masuk' && (tx.category === 'Pembayaran Extra Bed' || tx.category === 'Pendapatan Katering')) { extra += +tx.amount || 0; }
+      if (tx.type === 'Keluar' && tx.category === 'Refund Tamu') { villa -= +tx.amount || 0; }
+    });
+    return { villa: villa, extra: extra };
+  }
+
+  /* Draf kwitansi dari reservasi (v1.38.0: dua jenis).
+   * kind 'villa' (default): DP & pelunasan sewa villa — jumlah =
+   * terbayar 'Pembayaran Tamu' terverifikasi (atau total villa bila
+   * belum ada); keterangan DP/pelunasan/pembayaran + tanggal menginap;
+   * rincian = sewa villa (+ diskon).
+   * kind 'katering': pembayaran katering, extra bed & kamar VIP —
+   * jumlah = terbayar 'Pembayaran Extra Bed' + 'Pendapatan Katering'
+   * terverifikasi (atau total extra bila belum ada); keterangan
+   * menyebut bagian yang ada; rincian = extra bed + VIP + katering. */
+  function receiptFromReservation(data, reservationId, kind) {
+    kind = kind === 'katering' ? 'katering' : 'villa';
     var d = data || {};
     var r = null;
     (d.reservations || []).forEach(function (x) { if (x && x.id === reservationId) { r = x; } });
     if (!r) { return null; }
-    var calc = reservationCalc(r, d.transactions || [], d.settings || {});
-    var paid = calc.paid;
-    var isPartial = paid > 0 && paid < calc.total;
-    var amount = paid > 0 ? paid : calc.total;
+    var settings = d.settings || {};
+    var calc = reservationCalc(r, d.transactions || [], settings);
+    var split = paidForBookingSplit(r.id, d.transactions || []);
     var range = fmtDateFull(r.checkin) + ' - ' + fmtDateFull(r.checkout);
-    var kind = isPartial ? 'DP Villa tanggal ' : (paid > 0 ? 'Pelunasan Villa tanggal ' : 'Pembayaran Villa tanggal ');
-    var items;
-    if (isPartial) {
-      items = [{ desc: 'DP Villa', qty: 1, price: amount }];
-    } else {
-      items = [{ desc: 'Sewa Villa (' + calc.nights + ' malam)', qty: 1, price: calc.nights * (+r.ratePerNight || 0) }];
-      var bd = extraCostBreakdown(r, d.settings || {});
-      if (bd.extraBedCost > 0) {
-        items.push({ desc: 'Extra bed (' + fmtNum(r.extraBeds) + ' bed)', qty: 1, price: bd.extraBedCost });
-      }
-      if (bd.vipCost > 0) {
-        items.push({ desc: 'Kamar VIP (' + fmtNum(r.vipRooms) + ' kamar x ' + calc.nights + ' malam)', qty: 1, price: bd.vipCost });
-      }
-      /* Jaga-jaga: extraCost tersimpan bisa melebihi rincian (data lama)
-       * — selisihnya ditampung agar total rincian = total booking. */
-      var extraStored = +r.extraCost || 0;
-      if (extraStored > bd.total) {
-        items.push({ desc: 'Biaya tambahan', qty: 1, price: extraStored - bd.total });
-      }
-      if (+r.discount) {
-        items.push({ desc: 'Diskon', qty: 1, price: -(+r.discount) });
-      }
-    }
-    return {
+    var draft = {
+      kind: kind,
       reservationId: r.id,
       guestName: r.guestName || '',
-      amount: amount,
-      forPayment: kind + range,
       city: 'Bogor',
       date: todayISO(),
       receiver: 'Manajemen Villa Taman Kelinci',
       checkin: r.checkin || '',
       checkout: r.checkout || '',
-      items: items,
-      number: nextReceiptNumber(d.receipts || [], todayISO())
+      number: nextReceiptNumber(d.receipts || [], todayISO(), (d.meta || {}).receiptCounter)
     };
+    if (kind === 'villa') {
+      var villaTotal = Math.max(0, calc.nights * (+r.ratePerNight || 0) - (+r.discount || 0));
+      var paid = split.villa;
+      var isPartial = paid > 0 && paid < villaTotal;
+      draft.amount = paid > 0 ? paid : villaTotal;
+      draft.forPayment = (isPartial ? 'DP Villa tanggal ' : (paid > 0 ? 'Pelunasan Villa tanggal ' : 'Pembayaran Villa tanggal ')) + range;
+      draft.items = isPartial
+        ? [{ desc: 'DP Villa', qty: 1, price: draft.amount }]
+        : [{ desc: 'Sewa Villa (' + calc.nights + ' malam)', qty: 1, price: calc.nights * (+r.ratePerNight || 0) }]
+          .concat(+r.discount ? [{ desc: 'Diskon', qty: 1, price: -(+r.discount) }] : []);
+      return draft;
+    }
+    /* kind 'katering': extra bed + VIP + katering. */
+    var bd = extraCostBreakdown(r, settings);
+    var katPax = (r.cateringPax !== '' && r.cateringPax > 0) ? r.cateringPax : (r.pax || 0);
+    var katCalc = r.cateringPackage
+      ? cateringOrderCalc(settings, r.cateringPackage, r.cateringMeals || 'Full', katPax)
+      : { pricePerPax: 0, pax: 0, total: 0 };
+    /* Jaga-jaga: extraCost tersimpan bisa melebihi rincian (data lama). */
+    var extraStored = +r.extraCost || 0;
+    var extraDiff = Math.max(0, extraStored - bd.total);
+    var extraTotal = bd.total + extraDiff + katCalc.total;
+    var paidExtra = split.extra;
+    var isPartialExtra = paidExtra > 0 && paidExtra < extraTotal;
+    var parts = [];
+    if (katCalc.total > 0) { parts.push('Katering'); }
+    if (bd.extraBedCost > 0) { parts.push('Extra Bed'); }
+    if (bd.vipCost > 0) { parts.push('Kamar VIP'); }
+    if (!parts.length) { parts = ['Katering', 'Extra Bed', 'Kamar VIP']; }
+    var partsText = parts.length > 1
+      ? parts.slice(0, -1).join(', ') + ' & ' + parts[parts.length - 1]
+      : parts[0];
+    draft.amount = paidExtra > 0 ? paidExtra : extraTotal;
+    draft.forPayment = 'Pembayaran ' + partsText + ' tanggal ' + range;
+    if (isPartialExtra) {
+      draft.items = [{ desc: 'Pembayaran ' + partsText, qty: 1, price: draft.amount }];
+    } else {
+      draft.items = [];
+      if (bd.extraBedCost > 0) {
+        draft.items.push({ desc: 'Extra bed (' + fmtNum(r.extraBeds) + ' bed)', qty: 1, price: bd.extraBedCost });
+      }
+      if (bd.vipCost > 0) {
+        draft.items.push({ desc: 'Kamar VIP (' + fmtNum(r.vipRooms) + ' kamar x ' + calc.nights + ' malam)', qty: 1, price: bd.vipCost });
+      }
+      if (extraDiff > 0) {
+        draft.items.push({ desc: 'Biaya tambahan', qty: 1, price: extraDiff });
+      }
+      if (katCalc.total > 0) {
+        draft.items.push({ desc: 'Katering ' + r.cateringPackage + ' (' + (r.cateringMeals || 'Full') + ', ' + fmtNum(katCalc.pax) + ' pax)', qty: katCalc.pax, price: katCalc.pricePerPax });
+      }
+    }
+    return draft;
   }
 
   return {
@@ -1608,7 +1696,10 @@
     terbilang: terbilang,
     terbilangRupiah: terbilangRupiah,
     nextReceiptNumber: nextReceiptNumber,
+    parseReceiptNumber: parseReceiptNumber,
+    receiptCounterUpdate: receiptCounterUpdate,
     receiptItemsTotal: receiptItemsTotal,
+    paidForBookingSplit: paidForBookingSplit,
     receiptFromReservation: receiptFromReservation
   };
 });

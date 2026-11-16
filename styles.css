@@ -988,28 +988,21 @@ input[type="password"], select, textarea {
 .rc-item-row .rc-item-price { width: 11rem; flex: 0 0 auto; }
 .rc-items-foot { display: flex; gap: 1rem; align-items: center; margin-top: 0.25rem; }
 
-/* Tombol grup (alih format cetak kwitansi). */
-.btn-group { display: inline-flex; }
-.btn-group .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.btn-group .btn:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-
 /* Kwitansi — meniru form Excel (kotak tepi tebal, kop + judul). */
 .receipt-print { border: 2px solid #1f2937; background: #fff; color: #111827; padding: 1.25rem 1.5rem; max-width: 760px; margin: 0 auto 2rem; font-size: 0.95rem; }
 .receipt-head { display: flex; gap: 1rem; align-items: center; border-bottom: 2px solid #1f2937; padding-bottom: 0.75rem; margin-bottom: 1rem; }
 .receipt-logo { height: 64px; width: auto; flex: 0 0 auto; }
 .receipt-head-text { flex: 1 1 auto; min-width: 0; }
 .receipt-name { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.02em; }
-.receipt-title { font-size: 1.75rem; font-weight: 800; letter-spacing: 0.08em; flex: 0 0 auto; }
+.receipt-title-block { flex: 0 0 auto; text-align: right; }
+.receipt-title { font-size: 1.75rem; font-weight: 800; letter-spacing: 0.08em; }
+.receipt-subtitle { font-size: 0.85rem; font-weight: 600; color: #374151; }
 .receipt-row { display: flex; gap: 0.25rem; margin: 0.55rem 0; align-items: baseline; }
 .receipt-label { flex: 0 0 9.5rem; }
 .receipt-colon { flex: 0 0 auto; }
 .receipt-value { flex: 1 1 auto; font-weight: 600; min-width: 0; }
-.receipt-underline { border-bottom: 1px solid #111827; }
 .receipt-words { border: 1px solid #111827; padding: 0.4rem 0.6rem; }
-.receipt-number { border: 1px solid #111827; padding: 0.15rem 0.6rem; font-weight: 600; }
-.receipt-amount-row { margin-top: 1rem; align-items: center; }
-.receipt-amount-row .receipt-label { font-weight: 700; font-size: 1.05rem; }
-.receipt-amount { border-top: 1px solid #111827; border-bottom: 1px solid #111827; padding: 0.3rem 0.75rem; font-weight: 700; font-size: 1.05rem; }
+.receipt-words-row { margin-top: 0.75rem; align-items: flex-start; }
 .receipt-sign { text-align: right; margin-top: 1.25rem; }
 .receipt-sign-place { display: inline-block; border-bottom: 1px solid #111827; padding-bottom: 0.1rem; }
 .receipt-sign-space { height: 3rem; }
@@ -1018,7 +1011,6 @@ input[type="password"], select, textarea {
 .receipt-meta-label { display: inline-block; min-width: 9.5rem; }
 .receipt-items { margin-bottom: 0; }
 .receipt-total-row { display: flex; justify-content: space-between; border-top: 2px solid #1f2937; padding: 0.5rem 0; font-size: 1.05rem; margin-top: 0.25rem; }
-.receipt-terbilang { margin: 0.5rem 0 0; }
 
 @media (max-width: 640px) {
   .receipt-head { flex-wrap: wrap; }

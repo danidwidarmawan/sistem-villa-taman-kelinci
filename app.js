@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.37.0-kwitansi';
+  var APP_VERSION = '1.39.0-urutan-kwitansi';
 
   var LS = {
     data: 'vtk_data',
@@ -127,7 +127,6 @@
     calSelected: null,
     tamuGuest: null, /* kunci tamu di halaman detail Tamu (null = daftar) */
     receiptId: null, /* kwitansi yang sedang ditampilkan (null = daftar) */
-    receiptFormat: 'klasik', /* format cetak kwitansi: 'klasik' | 'rinci' */
     filters: {
       res: { status: '', month: '', q: '' },
       tx: { month: L.currentMonthKey(), type: '', category: '', status: '', account: '' },
@@ -1843,7 +1842,15 @@
       '<p class="hint">Reservasi yang akan datang ikut tampil di sini — tapi tidak dihitung ke jumlah menginap &amp; total spend. Klik Booking ID untuk membuka reservasi.</p></section>';
   }
 
-  /* ---------------- Kwitansi (v1.37.0) ---------------- */
+  /* ---------------- Kwitansi (v1.37.0; dua jenis v1.38.0) ---------------- */
+
+  /* Jenis kwitansi: 'villa' = DP & pelunasan sewa villa (Rekening Villa);
+   * 'katering' = katering, extra bed & kamar VIP (Rekening Katering). */
+  var RECEIPT_KINDS = {
+    villa: { short: 'Villa', full: 'Kwitansi Villa (DP & Pelunasan)', sub: 'DP & Pelunasan Sewa Villa' },
+    katering: { short: 'Katering & Extra Bed', full: 'Kwitansi Katering, Extra Bed & Kamar VIP', sub: 'Katering, Extra Bed & Kamar VIP' }
+  };
+  function receiptKindOf(rc) { return rc && rc.kind === 'katering' ? 'katering' : 'villa'; }
 
   /* Kwitansi — dipindahkan dari Kwitansi.xlsm (Data Kuitansi + form
    * Kuitansi + Invoice manual (2)): bukti pembayaran untuk tamu yang
@@ -1885,6 +1892,7 @@
     var rows = list.map(function (rc) {
       return '<tr class="clickable" onclick="VTK.showReceipt(\'' + esc(rc.id) + '\')">' +
         '<td data-label="Nomor">' + esc(rc.number) + '</td>' +
+        '<td data-label="Jenis">' + esc(RECEIPT_KINDS[receiptKindOf(rc)].short) + '</td>' +
         '<td data-label="Diterima dari">' + esc(rc.guestName) + '</td>' +
         '<td data-label="Jumlah" class="num">' + L.fmtRp(rc.amount) + '</td>' +
         '<td data-label="Untuk pembayaran">' + esc(rc.forPayment) + '</td>' +
@@ -1896,7 +1904,7 @@
       '<div class="card-head-actions"><input type="search" placeholder="Cari nomor / nama tamu…" value="' + esc(state.filters.kwitansi.q) +
       '" oninput="VTK.setFilter(\'kwitansi\',\'q\',this.value)" />' +
       '<button type="button" class="btn btn-primary" onclick="VTK.openReceiptForm()">+ Buat kwitansi</button></div></div>' +
-      (list.length ? '<div class="table-wrap"><table class="tbl"><thead><tr><th>Nomor</th><th>Diterima dari</th><th class="num">Jumlah</th><th>Untuk pembayaran</th><th>Tanggal</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      (list.length ? '<div class="table-wrap"><table class="tbl"><thead><tr><th>Nomor</th><th>Jenis</th><th>Diterima dari</th><th class="num">Jumlah</th><th>Untuk pembayaran</th><th>Tanggal</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
         : '<p class="empty">Belum ada kwitansi. Buat dari reservasi tamu yang sudah membayar, atau isi manual.</p>') +
       '</section>';
   }
@@ -1916,7 +1924,7 @@
     var rc = f.id ? receiptById(f.id) : null;
     var v = rc || f.prefill || {};
     var isNew = !rc;
-    var number = v.number || L.nextReceiptNumber(receipts(), L.todayISO());
+    var number = v.number || L.nextReceiptNumber(receipts(), L.todayISO(), (state.data.meta || {}).receiptCounter);
     var resOpts = (state.data.reservations || []).filter(function (r) { return r.status !== 'Dibatalkan'; })
       .slice().sort(function (a, b) { return (b.checkin || '').localeCompare(a.checkin || ''); })
       .map(function (r) {
@@ -1925,6 +1933,7 @@
       }).join('');
     var items = (v.items || []).map(receiptItemRowHTML).join('');
     var itemsTotal = L.receiptItemsTotal(v.items || []);
+    var kind = receiptKindOf(v);
     var title = isNew ? 'Kwitansi baru' : 'Ubah kwitansi ' + esc(rc.number);
     return '<section class="page-head"><h1>' + title + '</h1>' +
       '<p class="muted">Pilih reservasi untuk mengisi otomatis dari pembayaran tamu, atau isi manual.</p></section>' +
@@ -1932,6 +1941,13 @@
       '<input type="hidden" name="id" value="' + esc(rc ? rc.id : '') + '" />' +
       '<input type="hidden" name="checkin" value="' + esc(v.checkin || '') + '" />' +
       '<input type="hidden" name="checkout" value="' + esc(v.checkout || '') + '" />' +
+      '<div class="form-row">' +
+      '<label class="field field-grow"><span>Jenis kwitansi</span><select name="kind" onchange="VTK.receiptPickKind()">' +
+      '<option value="villa"' + (kind === 'villa' ? ' selected' : '') + '>' + esc(RECEIPT_KINDS.villa.full) + '</option>' +
+      '<option value="katering"' + (kind === 'katering' ? ' selected' : '') + '>' + esc(RECEIPT_KINDS.katering.full) + '</option>' +
+      '</select>' +
+      '<span class="hint">Villa = DP &amp; pelunasan sewa (Rekening Villa). Katering = katering, extra bed &amp; kamar VIP (Rekening Katering &amp; Extra Bed). Mengganti jenis mengisi ulang form dari reservasi yang dipilih.</span></label>' +
+      '</div>' +
       '<div class="form-row">' +
       '<label class="field field-grow"><span>Dari reservasi (opsional)</span><select name="reservationId" onchange="VTK.receiptPickRes(this.value)">' +
       '<option value="">— Isi manual —</option>' + resOpts + '</select>' +
@@ -1950,11 +1966,11 @@
       '<label class="field"><span>Tanggal kwitansi</span><input type="date" name="date" value="' + esc(v.date || L.todayISO()) + '" /></label>' +
       '<label class="field field-grow"><span>Penerima (tanda tangan)</span><input type="text" name="receiver" value="' + esc(v.receiver || 'Manajemen Villa Taman Kelinci') + '" /></label>' +
       '</div>' +
-      '<fieldset class="field"><legend>Rincian (untuk format Kwitansi Rinci — opsional)</legend>' +
+      '<fieldset class="field"><legend>Rincian (opsional)</legend>' +
       '<div id="rc-items">' + items + '</div>' +
       '<div class="rc-items-foot"><button type="button" class="btn btn-small" onclick="VTK.receiptAddItem()">+ Tambah baris</button>' +
       '<span class="muted">Total rincian: <strong id="rc-items-total">' + L.fmtRp(itemsTotal) + '</strong></span></div>' +
-      '<span class="hint">Bila rincian kosong, format rinci menampilkan satu baris dari keterangan &amp; jumlah di atas.</span></fieldset>' +
+      '<span class="hint">Bila rincian kosong, kwitansi menampilkan satu baris dari keterangan &amp; jumlah di atas.</span></fieldset>' +
       saveStatusHTML() +
       '<div class="form-actions">' +
       '<button type="submit" class="btn btn-primary">Simpan kwitansi</button>' +
@@ -1977,6 +1993,7 @@
     return {
       id: fd.get('id') || '',
       number: (fd.get('number') || '').trim(),
+      kind: fd.get('kind') === 'katering' ? 'katering' : 'villa',
       reservationId: fd.get('reservationId') || '',
       guestName: (fd.get('guestName') || '').trim(),
       amount: parseFloat(fd.get('amount')) || 0,
@@ -2010,6 +2027,10 @@
       var existing = receiptById(v.id);
       if (existing) { Object.assign(existing, touch(v)); }
     }
+    /* Catat nomor yang dipakai ke counter (v1.39.0) agar tidak pernah
+     * dipakai ulang — walau kwitansinya nanti dihapus. */
+    if (!state.data.meta) { state.data.meta = {}; }
+    state.data.meta.receiptCounter = L.receiptCounterUpdate(state.data.meta.receiptCounter, v.number);
     commit().then(function () {
       toast('Kwitansi ' + v.number + ' disimpan.');
       state.form = null;
@@ -2044,34 +2065,11 @@
 
   /* Format klasik — meniru sheet Kuitansi: kop + judul, nomor dalam
    * kotak, terbilang dalam kotak, kotak Jumlah Rp, tanda tangan. */
-  function receiptClassicHTML(rc) {
-    var h = receiptHeader();
-    return '<div class="receipt-print receipt-classic">' +
-      '<div class="receipt-head">' +
-      '<img src="villa-logo.png" alt="" class="receipt-logo" />' +
-      '<div class="receipt-head-text"><div class="receipt-name">' + esc(h.name).toUpperCase() + '</div>' +
-      '<div>' + esc(h.address) + '</div>' +
-      '<div>Telp: ' + esc(h.phone) + ' Email: ' + esc(h.email) + '</div></div>' +
-      '<div class="receipt-title">KUITANSI</div>' +
-      '</div>' +
-      '<div class="receipt-row"><span class="receipt-label">Nomor:</span>' +
-      '<span class="receipt-number">' + esc(rc.number) + '</span></div>' +
-      '<div class="receipt-row"><span class="receipt-label">Sudah Terima Dari</span><span class="receipt-colon">:</span>' +
-      '<span class="receipt-value receipt-underline">' + esc(rc.guestName) + '</span></div>' +
-      '<div class="receipt-row"><span class="receipt-label">Banyaknya uang</span><span class="receipt-colon">:</span>' +
-      '<span class="receipt-value receipt-words">' + esc(L.terbilangRupiah(rc.amount)) + '</span></div>' +
-      '<div class="receipt-row"><span class="receipt-label">Untuk Pembayaran</span><span class="receipt-colon">:</span>' +
-      '<span class="receipt-value">' + esc(rc.forPayment) + '</span></div>' +
-      '<div class="receipt-row receipt-amount-row"><span class="receipt-label">Jumlah Rp.</span>' +
-      '<span class="receipt-amount">' + L.fmtNum(rc.amount) + '</span></div>' +
-      receiptSignHTML(rc) +
-      '</div>';
-  }
-
-  /* Format rinci — meniru Invoice manual (2): tanggal menginap +
-   * tabel rincian item + total + terbilang + tanda tangan. Bila
-   * rincian kosong, satu baris dibuat dari keterangan & jumlah. */
-  function receiptItemizedHTML(rc) {
+  /* Satu format kwitansi (v1.38.0; format klasik dihapus atas permintaan
+   * Dani): kop villa + jenis kwitansi + meta + rincian + TOTAL +
+   * terbilang dalam kotak "Banyaknya uang" di bawah TOTAL + tanda tangan.
+   * Bila rincian kosong, satu baris dibuat dari keterangan & jumlah. */
+  function receiptDocHTML(rc) {
     var h = receiptHeader();
     var items = (rc.items && rc.items.length) ? rc.items : [{ desc: rc.forPayment, qty: 1, price: rc.amount }];
     var rows = items.map(function (it, i) {
@@ -2079,13 +2077,14 @@
         '<td class="num">' + L.fmtRp(it.price) + '</td><td class="num">' + L.fmtRp((+it.qty || 0) * (+it.price || 0)) + '</td></tr>';
     }).join('');
     var total = L.receiptItemsTotal(items);
-    return '<div class="receipt-print receipt-itemized">' +
+    return '<div class="receipt-print">' +
       '<div class="receipt-head">' +
       '<img src="villa-logo.png" alt="" class="receipt-logo" />' +
       '<div class="receipt-head-text"><div class="receipt-name">' + esc(h.name).toUpperCase() + '</div>' +
       '<div>' + esc(h.address) + '</div>' +
       '<div>Telp: ' + esc(h.phone) + ' Email: ' + esc(h.email) + '</div></div>' +
-      '<div class="receipt-title">KUITANSI</div>' +
+      '<div class="receipt-title-block"><div class="receipt-title">KUITANSI</div>' +
+      '<div class="receipt-subtitle">' + esc(RECEIPT_KINDS[receiptKindOf(rc)].sub) + '</div></div>' +
       '</div>' +
       '<div class="receipt-meta">' +
       '<div><span class="receipt-meta-label">Kepada:</span> <strong>' + esc(rc.guestName) + '</strong></div>' +
@@ -2097,7 +2096,8 @@
       '<table class="tbl receipt-items"><thead><tr><th>No.</th><th>Deskripsi</th><th class="num">Kuantitas</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th></tr></thead>' +
       '<tbody>' + rows + '</tbody></table>' +
       '<div class="receipt-total-row"><span>TOTAL</span><strong>' + L.fmtRp(total) + '</strong></div>' +
-      '<div class="receipt-terbilang">Terbilang: <em>' + esc(L.terbilangRupiah(rc.amount)) + '</em></div>' +
+      '<div class="receipt-row receipt-words-row"><span class="receipt-label">Banyaknya uang</span><span class="receipt-colon">:</span>' +
+      '<span class="receipt-value receipt-words">' + esc(L.terbilangRupiah(rc.amount)) + '</span></div>' +
       receiptSignHTML(rc) +
       '</div>';
   }
@@ -2105,17 +2105,14 @@
   function receiptPrintHTML() {
     var rc = receiptById(state.receiptId);
     if (!rc) { state.receiptId = null; return receiptsViewHTML(); }
-    var fmt = state.receiptFormat;
     return '<section class="page-head receipt-toolbar"><h1>Kwitansi ' + esc(rc.number) + '</h1>' +
       '<div class="page-head-actions">' +
-      '<div class="btn-group"><button type="button" class="btn btn-small' + (fmt === 'klasik' ? ' btn-primary' : '') + '" onclick="VTK.setReceiptFormat(\'klasik\')">Kwitansi</button>' +
-      '<button type="button" class="btn btn-small' + (fmt === 'rinci' ? ' btn-primary' : '') + '" onclick="VTK.setReceiptFormat(\'rinci\')">Kwitansi Rinci</button></div>' +
       '<button type="button" class="btn btn-small btn-primary" onclick="VTK.printReceipt()">Cetak / PDF</button>' +
       '<button type="button" class="btn btn-small" onclick="VTK.openReceiptForm(\'' + esc(rc.id) + '\')">Ubah</button>' +
       '<button type="button" class="btn btn-small btn-danger" onclick="VTK.delReceipt(\'' + esc(rc.id) + '\')">Hapus</button>' +
       '<button type="button" class="btn btn-small" onclick="VTK.receiptList()">← Daftar</button>' +
       '</div></section>' +
-      (fmt === 'rinci' ? receiptItemizedHTML(rc) : receiptClassicHTML(rc));
+      receiptDocHTML(rc);
   }
 
   /* ---------------- 3. Keuangan ---------------- */
@@ -3794,17 +3791,14 @@
       state.receiptId = null;
       renderView();
     },
-    setReceiptFormat: function (fmt) {
-      state.receiptFormat = fmt;
-      renderView();
-    },
     printReceipt: function () { window.print(); },
     receiptPickRes: function (reservationId) {
       if (!reservationId) { return; }
-      var d = L.receiptFromReservation(state.data, reservationId);
-      if (!d) { return; }
       var form = $('receipt-form');
       if (!form) { return; }
+      var kindEl = form.querySelector('[name="kind"]');
+      var d = L.receiptFromReservation(state.data, reservationId, kindEl ? kindEl.value : 'villa');
+      if (!d) { return; }
       var set = function (name, val) { var el = form.querySelector('[name="' + name + '"]'); if (el) { el.value = val; } };
       set('guestName', d.guestName);
       set('amount', d.amount);
@@ -3814,6 +3808,13 @@
       var wrap = $('rc-items');
       if (wrap) { wrap.innerHTML = d.items.map(receiptItemRowHTML).join(''); }
       VTK.receiptItemsRecalc();
+    },
+    /* Ganti jenis kwitansi: isi ulang form dari reservasi yang dipilih. */
+    receiptPickKind: function () {
+      var form = $('receipt-form');
+      if (!form) { return; }
+      var resEl = form.querySelector('[name="reservationId"]');
+      if (resEl && resEl.value) { VTK.receiptPickRes(resEl.value); }
     },
     receiptAddItem: function () {
       var wrap = $('rc-items');
