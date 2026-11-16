@@ -1499,10 +1499,36 @@
   }
 
   /* Pilihan "Untuk Pembayaran" kwitansi (v1.41.0, urutan sesuai
-   * permintaan pemilik): dropdown di form; prefill memilih yang
-   * sesuai (DP sebagian -> DP Villa; lunas/penuh -> Pelunasan Villa;
-   * katering -> bagian terbesar). */
+   * permintaan pemilik; v1.42.0: bisa beberapa pilihan sekaligus):
+   * checkbox di form; prefill memilih yang sesuai (DP sebagian ->
+   * DP Villa; lunas/penuh -> Pelunasan Villa; katering -> semua
+   * bagian yang ada). */
   var RECEIPT_PAYMENTS = ['Pembayaran DP Villa', 'Pembayaran Catering', 'Pembayaran Kamar VIP', 'Pembayaran Extra Bed', 'Pembayaran Pelunasan Villa'];
+
+  /* Normalisasi "Untuk Pembayaran" (v1.42.0: disimpan sebagai array
+   * karena bisa beberapa pilihan). Menerima array (v1.42.0+), string
+   * lama (v1.37.0–v1.41.0), atau kosong -> []. */
+  function receiptPayments(forPayment) {
+    if (Array.isArray(forPayment)) {
+      return forPayment.filter(function (p) { return typeof p === 'string' && p; });
+    }
+    if (typeof forPayment === 'string' && forPayment) { return [forPayment]; }
+    return [];
+  }
+
+  /* Teks tampil "Untuk Pembayaran" (v1.42.0): satu pilihan tampil
+   * apa adanya; beberapa pilihan digabung dengan awalan "Pembayaran "
+   * bersama — "Pembayaran Catering, Kamar VIP & Extra Bed". Nilai
+   * lama tanpa awalan itu digabung apa adanya dengan koma. */
+  function receiptPaymentsText(forPayment) {
+    var list = receiptPayments(forPayment);
+    if (!list.length) { return ''; }
+    if (list.length === 1) { return list[0]; }
+    var allPrefixed = list.every(function (p) { return p.indexOf('Pembayaran ') === 0; });
+    if (!allPrefixed) { return list.join(', '); }
+    var parts = list.map(function (p) { return p.slice('Pembayaran '.length); });
+    return 'Pembayaran ' + parts.slice(0, -1).join(', ') + ' & ' + parts[parts.length - 1];
+  }
 
   /* Draf kwitansi dari reservasi (v1.38.0: dua jenis; v1.41.0:
    * keterangan = salah satu RECEIPT_PAYMENTS, tanpa tanggal —
@@ -1515,7 +1541,7 @@
    * kind 'katering': pembayaran katering, extra bed & kamar VIP —
    * jumlah = terbayar 'Pembayaran Extra Bed' + 'Pendapatan Katering'
    * terverifikasi (atau total extra bila belum ada); keterangan =
-   * bagian terbesar (Catering/Extra Bed/Kamar VIP); rincian =
+   * SEMUA bagian yang ada (v1.42.0, dalam urutan dropdown); rincian =
    * extra bed + VIP + katering. */
   function receiptFromReservation(data, reservationId, kind) {
     kind = kind === 'katering' ? 'katering' : 'villa';
@@ -1542,7 +1568,7 @@
       var paid = split.villa;
       var isPartial = paid > 0 && paid < villaTotal;
       draft.amount = paid > 0 ? paid : villaTotal;
-      draft.forPayment = isPartial ? 'Pembayaran DP Villa' : 'Pembayaran Pelunasan Villa';
+      draft.forPayment = isPartial ? ['Pembayaran DP Villa'] : ['Pembayaran Pelunasan Villa'];
       draft.items = isPartial
         ? [{ desc: 'DP Villa', qty: 1, price: draft.amount }]
         : [{ desc: 'Sewa Villa (' + calc.nights + ' malam)', qty: 1, price: calc.nights * (+r.ratePerNight || 0) }]
@@ -1561,18 +1587,16 @@
     var extraTotal = bd.total + extraDiff + katCalc.total;
     var paidExtra = split.extra;
     var isPartialExtra = paidExtra > 0 && paidExtra < extraTotal;
-    /* Keterangan = bagian terbesar (v1.41.0: salah satu pilihan
-     * dropdown; seri -> urutan Catering, Extra Bed, Kamar VIP). */
-    var partOpts = [];
-    if (katCalc.total > 0) { partOpts.push({ label: 'Pembayaran Catering', amount: katCalc.total }); }
-    if (bd.extraBedCost > 0) { partOpts.push({ label: 'Pembayaran Extra Bed', amount: bd.extraBedCost }); }
-    if (bd.vipCost > 0) { partOpts.push({ label: 'Pembayaran Kamar VIP', amount: bd.vipCost }); }
-    var chosen = null;
-    partOpts.forEach(function (p) { if (!chosen || p.amount > chosen.amount) { chosen = p; } });
+    /* Keterangan = SEMUA bagian yang ada (v1.42.0: multi-pilihan),
+     * dalam urutan dropdown. */
+    var partLabels = [];
+    if (katCalc.total > 0) { partLabels.push('Pembayaran Catering'); }
+    if (bd.vipCost > 0) { partLabels.push('Pembayaran Kamar VIP'); }
+    if (bd.extraBedCost > 0) { partLabels.push('Pembayaran Extra Bed'); }
     draft.amount = paidExtra > 0 ? paidExtra : extraTotal;
-    draft.forPayment = chosen ? chosen.label : 'Pembayaran Catering';
+    draft.forPayment = partLabels.length ? partLabels : ['Pembayaran Catering'];
     if (isPartialExtra) {
-      draft.items = [{ desc: draft.forPayment, qty: 1, price: draft.amount }];
+      draft.items = [{ desc: receiptPaymentsText(draft.forPayment), qty: 1, price: draft.amount }];
     } else {
       draft.items = [];
       if (bd.extraBedCost > 0) {
@@ -1685,6 +1709,8 @@
     parseReceiptNumber: parseReceiptNumber,
     receiptItemsTotal: receiptItemsTotal,
     RECEIPT_PAYMENTS: RECEIPT_PAYMENTS,
+    receiptPayments: receiptPayments,
+    receiptPaymentsText: receiptPaymentsText,
     paidForBookingSplit: paidForBookingSplit,
     receiptFromReservation: receiptFromReservation
   };

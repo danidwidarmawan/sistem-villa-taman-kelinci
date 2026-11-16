@@ -21,7 +21,7 @@
     repo: 'sistem-villa-taman-kelinci-data',
     branch: 'main'
   };
-  var APP_VERSION = '1.41.0-dropdown-untuk-pembayaran';
+  var APP_VERSION = '1.42.0-untuk-pembayaran-multi';
 
   var LS = {
     data: 'vtk_data',
@@ -1887,7 +1887,7 @@
       return (b.date || '').localeCompare(a.date || '') || (b.number || '').localeCompare(a.number || '');
     }).filter(function (rc) {
       if (!q) { return true; }
-      return ((rc.number || '') + ' ' + (rc.guestName || '') + ' ' + (rc.forPayment || '')).toLowerCase().indexOf(q) !== -1;
+      return ((rc.number || '') + ' ' + (rc.guestName || '') + ' ' + L.receiptPaymentsText(rc.forPayment)).toLowerCase().indexOf(q) !== -1;
     });
     var rows = list.map(function (rc) {
       return '<tr class="clickable" onclick="VTK.showReceipt(\'' + esc(rc.id) + '\')">' +
@@ -1895,7 +1895,7 @@
         '<td data-label="Jenis">' + esc(RECEIPT_KINDS[receiptKindOf(rc)].short) + '</td>' +
         '<td data-label="Diterima dari">' + esc(rc.guestName) + '</td>' +
         '<td data-label="Jumlah" class="num">' + L.fmtRp(rc.amount) + '</td>' +
-        '<td data-label="Untuk pembayaran">' + esc(rc.forPayment) + '</td>' +
+        '<td data-label="Untuk pembayaran">' + esc(L.receiptPaymentsText(rc.forPayment)) + '</td>' +
         '<td data-label="Tanggal">' + L.fmtDate(rc.date) + '</td></tr>';
     }).join('');
     return '<section class="page-head"><h1>Kwitansi</h1>' +
@@ -1934,15 +1934,21 @@
     var items = (v.items || []).map(receiptItemRowHTML).join('');
     var itemsTotal = L.receiptItemsTotal(v.items || []);
     var kind = receiptKindOf(v);
-    /* Dropdown Untuk Pembayaran (v1.41.0): 5 pilihan pemilik. Nilai
-     * lama yang tidak ada di daftar tetap ditampilkan sebagai opsi
-     * "(lama)" agar form ubah tidak mengubahnya diam-diam. */
-    var fpOpts = L.RECEIPT_PAYMENTS.map(function (p) {
-      return '<option value="' + esc(p) + '"' + (v.forPayment === p ? ' selected' : '') + '>' + esc(p) + '</option>';
+    /* Checkbox Untuk Pembayaran (v1.42.0): bisa beberapa pilihan.
+     * Baru: default 'Pembayaran DP Villa' tercetang. Nilai lama yang
+     * tidak ada di daftar tetap tampil sebagai checkbox "(lama)" agar
+     * bisa dipertahankan atau dihapus (uncheck). */
+    var payments = L.receiptPayments(v.forPayment);
+    if (!payments.length) { payments = ['Pembayaran DP Villa']; }
+    var fpBoxes = L.RECEIPT_PAYMENTS.map(function (p) {
+      return '<label class="checkbox"><input type="checkbox" name="forPayment" value="' + esc(p) + '"' +
+        (payments.indexOf(p) !== -1 ? ' checked' : '') + ' /> ' + esc(p) + '</label>';
     }).join('');
-    if (v.forPayment && L.RECEIPT_PAYMENTS.indexOf(v.forPayment) === -1) {
-      fpOpts = '<option value="' + esc(v.forPayment) + '" selected>' + esc(v.forPayment) + ' (lama)</option>' + fpOpts;
-    }
+    payments.forEach(function (p) {
+      if (L.RECEIPT_PAYMENTS.indexOf(p) === -1) {
+        fpBoxes += '<label class="checkbox"><input type="checkbox" name="forPayment" value="' + esc(p) + '" checked /> ' + esc(p) + ' (lama)</label>';
+      }
+    });
     var title = isNew ? 'Kwitansi baru' : 'Ubah kwitansi ' + esc(rc.number);
     return '<section class="page-head"><h1>' + title + '</h1>' +
       '<p class="muted">Pilih reservasi untuk mengisi otomatis dari pembayaran tamu, atau isi manual.</p></section>' +
@@ -1968,8 +1974,8 @@
       '<label class="field"><span>Banyaknya uang (Rp)</span><input type="number" name="amount" min="0" step="any" value="' + (v.amount === undefined || v.amount === null ? '' : esc(v.amount)) + '" /></label>' +
       '</div>' +
       '<div class="form-row">' +
-      '<label class="field field-grow"><span>Untuk Pembayaran</span><select name="forPayment">' + fpOpts + '</select>' +
-      '<span class="hint">Jenis pembayaran yang dibuktikan kwitansi ini. Terisi otomatis dari reservasi &amp; pembayaran terverifikasinya.</span></label>' +
+      '<div class="field field-grow"><span>Untuk Pembayaran</span><div class="checkbox-row">' + fpBoxes + '</div>' +
+      '<span class="hint">Bisa pilih lebih dari satu — misalnya Catering + Extra Bed dalam satu kwitansi.</span></div>' +
       '</div>' +
       '<div class="form-row">' +
       '<label class="field"><span>Kota</span><input type="text" name="city" value="' + esc(v.city || 'Bogor') + '" /></label>' +
@@ -2007,7 +2013,7 @@
       reservationId: fd.get('reservationId') || '',
       guestName: (fd.get('guestName') || '').trim(),
       amount: parseFloat(fd.get('amount')) || 0,
-      forPayment: (fd.get('forPayment') || '').trim(),
+      forPayment: fd.getAll('forPayment'),
       city: (fd.get('city') || '').trim(),
       date: fd.get('date') || '',
       receiver: (fd.get('receiver') || '').trim(),
@@ -2023,6 +2029,7 @@
     var errors = [];
     if (!v.number) { errors.push('Nomor kwitansi wajib diisi.'); }
     if (!v.guestName) { errors.push('Nama penerima ("Sudah terima dari") wajib diisi.'); }
+    if (!v.forPayment || !v.forPayment.length) { errors.push('Pilih minimal satu "Untuk Pembayaran".'); }
     if (!(v.amount > 0)) { errors.push('Jumlah harus lebih dari 0.'); }
     if (!L.isISODate(v.date)) { errors.push('Tanggal kwitansi wajib diisi.'); }
     var dupe = receipts().some(function (rc) { return rc.number === v.number && rc.id !== v.id; });
@@ -2079,7 +2086,7 @@
    * (kota, tanggal), sesuai format umum. */
   function receiptDocHTML(rc) {
     var h = receiptHeader();
-    var items = (rc.items && rc.items.length) ? rc.items : [{ desc: rc.forPayment, qty: 1, price: rc.amount }];
+    var items = (rc.items && rc.items.length) ? rc.items : [{ desc: L.receiptPaymentsText(rc.forPayment), qty: 1, price: rc.amount }];
     var rows = items.map(function (it, i) {
       return '<tr><td>' + (i + 1) + '</td><td>' + esc(it.desc) + '</td><td class="num">' + L.fmtNum(it.qty) + '</td>' +
         '<td class="num">' + L.fmtRp(it.price) + '</td><td class="num">' + L.fmtRp((+it.qty || 0) * (+it.price || 0)) + '</td></tr>';
@@ -2100,7 +2107,7 @@
       '<div class="receipt-row receipt-words-row"><span class="receipt-label">Banyaknya Uang</span><span class="receipt-colon">:</span>' +
       '<span class="receipt-value receipt-words">' + esc(L.terbilangRupiah(rc.amount)) + '</span></div>' +
       '<div class="receipt-row"><span class="receipt-label">Untuk Pembayaran</span><span class="receipt-colon">:</span>' +
-      '<span class="receipt-value">' + esc(rc.forPayment) + '</span></div>' +
+      '<span class="receipt-value">' + esc(L.receiptPaymentsText(rc.forPayment)) + '</span></div>' +
       (rc.checkin ? '<div class="receipt-row"><span class="receipt-label">Tanggal Menginap</span><span class="receipt-colon">:</span>' +
       '<span class="receipt-value">' + L.fmtDateFull(rc.checkin) + (rc.checkout ? ' - ' + L.fmtDateFull(rc.checkout) : '') + '</span></div>' : '') +
       '<table class="tbl receipt-items"><thead><tr><th>No.</th><th>Deskripsi</th><th class="num">Kuantitas</th><th class="num">Harga Satuan</th><th class="num">Jumlah</th></tr></thead>' +
@@ -3810,7 +3817,8 @@
       var set = function (name, val) { var el = form.querySelector('[name="' + name + '"]'); if (el) { el.value = val; } };
       set('guestName', d.guestName);
       set('amount', d.amount);
-      set('forPayment', d.forPayment);
+      var fpBoxes = form.querySelectorAll('input[name="forPayment"]');
+      Array.prototype.forEach.call(fpBoxes, function (cb) { cb.checked = (d.forPayment || []).indexOf(cb.value) !== -1; });
       set('checkin', d.checkin);
       set('checkout', d.checkout);
       var wrap = $('rc-items');
